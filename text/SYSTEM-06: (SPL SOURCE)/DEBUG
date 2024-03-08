@@ -1,0 +1,3374 @@
+        COMMON DEBUG'DECS;
+         INCLUDE COMM,STDEC,STST,SCMWF,DBCOM,SGDEC;
+
+*
+*CONTENTS*
+* DSA          ADDRESS COMMAND
+* DSB          BREAK COMMAND
+* DSC          CONTINUE COMMAND
+* DSD          DISPLAY COMMAND
+* DSE          EXAMINE COMMAND
+* DSF          FIND COMMAND
+* DSG          GOTO COMMAND
+* DSK          KILL COMMAND
+* DSL          LIST COMMAND
+* DSM          MODE COMMAND
+* DSN          NEXT COMMAND
+* DSP          PROCEED COMMAND
+* DSR          REPORT COMMAND
+* DSS          STEP COMMAND
+* DST          TRACE COMMAND
+* DSV          VIEW COMMAND
+* DSW          WHERE COMMAND
+* DPVAL        PRINT VALUE IN FORMAT
+* DFCND        DECIMAL INTEGER
+* DFCNB        OCTAL INTEGER
+* DFCRS        REAL NUMBER
+* DFCDS        DOUBLE REAL
+* DAPPND       APPEND
+* DWCI         WCI
+* DCOPY        COPY
+* DPPDS        PPDS
+* DWN          WRITE NAME
+* DW3          WRITE THREE CHARS.
+* DILB         INC. TO NEXT ST.
+* DMSET        SET PRINT MODES
+* DCMT         CHECK FOR CHANGE OF MODE
+* DMOD         COLLECT MODIFIERS
+* DGARG        GET ARGUMENT
+* DGPROG       GET PROGRAM
+* DGNUM        GET NUMBER
+* DSKIPB       SKIP BLANKS
+* DGRING       GET RING NUMBER
+* DNEA         CHECK FOR NULL EDITOR EDITOR ARGUMENT
+* DEEL         EVALUATE LAST ARGUMENT
+* DCOS         CODE OUT OF SEQUENCE TEST FOR BRU
+* DGBKA        GET BREAKPOINT CORE ADDRESS
+* DOEA         GET TN,SI FOR ED. ADD.
+* DPEA         PRINT ED.ADD. GIVEN TN,SI
+* DCEAA        GET CORE ADDRESS FROM ED. ADD.
+* DUNSTK       PSEUDO UNWIND
+* DUNSI        INIT. PSEUDO UNWIND
+* DGDIM        GET DIMENSION INFOL
+* DISGNT       INIT. GET NEXT TOKEN
+* DGNT         GET NEXT TOKEN FROM PPTB
+* DGLREG       GET LREG
+* DGSSET       GET A GNT POINTER
+* DDEL         DELETE DIRECT ST.
+* DPROG        SET UP PARAMETERS FOR RUN
+* DGLX         PRINT G'[],L'[], OR X'
+* DFNM         WRITE NAME IF FOUND
+* CORES        STORE IN CORE
+* CORE         READ FROM CORE
+* COREF        GET CORE POINTER
+* DEINIT       INITIALIZATION
+* DECOM        COMMAND DISPATCHER
+* DBGO         BARE MODE GO COMMAND
+* DERRF        ERROR FUNCTION
+* DBKNXT       SCAN TO NEXT BP.
+* DBKINXT      INIT. SCAN
+* DBKMSH       SMASH BPTS
+* DUNMSH       UNSMASH BPTS
+* DPLANT       PLANTS BREAKPOINTS
+* DPLFIX       FIXES UP P AND L ON EXIT
+* S'T          SPL TRAP ENTRY POINT
+* S'E          SPL ENTRY POINT
+* S'C          SPL CONT ENTRY POINT
+* RING'TRAPX   RING TRAP X
+* RUN          EXECUTION CONTROL
+* PTERNO       PRINTS ERROR MESSAGES
+* MCRTPG       CREATES PAGE
+* MDELPG       DELETES PAGE
+* MRDMAP       READS MAP BYTE
+* DEE          EVALUATE EXPRESSION
+* DGT          GET SYMBOL OR CONSTANT TYPE
+* DGV          GET SYMBOL OR CONSTANT VALUE
+* DEGV         GET EFFECTIVE ADDRESS
+* DIGV         GET CONTENTS OF ADDRESS
+* DEGVI        GET EFFECTIVE ADDRESS FOR INDIRECT WORD
+* DPNV         PRINT NEXT VALUE
+* DPV          PRINT VALUE
+* DRUN         TRANSFER CONTROL TO PROGRAM
+* DPBM         PRINT BREAK MESSAGE
+* DRGFIX       FIXUP ON RING CHANGE
+* DRING        CHANGES RING AND STATE
+* DPPM         PRINT PHYSICAL MAP
+* DBKSET       SET BP.
+* DBKCLR       CLEAR BP.
+* DBKTCLR      CLEAR TRACE BP.
+
+*      DS ERM180,1,"GOTO OR RETURN IS ILLEGAL";*DECOM
+*      DS ERM181,1,"COMMAND ERROR";*DECOM
+*      DS ERM182,1,"OUTPUT OR COLLECTION STRING TOO LONG";*DFCND
+*      DS ERM183,1,"EXPRESSION ERROR";*DGARG,DEE,DGNUM
+*      DS ERM184,1,"PROGRAM NAME DOES NOT EXIST OR SYNTAX ERROR";*DGPROG
+*      DS ERM185,1,"NO CURRENT LINE";*DNEA
+*      DS ERM186,1,"TOO MANY ARGUMENTS";*DSB,DSE,DEEL
+*      DS ERM187,1,"BLOCK IS NOT A PROGRAM";*DUNSTK
+*      DS ERM188,1,"TOO MANY BREAKPOINTS";*DMSH
+*      DS ERM189,1,"EDITOR ADDRESS ERROR";*DSB,DSK,DSG,DSS
+*      DS ERM190,1,"CANNOT RUN PROGRAM";*DECOM,DSG,DSC,DSS
+*      DS ERM191,1,"ENVIRONMENT BOUNDARY";*DSE,DSM
+*      DS ERM192,1,"EXPRESSION DOES NOT HAVE A LOCATION";*DSE,DPNV
+*      DS ERM193,1,"NO CURRENT EXPRESSION";*DSE,DSN
+*      DS ERM194,1,"COULD NOT FIND LOCAL ENVIRONMENT";*DGLREG
+*      DS ERM195,1,"ADDRESS NOT IN A PROGRAM";*DPBM,DSA,DSV
+*      DS ERM196,1,"CANNOT EVALUATE EXPRESSION";*DPV
+*      DS ERM197,1,"ERROR IN UNWINDING THE CALL STACK";*DUNSTK
+*      DS ERM198,1,"THE DIRECT STATEMENT HAS BEEN DELETED";*DRUN,DPBM,DDEL
+*      DS ERM199,1,"RING ERROR";*DSE
+*      DS ERM200,1,"STACK BOUNDARY HAS CHANGED, MUST ZAP";* DPROG
+*      DS ERM201,1,"REFERENCED A PAGE NOT IN CORE";* COREF
+*NOTES:
+*IMPROVE, AND VERIFY ERROR MESSAGES
+*FIX EXAMINE TO GET JUST NUMBER OF CELLS WANTED
+*FIX PRINTOUT OF MACROS
+*IMPLEMENT FIND AND LEVEL
+*FIX DIRECT STATEMENTS TO NOT USE DUMMY FUNCTION
+*REDO DISPLAY COMMAND
+
+*PARAMETERS
+         DQ RBLLNO←10;
+         DQ SBLLNO←6;
+         DQ TAB1←7;* FIRST TAB IN LINE EDIT
+         DQ DBKPT←77737400B;* WORD TO SMASH BREAKPOINTS WITH
+         DQ DBRU←75010000B;* WORD TO CHECK FOR BRU INST.
+         DQ HXDEBUG←'-';* EXPERT MODE HERALD CHAR
+         DQ DTKATSIGN←6000B+'@';
+         DQ DTKDOL←6000B+'$';
+         DQ DTKDOT←6000B+'.';
+         DQ DTKLBRAC←6000B+'[';
+         DQ DTKRBRAC←6000B+']';
+         DQ DTKPLUS←6000B+'+';
+         DQ DTKMINUS←6000B+'-';
+         DQ DTKCOMMA←6000B+',';
+         DQ DCOLON←':';
+         DQ QUITNO←23;
+         DQ BPTNO←21;
+         DQ BPTRET←1;
+         DQ ERRRET←-1;
+         DQ QUITRT←-2;
+         DQ SPRET←0;
+*FIELDS
+         DF PCNTF(0),LREGF(7),GREGF(8);
+         DF W0(0),W1(1);
+         DF BLLERRNO(0:0,5);
+         DF ADDR14(0:10,23);
+         DF SPPCTR(0:6,23),SPLREG(1:6,23),SPGREG(2:6,23),SP940(1:0,0);
+         DF SPSPNO(0:2,5);
+         DF FPAGEA(0:6,12),FPAGEM(0:17,23),FPAGEE(0:13,13);
+         DF R3B(0:21,23),L23B(0:0,22),L12B(0:0,11),R12B(0:12,23);
+         DF R1B(0:23,23);
+         DF F61(0:0,5),F62(0:6,11),F63(0:12,17),F64(0:18,23);
+         DF F81(0:0,7),F82(0:8,15),F83(0:16,23);
+*MACROS
+         DM INC(XX)←XX←XX+1;
+         DM DEC(XX)←XX←XX-1;
+         DM CLS(XX)←SETS(XX,0,0);
+         DM SETM(XX,YY,ZZ)←ZZ←YY IF MODES[XX]>0;
+*
+*
+         DI SPLTM;
+         DI T940;
+         DI DSRING'PTR;
+         DI DPRING'PTR;
+         DM PCNT←DSRING'PTR.PCNTF;
+         DM LREG←DSRING'PTR.LREGF;
+         DM GREG←DSRING'PTR.GREGF;
+         DM BPCNT←DPRING'PTR.PCNTF;
+         DM BLREG←DPRING'PTR.LREGF;
+         DM DPD←DEETP←DEETD←-1;
+         DM DTPD(XX)←DEET←XX & DPD;
+         DM DBCD←DEEB←DEEC←DEED←0;
+         DM DABCD(XX)←DEEA←XX & DBCD;
+***FIX THESE EVENTULALLY WITH APPROPRIATE SIGNED FIELDS
+         DM DBIAS(XX)←(FRMASK(XX)/2+1);
+         DM DGSGN(XX,YY)←((XX$YY) XOR DBIAS(YY)) - DBIAS(YY);
+*
+         DI RUNLR;
+*
+         DI DBERC,DBERN;
+         DM ERRSPEC←DBERC,DBERN;
+         DM SYSERR← VALUE SYSTEM'ERROR():ERRSPEC;
+*
+         DECLARE STRING ARRAY DSTR[NCOMMAND]←("EXAMINE","NEXT","PREVIOUS",
+         "MODE","GOTO","CONTINUE","STEP","BREAK","KILL",
+         "DISPLAY","TRACE","REPORT","LEVEL","FIND","ADDRESS",
+         "WHERE","VIEW");
+         DECLARE FIXED STRING ARRAY DMU[4]←(
+         "UCALL","UCALN","MCALL","MCALN");
+         DA TSS[LSTATE];
+         DI TP=TSS[0];
+         DI TA=TSS[1];
+         DI TB=TSS[2];
+         DI TC=TSS[3];
+         DI TD=TSS[4];
+         DI TE=TSS[5];
+         DI TX=TSS[6];
+         DI TL=TSS[7];
+         DI TG=TSS[8];
+         DI TS=TSS[9];
+
+         DECLARE INTEGER RTPC = G' [4], RTPAR = G' [5];
+         DA RTMSG[11]←(6'#0  ',6'ABE ',6'FLO ',6'FLU ',6'RO  ',6'IATP',
+         6'UFN ',6'FLX ',6'DIZ ',6'STKO',6'BLL ');
+         DA TRMSG[16]←(6'MACC',6'PRO ',6'PNIM',6'PNIC',6'PI  ',6'TI  ',
+         6'BLL ',6'ILIM',6'PNOD',6'DWSO',6'CWSO',6'NEP ',
+         6'DMRD',6'NILE',6'SPCO',6'PMTO');
+         DECLARE STRING ARRAY BLLMSG[7]←(6"??",6"UNDEFINED FUNCTION",
+         6"WRONG # OF ARGS",6"ARG OF WRONG TYPE",6"BAD APW",
+         6"ADDRESS TYPE ERROR",6"BAD DESCRIPTOR");
+
+         UTILITY CREATE'SSP←30;
+         UTILITY READ'SPT'FIELD←35;
+         UTILITY SET'SPT'FIELD←36;
+
+         MONITOR ACQPMT←50;
+         MONITOR NPPMT←51;
+         MONITOR DELPMT←54;
+         MONITOR READ'SPCS←96;
+         MONITOR READ'MAP'BYTE←101;
+         MONITOR SET'MAP'BYTE←102;
+         MONITOR SP'BRANCH←115;
+         MONITOR SP'RETURN←116;
+         MONITOR JUMP'RETURN←117;
+         MONITOR MODIFY'CALL←120;
+         MONITOR ALLOW'INTS←168;
+
+*
+*THE ADDRESS COMMAND
+
+
+        PROGRAM DSA;
+         INCLUDE DEBUG'DECS;
+
+         DI DSATN,DSASI,DSADP;
+
+         FUNCTION DSA();
+         DEEL(1);
+         DRING(DGRING(DEEA));
+         DOEA(DEEA:DSATN,DSASI,DSADP//DSA1);
+         DPEA(DSATN,DSASI);
+         CLS(PSTR);
+         DWCI('[');
+         DFCNB(DSADP,4B7);
+         DWCI(']');
+         DAPPND(MCR);
+         CSOUT(PSTR);
+         DERRF(-2);
+DSA1:    DERRF(195);
+
+*
+*
+*BREAK COMMAND
+
+
+        PROGRAM DSB;
+         INCLUDE DEBUG'DECS;
+
+
+         FUNCTION DSB();
+*COMPUTE EDITOR ADDRESS
+         DNEA(//DSB2);
+         EDLI(CSTR//DSB3);
+*PROCESS TRACE BREAKPOINT
+DSB2:    IF MODES['T'] = 1 DO;
+             DERRF(186) IF E2TN # E1TN OR E2SI # E1SI;
+             DBKTCLR();
+         ENDIF;
+*SET BREAK POINT BIT
+DSB1:    DBKSET();
+         RETURN IF E1TN=E2TN AND E1SI=E2SI ELSE DILB(// RETURN);
+         GOTO DSB1;
+DSB3:    DERRF(189);
+
+*
+*
+*CONTINUE COMMAND
+
+
+        PROGRAM DSC;
+         INCLUDE DEBUG'DECS;
+
+
+         FUNCTION DSC();
+         DEEL(1);
+         DPROG(1,BRKRG//DSC4);
+         IF M1MODE DO;
+             PCNT←DBKMSH(-1,PCNT);
+             DBKSP←-1;
+         ELSE DO;
+             DBKSP←0;
+             SSELECT(BRKTN);
+             POINT←A(ICST,BRKSI);
+             GOTO DSC2 IF POINT.PTBKF=0;
+             DRLB←DRUB←PCNT;
+             DBKMSH(1,-1);
+             RETURN IF DRUN()#2;
+DSC2:        DBKSP←-1;
+             DBKMSH(-1,-1);
+         ENDIF;
+         DRLB←0;
+         DRUB←4B7-1;
+         DRUN();
+         RETURN;
+DSC4:    DERRF(190);
+
+*
+*
+*DISPLAY COMMAND
+
+
+        PROGRAM DSD;
+         INCLUDE DEBUG'DECS;
+
+         DI DSDCT,DSDR;
+
+         FUNCTION DSD();
+*INITIALIZE STATEMENT SCAN
+         FOR DSDR←0 TO NRINGS-1 DO;
+             IF REXISTS[DSDR] DO;
+*** RECODE THIS
+                 DRING(DSDR);
+                 SSELECT(0);
+                 E1TN ← ICFSTAT;
+                 SSELECT(E1TN);
+                 E1SI ← ICFSTAT;
+                 DSDCT ← 0;
+DSD1:
+                 POINT ← A(ICST,E1SI);
+                 GOTO DSD2 IF POINT.PTBKF = 0;
+*WE HAVE A BREAKPOINT
+*PRINT LOWER BOUND
+                 DPEA(E1TN,E1SI) IF DSDCT = 0;
+                 E2TN←E1TN;
+                 E2SI←E1SI;
+                 INC(DSDCT);
+*CLOSE LOOP
+DSD3:            DILB(//DSD2);
+                 GOTO DSD1;
+*CURRENT STATEMENT NOT A BREAK PT.
+DSD2:            IF DSDCT > 1 DO;
+*PRINT UPPER BOUND
+                     CSOUT(MCOMMA);
+                     DPEA(E2TN,E2SI);
+                 ENDIF;
+                 CSOUT(MCR) IF DSDCT > 0;
+                 DSDCT ← 0;
+                 GOTO DSD3 IF E1TN#0;
+                 CSOUT(MCR);
+             ENDIF;
+         ENDFOR;
+         DERRF(-2);
+
+*
+*
+*EXAMINE COMMAND
+
+
+        PROGRAM DSE;
+         INCLUDE DEBUG'DECS;
+
+         DI DSEI,DSEJ;
+
+         FUNCTION DSE();
+         DABSF←-1 IF MODES['1']>=1 OR (PMOD01<0 AND MODES['0']<1);
+         DGARG(//DSE6);
+         WCD(DSKIPB(//DSE6),PSTR);
+         DEE(ECLTN,DCRING);
+         DPRSZ←DELSZ;
+         DTN1←DTN2;
+         DRG1←DRG2;
+         DERRF(193) IF DTN1=0;
+         DMSET(0);
+         DSUB1[DSEI]←DSUB2[DSEI] FOR DSEI←0 TO 7;
+         DLOC1←DLOC2;
+         DADD1←DADD2;
+         DDIM1←DDIM2;
+         DKIND1←DKIND2;
+         DDIR←1;
+         IF DKIND1=2 AND DDIM1=0 DO;
+             DLOC1←(DSEM+1 IF DSED=0 AND (DSEM=1 OR DSEM=3) ELSE DTW[DSEM]);
+         ENDIF;
+DSE8:    DGARG(//DSE1);
+         DEE(ECLTN,DCRING);
+         DGARG(//DSE2);
+         DTN1←0;
+         DERRF(186);
+DSE4:    DERRF(191);
+DSE5:    DTN1←0;
+         DERRF(192);
+DSE6:    DERRF(193) IF DTN1=0;
+         DCMT();
+         DLOC1←(DSEM+1 IF DSED=0 AND (DSEM=1 OR DSEM=3) ELSE DTW[DSEM])
+         IF DKIND1=2;
+         GOTO DSE8;
+
+*WE HAVE A SINGLE VALUE TO BE PRINTED
+DSE1:    DPV(0//DSE4);
+         DERRF(-2);
+*WE HAVE TWO ARGS
+DSE2:    DERRF(199) IF DRG1#DRG2;
+         GOTO DSE5 IF DKIND1=3;
+         IF DKIND2=3 DO;
+             IF DEEA<0 DO;
+                 DDIR←-1;
+                 DSEI←-DEEA;
+             ELSE DO;
+                 DSEI←DEEA;
+             ENDIF;
+             DPV(0 IF DEEA=0 ELSE 1 //DSE4);
+             DPNV(DDIR//DSE4) FOR DSEJ←2 TO DSEI;
+             DERRF(-2);
+         ENDIF;
+         IF DTN1#DTN2 DO;
+             DTN1←ECLTN;
+             SSELECT(ECLTN);
+             GOTO DSE7;
+         ENDIF;
+         IF DKIND1#DKIND2 OR DLOC1#DLOC2 AND (DDIM1#0 OR DDIM2#0) DO;
+DSE7:        DKIND1←2;
+             DDIM1←DPRSZ←0;
+         ENDIF;
+         IF DKIND1=0 OR DKIND1=1 OR DKIND1=2 AND DDIM1>0 DO;
+             IF DDIM1#0 DO;
+                 DDIR←-1 IF DADD2<DADD1;
+                 DPV(1//DSE4);
+                 DPNV(DDIR//DSE4) WHILE (DADD2-DADD1-DSIZE)*DDIR>-1;
+             ELSE DO;
+                 DDIR←-1 IF DLOC1>DLOC2;
+                 DPV(1//DSE4);
+                 DPNV(DDIR//DSE4) WHILE (DLOC2-DLOC1)*DDIR>0;
+             ENDIF;
+         ELSEIF DKIND1=2 DO;
+             DTPD(9);
+             DMSET(0);
+             DLOC1←(DSEM+1 IF DSED=0 AND (DSEM=1 OR DSEM=3) ELSE DTW[DSEM]);
+             DDIR←-1 IF DADD2<DADD1;
+             DPV(1//DSE4);
+             DPNV(DDIR//DSE4) WHILE (DADD2-DADD1-DLOC1)*DDIR>-1;
+         ELSE DO;
+             DTN1←0;
+             DERRF(0);
+         ENDIF;
+         DERRF(-2);
+
+*
+*
+*THIS IS THE FIND COMMAND
+
+
+        PROGRAM DSF;
+         INCLUDE DEBUG'DECS;
+
+         DI DSFI;
+
+         FUNCTION DSF();
+         CSOUT("FIND COMMAND NOT IMPLEMENTED YET&307");
+         FOR DSFI←LSTATE*RING TO LSTATE*RING+(LSTATE-1) DO;
+             CLS(PSTR);
+             DFCNB(DSSAVE[DSFI]$W0,4B7);
+             CSOUT(PSTR);
+             CSOUT(MCR);
+         ENDFOR;
+         RETURN;
+
+*
+*
+*GOTO COMMAND
+
+
+        PROGRAM DSG;
+         INCLUDE DEBUG'DECS;
+
+         DI DSGI,DSGT,DSGL, GARBAGE;
+
+         FUNCTION DSG();
+*GET LINE ADDRESS
+         DGARG(// RETURN);
+         CSTR←DCOPY(PSTR,CSTR);
+         EDLA(CSTR//DGOTO1);
+*GET PROCEED COUNT
+         DEEL(1);
+*SET P COUNTER
+         SSELECT(E1TN);
+         DSGL←DGLREG(1);
+         DPROG(0,DCRING//DGOTO3);
+         DSGT←LSTATE*DCRING;
+         DSSAVE[DSGT+DSGI]←0 FOR DSGI←0 TO LSTATE-1;
+         PCNT ← DCEAA(E1TN,E1SI,0:,GARBAGE);
+         LREG←DSGL;
+         DRLB←-1;
+         DRUB←4B7-1;
+         DBKMSH(0,-1);
+         DRUN();
+         RETURN;
+DGOTO1:  DERRF(189);
+DGOTO3:  DERRF(190);
+
+*
+*
+*KILL COMMAND
+
+
+        PROGRAM DSK;
+         INCLUDE DEBUG'DECS;
+
+
+         FUNCTION DSK();
+*JUST TRACE BREAKPOINT
+         GOTO DSK3 IF MODES['A'] = 1;
+         GOTO DSK1 IF MODES['T'] = 1 AND LENGTH(CSTR)=0;
+         DNEA(// RETURN);
+*COMPUTE EDITOR ADDRESS
+         EDLI(CSTR//DSK6);
+*CLEAR THE BRK PTS
+DSK2:    DBKCLR();
+         GOTO DSK5 IF E1TN=E2TN AND E1SI=E2SI ELSE DILB(//DSK5);
+         GOTO DSK2;
+DSK5:    RETURN IF MODES['T'] # 1;
+*CLEAR TRACE BRK PT
+DSK1:    DBKTCLR();
+         RETURN;
+*KILL ALL BREAKPOINTS
+DSK3:    DBKINXT(// RETURN);
+DSK4:    DBKCLR();
+         DBKNXT(// RETURN);
+         GOTO DSK4;
+DSK6:    DERRF(189);
+
+*
+*
+*THIS IS THE LEVEL COMMAND
+
+
+        PROGRAM DSL;
+         INCLUDE DEBUG'DECS;
+
+
+         FUNCTION DSL();
+         CSOUT("LEVEL COMMAND NOT IMPLEMENTED YET&307");
+         RETURN;
+
+*
+*
+*MODE COMMAND
+
+
+        PROGRAM DSM;
+         INCLUDE DEBUG'DECS;
+
+         DI DSMI,DSMTN;
+
+         FUNCTION DSM();
+         DGARG(//DSM1);
+         DGPROG(-1,DCRING:DSMTN,DSMI//DSM1);
+         IF DSMI#DCRING DO;
+             DRGFIX();
+             DCRING←DSMI;
+         ENDIF;
+         IF DSMTN#ECLTN DO;
+             SSELECT(ECLTN←DSMTN);
+             ECLSI←ICFSTAT;
+         ENDIF;
+DSM1:    (PMODPT ← PMODD ← PMODP ← -1) IF MODES['V'] = 1;
+         PMODPT ← DSMI IF MODES[DMODA[DSMI]] = 1
+         FOR DSMI ← 0 TO 12;
+         SETM('D',0,PMODD);
+         SETM('P',0,PMODP);
+         SETM('E',0,PMODEN);
+         SETM('N',-1,PMODEN);
+         SETM('Q',-1,PMODLQ);
+         SETM('L',0,PMODLQ);
+         SETM('G',-1,PMODGH);
+         SETM('H',0,PMODGH);
+         SETM('1',-1,PMOD01);
+         SETM('0',0,PMOD01);
+         DZAP() IF MODES['Z']=1;
+         RETURN;
+
+*
+*
+*NEXT COMMAND
+
+
+        PROGRAM DSN;
+         INCLUDE DEBUG'DECS;
+
+         DI DSNI,DSNUL,DSND;
+
+         FUNCTION DSN();
+         DSND←DDIR;
+DSN1:    DERRF(193) IF DTN1=0;
+         DEEL(1);
+         DABSF←-1 IF MODES['1']>=1 OR (PMOD01<0 AND MODES['0']<1);
+         DCMT();
+         DLOC1←(DSEM+1 IF DSED=0 AND (DSEM=1 OR DSEM=3) ELSE DTW[DSEM])
+         IF DKIND1=2 AND DDIM1=0;
+         DSNUL ← DEEA;
+         DPNV(DSND//DSN3) FOR DSNI ← 1 TO DSNUL;
+         DERRF(-2);
+DSN3:    DERRF(191);
+*
+*
+*PREVIOUS COMMAND
+         ENTRY DSP();
+
+         DSND←-DDIR;
+         GOTO DSN1;
+
+*
+*
+*REPORT COMMAND
+
+
+        PROGRAM DSR;
+         INCLUDE DEBUG'DECS;
+
+         DI DSRI;
+
+         FUNCTION DSR();
+*LINE EDIT TEXT
+         UPS←DCOPY(REPS,UPS);
+         ZEDIT(UPS,TAB1,-1:UPS//DSR1);
+         REPS←DCOPY(UPS,REPS);
+         DREPTN←ECLTN;
+         DREPRG←DCRING;
+         RETURN;
+DSR1:    DERRF(182);
+
+*
+*
+*STEP COMMAND
+
+
+        PROGRAM DSS;
+         INCLUDE DEBUG'DECS;
+
+         DI DSSA,DSSI, GARBAGE;
+
+         FUNCTION DSS();
+         IF M1MODE DO;
+             CSOUT("STEP COMMAND NOT IMPLEMENTED YET&307");
+             RETURN;
+         ENDIF;
+         DEEL(1);
+         DSSA ← DEEA;
+         DCDC ← 1;
+         DPROG(1,BRKRG//DSS3);
+         DBKSP←1;
+         FOR DSSI ← 1 TO DSSA DO;
+*RUN PROGRAM
+DSS1:        IF BRKFLG<0 DO;
+                 DRLB←DRUB←BRKDP;
+             ELSE DO;
+                 DRLB ← DCEAA(BRKTN,BRKSI,0:,GARBAGE);
+                 SSELECT(BRKTN);
+                 POINT ← A(ICST,BRKSI);
+                 DRUB ← DRLB + POINT.PTLCODE -1;
+             ENDIF;
+             DBKMSH(DSSI,-1);
+             DRUB ← DRUN();
+             DUNMSH(DSSI);
+             DERRF(-2) IF DRUB#2;
+             DPBM(1);
+             GOTO DSS1 IF BRKFLG<0;
+             GOTO DSS1 IF DGBKA(BRKTN,BRKSI//DSS1)#PCNT;
+             DPBM(0) IF DSSI=DSSA OR DEVERY=0;
+         ENDFOR;
+         RETURN;
+DSS3:    DERRF(190);
+
+*
+*
+*TRACE COMMAND
+
+
+        PROGRAM DST;
+         INCLUDE DEBUG'DECS;
+
+
+         FUNCTION DST();
+         DGARG(//DST3);
+DST3:    CSTR←DCOPY(PSTR,CSTR);
+         DNEA(//DST1);
+*GET FIRST ARGUMENT
+         EDLA(CSTR//DST2);
+*CLEAR AND SET TRACE BREAKPOINT
+DST1:    DBKTCLR();
+         MODES['T'] ← 1;
+         DBKSET();
+         DSC();
+         RETURN;
+DST2:    DERRF(189);
+
+*
+*THE VIEW COMMAND
+
+
+        PROGRAM DSV;
+         INCLUDE DEBUG'DECS;
+
+         DI DSVI,DSVP,DSVTN,DSVSI,DSVE,DSVL,DSVLP,GARBAGE;
+
+         FUNCTION DSV();
+         IF DTASK=0 AND BARE=0 DO;
+             CSOUT(MZAPPED);
+             RETURN;
+         ENDIF;
+         DEEL(2B7);
+         DSVE←DEEA;
+         DUNSI(DMYTN:GARBAGE,GARBAGE,GARBAGE);
+         DSVLP←-1;
+         DSVP←PCNT;
+         DSVL←LREG;
+         FOR DSVI←0 TO DSVE DO;
+             RETURN IF DSVL=DSVLP OR
+             DIRRG1#RING AND (DSVL=ENDCSTACK OR DSVL=0);
+             CLS(PSTR);
+             DFCND(DSVI,4B7);
+             DWCI(' ');
+             CSOUT(PSTR);
+             IF DRLB<=DSVP AND DSVP<DRUB DO;
+                 CSOUT(DBT1);
+                 GOTO DSV4;
+             ENDIF;
+             DOEA(DSVP:DSVTN,DSVSI,GARBAGE//DSV1);
+             DPEA(DSVTN,DSVSI);
+DSV4:        CLS(PSTR);
+             GOTO DSV2;
+DSV1:        CLS(PSTR);
+             DOEA(DSVP:DSVTN,GARBAGE,GARBAGE//DSV3);
+             SSELECT(0);
+             DWN(DSVTN);
+DSV2:        DWCI(' ');
+DSV3:        DFCNB(DSVP, 4B7);
+             DWCI(' ');
+             DFCNB(DSVL, 4B7);
+             CSOUT(PSTR);
+             CSOUT(MCR);
+             DSVLP←DSVL;
+             DUNSTK(:DSVP,DSVL,GARBAGE// RETURN);
+             DSVP←DSVP-1;
+         ENDFOR;
+         RETURN;
+
+*
+*THE WHERE COMMAND
+
+
+        PROGRAM DSW;
+         INCLUDE DEBUG'DECS;
+         DECLARE INTEGER GARBAGE;
+
+
+         FUNCTION DSW();
+         DGARG(// RETURN);
+         CSTR←DCOPY(PSTR,CSTR);
+         EDLA(CSTR//DSW1);
+         DGARG(//DSW2);
+         DERRF(186);
+DSW2:    CLS(PSTR);
+         DFCNB(DCEAA(E1TN,E1SI,0:,GARBAGE),4B7);
+         DWCI(',');
+         SSELECT(E1TN);
+         POINT←A(ICST,E1SI);
+         DFCNB(POINT.PTLCODE,4B7);
+         CSOUT(PSTR);
+         CSOUT(MCR);
+         RETURN;
+DSW1:    DERRF(189);
+
+        PROGRAM DPVAL;
+        INCLUDE DEBUG'DECS;
+
+         DI DPVI,DPVJ,DPVK,DPVL,DPVM,DPVN,DPVTN,GARBAGE;
+        DECLARE REAL FIELD REAL'FIELD(0);
+        DF DMUT(0:14,15),DMUA(0:16,23);
+        DECLARE LABEL ARRAY DFD[18]←(DVI,DVO,DV8,DVR,DV6,DVX,
+         DVS,DVB,DVU,DVM,DVF,DVL,DVA,DVMAC,DVUND,DVFN1,DVFN2,DVSP);
+        DECLARE LABEL ARRAY DMTAG[10B]←(DDIRCT,DINDIR,DINDEX,
+         DBIND,DPTD,DIPD,DBID,DRELAT);
+        DECLARE LABEL ARRAY DMREL[10B]←(DLREL,DILREL,DSREL,DSREL,DISREL,
+         DISREL,DIMIND,DIMMED);
+
+         FUNCTION DPVAL();
+        DPVTN←ICGTN;
+        CLS(PSTR);
+        IF DPRSZ=0 DO;
+            GOTO LABEL'FIXER((DFD[DSEM]));
+        ELSE DO;
+            FOR DPVI←1 BY 4 TO DPRSZ DO;
+                CLS(PSTR);
+                FOR DPVJ←1 TO 4 DO;
+                    DEEA←CORE(DEEX);
+                    IF DSEM=2 DO;
+                        DW3(DEEA);
+                    ELSEIF DSEP=0 DO;
+                        DFCNB(DEEA$INSGD,4B7);
+                    ELSEIF DSEM=0 DO;
+                        DFCND(DEEA,0);
+                    ELSEIF DSEM=9 DO;
+                        DFCND(DEEA,4B7);
+                    ELSE DO;
+                        DFCNB(DEEA,4B7);
+                    ENDIF;
+                    INC(DEEX);
+                    GOTO DPRSD IF DPVI+DPVJ>DPRSZ;
+                    DWCI(',');
+                ENDFOR;
+DPRSD:          DAPPND(MCR);
+                CSOUT(PSTR);
+            ENDFOR;
+        ENDIF;
+        RETURN;
+
+*
+DVP:     DFCNB(DEEA$IWGD,4B7);
+        GOTO DPV1;
+*
+DVI:     GOTO DVP IF DSEP=0;
+        DFCND(DEEA,0);
+        GOTO DPV1;
+*
+DVU:     GOTO DVP IF DSEP=0;
+        DFCND(DEEA,4B7);
+        GOTO DPV1;
+*
+DVR:     DFCDS(@DEEA,0) IF DSED= 0 ELSE DFCRS((@DEEA).REAL'FIELD,0);
+        GOTO DPV1;
+*
+DVX:     DFCRS((@DEEA).REAL'FIELD,0);
+        DWCI(' ');
+        DFCRS((@DEEC).REAL'FIELD,0);
+        GOTO DPV1;
+*
+DVO:     IF DSED=0 DO;
+DLONG:      DFCNB(DEEA,4B7);
+            DWCI(',');
+            DFCNB(DEEB,4B7);
+        ELSE DO;
+            GOTO DVP IF DSEP=0;
+DVO1:       DFCNB(DEEA,4B7);
+        ENDIF;
+        GOTO DPV1;
+
+*
+DVF:     GOTO DVO1 IF DEEA$IWTYPE#IWTFLD;
+        DWCI('(');
+        DFCND(DGSGN(DEEA,FIWDISP),0);
+        IF DEEA$FIWBL # 24 DO;
+            DWCI(':');
+            DFCND(DEEA$FIWBA,0);
+            DWCI(',');
+            DFCND(DEEA$FIWBA+DEEA$FIWBL-1,0);
+        ENDIF;
+        DWCI(')');
+        DWCI('S') IF DEEA$FIWSIGN = 1;
+        GOTO DPV1;
+*
+DVB:     GOTO DLONG IF DSEP=0;
+        DPVI←DEEB;
+        DPVJ←DEEA;
+        DEGVI(DPVJ,0,DEEX//DLONG);* CHANGED FROM ZDEGVI(...) - 5/12/73
+*                                      JACK FREEMAN
+         DEEB←DPVI;
+        DEEA←DPVJ;
+        DOEA(DEEX:DPVI,DPVJ,GARBAGE//DLONG);
+        SSELECT(DPVI);
+*TEST FOR A LABEL
+         DFNM(DEEX-@ICCODE[ICLLIT],2//DVB1);
+        GOTO DLONG;
+DVB1:   DPEA(DPVI,DPVJ);
+        CSOUT(MCR);
+        RETURN;
+
+*
+DVSP:    GOTO DVO1 IF DEEA$IWTYPE#IWTSTR OR DSEP=0;
+        DPVI←4-DEEA$SIWCS;
+        DPVJ←0;
+        DPVK←DEEX+1;
+        DPVL←(DEEA$SIWWA-1)*DPVI+DEEA$SIWCA;
+        GOTO DVS2;
+*
+DVS:     GOTO DVL IF DSEP=0;
+        DPVJ←DEEA$SIWCS;
+        DPVK←DPVL←0;
+        FOR DPVI←@DEEA TO @DEED DO;
+            DPVM←DPVI.SIWWA;
+            DPVN←DPVI.SIWCA;
+            GOTO DVL IF DPVI.IWTYPE#IWTSTR OR
+             DPVI.SIWCS#DPVJ OR
+             DPVM<DPVL OR
+             DPVM=DPVL AND DPVK>DPVN OR
+             DPVN+DPVJ>3;
+            DPVK←DPVN;
+            DPVL←DPVM;
+        ENDFOR;
+        DPVI←4-DPVJ;
+        DPVJ←DEEB$SIWCA;
+        DPVK←DEEB$SIWWA;
+        DPVL←(DEEC$SIWWA-DPVK)*DPVI+DEEC$SIWCA-DPVJ;
+
+*
+DVS2:    DFCND(24/DPVI,4B7) IF DPVI#3;
+        DWCI('"');
+        FOR DPVM←1 TO DPVL DO;
+            INC(DPVJ);
+            IF DPVJ>=DPVI DO;
+                INC(DPVK);
+                DPVJ←0;
+            ENDIF;
+            DPVN←(CORE(DPVK) LSH (DPVJ*(24/DPVI))) RSH (24-(24/DPVI));
+            IF DPVI>2 DO;
+                DWCI(DPVN);
+                GOTO DVS1 IF (DPVM MOD 60) = 0 AND DPVM#DPVL;
+            ELSE DO;
+                DFCNB(DPVN,4B7);
+                IF DPVM#DPVL DO;
+                    IF (DPVM MOD (4 IF DPVI=1 ELSE 8)) = 0 DO;
+DVS1:                   DWCI('"');
+                        CSOUT(PSTR);
+                        CSOUT(MCR);
+                        CLS(PSTR);
+                        DWCI('"');
+                    ELSE DO;
+                        DWCI(',');
+                    ENDIF;
+                ENDIF;
+            ENDIF;
+        ENDFOR;
+        DWCI('"');
+        GOTO DPV1;
+*
+DV6:     DWCI(DEEA$F61);
+        DWCI(DEEA$F62);
+        DWCI(DEEA$F63);
+        DWCI(DEEA$F64);
+        GOTO DPV1;
+*
+DV8:     DW3(DEEA);
+        GOTO DPV1;
+
+*MACHINE CODE
+DVM:     DWCI('.');
+        IF DEEA$INSPOP # 0 DO;
+            DFCNB(1B2+DEEA$INSOP,0);
+        ELSEIF DEEA$INSOP=77B DO;
+            DPVI←DEEA$INSIMV;
+            IF DPVI>-1 DO;
+                SSELECT(MOBTN);
+                FOR DPVI←101B TO ICLTT DO;
+                    POINT←A(ICTT,DPVI);
+                    POINT←A(ICST,POINT.TKSI);
+                    GOTO DVM1 IF DEEA = POINT.SYVAL;
+                ENDFOR;
+                GOTO DVM2;
+DVM1:           DWN(DPVI);
+                GOTO DPV1;
+            ELSE DO;
+                DPVI←-DPVI;
+                DAPPND(DMU[DPVI$DMUT]);
+                DWCI(' ');
+                DFCNB(DPVI$DMUA,4B7);
+                GOTO DPV1;
+            ENDIF;
+        ELSE DO;
+            SSELECT(MOBTN);
+DVM2:       DWN(DEEA$INSOP + 1);
+        ENDIF;
+        SSELECT(DPVTN);
+        DWCI(' ');
+        GOTO LABEL'FIXER((DMTAG[DEEA$INSTAG]));
+
+*INDIRECT
+*DIRECT
+DINDIR:  DWCI('$');
+DDIRCT: DFNM(DEEA,0//DPV1);
+        DAPPND(DGPB);
+DDIR1:  DPVI←DEEA$INSGD;
+DDIR2:  DFCNB(DPVI,0);
+DDIR4:  DWCI(']');
+        GOTO DPV1;
+*INDEXED
+DINDEX:  DAPPND(DXPB);
+        GOTO DDIR1;
+*BASE-INDEX
+DBIND:   DGLX(DGSGN(DEEA,BXBASE),DBIAS(BXBASE));
+        DWCI('[');
+        DGLX(DGSGN(DEEA,BXINDEX),DBIAS(BXINDEX));
+        GOTO DDIR4;
+*INDIRECT-POINTER DISPLACEMENT
+DIPD:    DWCI('$');
+*POINTER DISPLACEMENT
+DPTD:    DGLX(DGSGN(DEEA,PDPTR),DBIAS(PDPTR));
+        DWCI('.');
+        DPVI←DEEA$PDDISP;
+        GOTO DIMMD1;
+*BASE-INDEX DISPLACEMENT
+DBID:    DAPPND(DXPB);
+        DGLX(DGSGN(DEEA,BXDINDEX),DBIAS(BXDINDEX));
+        DPVI←DEEA$BXDDISP;
+        IF DPVI#0 DO;
+            DWCI('+') IF DPVI>0;
+            GOTO DDIR2;
+        ENDIF;
+        GOTO DDIR4;
+
+*RELATIVE MODES
+DRELAT:  GOTO LABEL'FIXER((DMREL[DEEA$INSST]));
+*INDIRECT L-RELATIVE
+DILREL:  DWCI('$');
+*L-RELATIVE
+DLREL:   DFNM(DEEA,1//DPV1);
+        DAPPND(DLPB);
+        DPVI←DEEA$INSLRD;
+        GOTO DDIR2;
+*INDIRECT SOURCE RELATIVE
+DISREL:  DWCI('$');
+*SOURCE RELATIVE
+DSREL:   DFNM(DEEA+DEEX-@ICCODE[ICLLIT],2//DPV1);
+        DAPPND(DRPB);
+        DPVI←DEEA$INSSRD;
+        GOTO DDIR2;
+*IMMEDIATE
+DIMMED:  DPVI←DEEA$INSIMV;
+DIMMD1: DFCND(DPVI,0);
+        GOTO DPV1;
+*IMMEDIATE INDEXED
+DIMIND:  DAPPND(DXP);
+        DPVI←DEEA$INSIMV;
+        IF DPVI#0 DO;
+            DWCI('+') IF DPVI>0;
+            GOTO DIMMD1;
+        ENDIF;
+        GOTO DPV1;
+
+*
+*
+DVFN1:
+DVFN2:
+        DEEA←DEEX IF DSEM=16;
+        IF DSEP#0 DO;
+            SSELECT(1);
+            DFNM(DEEA,3//DPV1);
+        ENDIF;
+        DIGV(DEEA);* CHANGED FROM ZDIGV(...) - 5/12/73  JACK FREEMAN
+        GOTO DLONG;
+*
+DVA:     GOTO DLONG IF DSEP=0 OR DEEA$IWTYPE#IWTARR;
+        DGDIM(//DLONG);
+        DWCI('[');
+        FOR DPVI←1 TO DDIM DO;
+            DFCND(DSUB[DPVI],0);
+            DWCI(',' IF DPVI#DDIM ELSE ':');
+        ENDFOR;
+        DFCND(DSIZE,0);
+        DWCI(',');
+        DFCNB(DBASE,4B7);
+        DWCI(']');
+        DAPPND("ONE") IF DLB=1;
+        GOTO DPV1;
+DVL:    DFCNB(DEEA,4B7);
+        DWCI(',');
+        DFCNB(DEEB,4B7);
+        DWCI(',');
+        DFCNB(DEEC,4B7);
+        DWCI(',');
+        DFCNB(DEED,4B7);
+        GOTO DPV1;
+*
+DVMAC:   DAPPND("MACRO");
+        GOTO DPV1;
+*
+DVUND:   DAPPND("UNDEFINED");
+        GOTO DPV1;
+*
+DPV1:    CSOUT(PSTR);
+        CSOUT(MCR);
+        RETURN;
+
+*APPEND DECIMAL INTEGER TO PSTR
+
+
+        PROGRAM DFCND;
+        INCLUDE DEBUG'DECS;
+
+         DI DNSYM;
+
+         FUNCTION DFCND(DDA,DDB);
+        FCNS(DDA,PSTR,DDB,10//DOER);
+        RETURN;
+*APPEND OCTAL INTEGER TO PSTR
+         ENTRY DFCNB(DDA,DDB);
+
+         FCNS(DDA,PSTR,DDB,10B//DOER);
+        (DDA←'B' & GOTO DWCI1) IF DDA>7 OR DDA<-7 OR DDA<0 AND DDB<0;
+        RETURN;
+*APPEND REAL NUMBER TO PSTR
+         ENTRY DFCRS(REAL DDR,INTEGER DDB);
+
+         CRS(DDR,PSTR,DDB//DOER);
+        RETURN;
+*APPEND DOUBLE REAL TO PSTR
+         ENTRY DFCDS(DOUBLE DDD,INTEGER DDB);
+
+         FCDS(DDD,PSTR,DDB//DOER);
+        RETURN;
+*APPEND STRING TO PSTR
+         ENTRY DAPPND(STRING DDS);
+
+         APPND(PSTR,DDS//DOER);
+        RETURN;
+*APPEND CHARACTER TO PSTR
+         ENTRY DWCI(DDA);
+
+DWCI1:   IF DDA<=77B DO;
+            WCI(DDA,PSTR//DOER);
+        ELSE DO;
+            WCI('&&',PSTR//DOER);
+            FCNS(DDA,PSTR,4B7,10B//DOER);
+        ENDIF;
+        RETURN;
+*COPY STRING
+         ENTRY DCOPY(STRING DDS,STRING DDT);
+
+         CLS(DDT);
+        APPND(DDT,DDS//DOER);
+        RETURN (DDT);
+*PREPROCESS
+         ENTRY DPPDS(STRING DDS,INTEGER DDB);
+
+         APPND(DDS,MCR//DOER);
+        DNSYM←INSYMF;
+        ZPPDS(DDS,DDB//DPPDS1);
+        FETCH() IF DNSYM#INSYMF;
+        RETURN;
+DPPDS1: DERRF(-2);
+*APPEND NAME TO PSTR
+         ENTRY DWN(DDA);
+
+         PSTR ← SWSYM(DDA,PSTR//DOER);
+        RETURN;
+DOER:   DERRF(182);
+
+*APPEND 3 CHARACTERS TO PSTR
+
+
+        PROGRAM DW3;
+         INCLUDE DEBUG'DECS;
+
+
+         FUNCTION DW3(DWW);
+         DWCI(DWW$F81);
+         DWCI(DWW$F82);
+         DWCI(DWW$F83);
+         RETURN;
+
+*
+*
+*THIS FUNCTION INCREMENTS LOWER BOUND TO NEXT STATEMENT
+*FRETN IF NO MORE STATEMENTS
+
+
+        PROGRAM DILB;
+         INCLUDE DEBUG'DECS;
+
+
+         FUNCTION DILB(), FRETURN;
+         SSELECT(E1TN);
+         POINT ← A(ICST,E1SI);
+         E1SI ← POINT.PTFP;
+DILB1:   RETN IF E1SI # 0;
+DILB2:   E1TN ← ICGSP.GSORD;
+         FRETN IF E1TN = 0;
+         SSELECT(E1TN);
+         GOTO DILB2 IF ICTYPE # IBTFN;
+         E1SI ← ICFSTAT;
+         GOTO DILB1;
+
+*
+*
+*THIS FUNCTION SETS PRINT MODE FOR EXAMINE COMMANDS.
+
+
+        PROGRAM DMSET;
+         INCLUDE DEBUG'DECS;
+
+         DI DMSETI;
+
+         FUNCTION DMSET(DMSETT);
+         DSEM ← DEET;
+         DSED ← DEETD;
+         DSEP ← DEETP;
+DMSET1:  GOTO DMSET2 IF DSEM=14;
+         IF PMODPT#-1 AND MODES['V']<1 DO;
+             DSEM←PMODPT;
+             DSED←PMODD;
+             DSEP←PMODP;
+         ENDIF;
+         DSEM ← DMSETI IF MODES[DMODA[DMSETI]] = 1
+         FOR DMSETI ← 0 TO 12;
+         SETM('D',0,DSED);
+         SETM('P',0,DSEP);
+DMSET2:  IF DMSETT=0 DO;
+             DSSEM←DSEM;
+             DSSEP←DSEP;
+             DSSED←DSED;
+         ENDIF;
+         RETURN;
+
+*
+*THIS FUNCTION CHECKS FOR A CHANGE OF MODE
+         ENTRY DCMT();
+
+         DMSETT←0;
+         DSEM←DSSEM;
+         DSEP←DSSEP;
+         DSED←DSSED;
+         GOTO DMSET1;
+
+*
+*
+*THIS FUNCTION COLLECTS MODIFIERS
+
+
+        PROGRAM DMOD;
+         INCLUDE DEBUG'DECS;
+
+         DI DMC;
+
+         FUNCTION DMOD();
+DMOD1:   DMC ← GCI(CSTR);
+         RETURN IF DMC = ':';
+         MODES[DMC] ← 1 IF 20B<=DMC AND DMC<=72B;
+         GOTO DMOD1;
+
+*THIS FUNCTION GETS AN ARGUMENT FROM QSTR AND PUTS IT ON PSTR
+*FRETN IF NO ARGUMENT
+
+
+        PROGRAM DGARG;
+         INCLUDE DEBUG'DECS;
+
+         DI DGAC,DGAF,DGAD;
+
+         FUNCTION DGARG(), FRETURN;
+         FRETN IF LENGTH(QSTR)=0;
+         CLS(PSTR);
+         DGAC←0;
+DGA1:    DGAF←GCI(QSTR//DGA2);
+DGA5:    RETN (0) IF DGAF=',' AND DGAC=0;
+         DWCI(DGAF);
+         IF DGAF='&'' OR DGAF='"' DO;
+             (DWCI(GCI(QSTR//DGA3)) IF DGAD='&&') WHILE
+             DWCI(DGAD←GCI(QSTR//DGA3))#DGAF;
+         ELSEIF DGAF='[' OR DGAF='(' DO;
+             INC(DGAC);
+         ELSEIF DGAF=']' OR DGAF=')' DO;
+             DEC(DGAC);
+         ELSEIF DGAF<='Z' AND DGAF>='A' DO;
+DGA4:        DGAF←GCI(QSTR//DGA2);
+             (DWCI(DGAF) & GOTO DGA4) IF DGAF<='Z' AND DGAF>='A' OR
+             DGAF<='9' AND DGAF>='0' OR DGAF='&'';
+             GOTO DGA5;
+         ENDIF;
+         GOTO DGA1;
+DGA2:    RETN (-1) IF DGAC=0;
+DGA3:    DERRF(183);
+
+*THIS FUNCTION GETS THE TN FOR A PROGRAM
+*A NEGATIVE ARG MEANS JUST PROGRAM NAME ALONE
+*A POSITIVE ARG MEANS < NAME >
+*FRETN IF NO PROGRAM NAME FOUND (SYNTAX)
+
+
+        PROGRAM DGPROG;
+         INCLUDE DEBUG'DECS;
+
+         DI DGPT,DGPI,DGPJ;
+         DECLARE ARRAY DGPA[4];
+
+         FUNCTION DGPROG(DGPTN,DGPRG), FRETURN;
+         DGPI←GETR(PSTR);
+         DGPT←DSKIPB(//DGP6);
+         IF DGPT>='0' AND DGPT<'3' DO;
+             DGPRG←DGPT-20B;
+             GOTO DGP6 IF DSKIPB(//DGP6)#',';
+             DGPT←DSKIPB(//DGP6);
+         ENDIF;
+         DRING(DGPRG);
+         IF DGPTN>=0 DO;
+             IF DGPT#'<' DO;
+DGP6:            SETR(PSTR,DGPI);
+                 FRETN;
+             ENDIF;
+             DGPT←DSKIPB(//DGP3);
+             (RETN (DGPTN,DGPRG) IF DGPTN>0 ELSE GOTO DGP3) IF DGPT='>' ;
+         ENDIF;
+         FOR DGPI←0 TO 3 DO;
+             DGPA[DGPI]←0;
+             FOR DGPJ←18 BY -6 TO 0 DO;
+                 DGPA[DGPI]←DGPA[DGPI] + (DGPT LSH DGPJ);
+                 DGPT←GCI(PSTR//DGP5);
+                 GOTO DGP5 IF DGPT=',';
+                 GOTO DGP1 IF DGPT=' ';
+                 GOTO DGP2 IF DGPT='>';
+             ENDFOR;
+         ENDFOR;
+         DGPI←3;
+DGP1:    DGPT←DSKIPB(//DGP5);
+DGP2:    IF DGPTN<0 AND DGPT#',' OR DGPTN>=0 AND DGPT#'>' DO;
+DGP3:        DERRF(184);
+         ENDIF;
+DGP4:    SSELECT(0);
+         GOTO DGP3 IF (DGPT←SSFIND(DGPA,DGPI+1))=0;
+         RETN (DGPT,DGPRG);
+DGP5:    GOTO DGP3 IF DGPTN>=0 ELSE GOTO DGP4;
+
+*
+*THIS FUNCTION GETS A NUMBER FROM PSTR
+*RETURNS ARGUMENT IF BLANK OR EMPTY STRING
+
+
+        PROGRAM DGNUM;
+         INCLUDE DEBUG'DECS;
+
+         DI DGN8,DGNC;
+
+         FUNCTION DGNUM(DGN10);
+         DGARG(//DGN5);
+         DGNC←DSKIPB(//DGN5);
+         DGN8←DGN10←0;
+DGN2:    GOTO DGN3 IF DGNC<'0' OR DGNC>'9';
+         DGN8←DGN8*8+DGNC-20B;
+         DGN10←DGN10*10+DGNC-20B;
+         DGNC←GCI(PSTR//DGN5);
+         GOTO DGN2;
+DGN3:    IF DGNC='B' DO;
+             DGN10←DGN8;
+         ELSEIF DGNC#' ' AND DGNC#'D' DO;
+             DERRF(183);
+         ENDIF;
+         DSKIPB(//DGN5);
+         DERRF(183);
+DGN5:    RETURN (DGN10);
+
+*
+*THIS FUNCTION SKIPS OVER BLANKS IN PSTR
+* RETN  RETURNS CHARACTER AS VALUE
+* FRETN NO NON-BLANK CHARACTERS
+
+
+        PROGRAM DSKIPB;
+         INCLUDE DEBUG'DECS;
+
+         DI DSKIPC;
+
+         FUNCTION DSKIPB(), FRETURN;
+DSKIP1:  GOTO DSKIP1 IF (DSKIPC←GCI(PSTR//FRETN))=' ';
+         RETN (DSKIPC);
+
+*
+*THIS FUNCTION GETS A RING NUMBER FROM AN ABSOLUTE LOCATION
+
+
+        PROGRAM DGRING;
+         INCLUDE DEBUG'DECS;
+
+
+         FUNCTION DGRING(DGRG);
+         DGRG←DGRG$IWGD;
+         RETURN ((0 IF DGRG<4B5 ELSE
+         (1 IF DGRG>=4B5+3000B AND DGRG<6B5 ELSE
+         2 )));
+
+*THIS FUNCTION CHECKS FOR A NULL EDITOR ARGUMENT
+*SETS TO CURRENT IF FOUND AND FRETN ELSE RETN
+
+
+        PROGRAM DNEA;
+         INCLUDE DEBUG'DECS;
+
+
+         FUNCTION DNEA(), FRETURN;
+         RETN IF LENGTH(CSTR)#0;
+         DERRF(185) IF ECLTN=0 OR ECLSI=0;
+         E1TN←E2TN←ECLTN;
+         E1SI←E2SI←ECLSI;
+         FRETN;
+
+*
+*
+*THIS FUNCTION EVALUATES AN EXPRESSION AS LAST ARGUMENT IN THE
+*COMMAND STRING.  FRETN IF COMMAND STRING NOT EMPTIED.
+*IFNO ARG RETN AND SET DEEA TO ARGUMENT
+
+
+        PROGRAM DEEL;
+         INCLUDE DEBUG'DECS;
+
+
+         FUNCTION DEEL(DEELI);
+         DEEA←DGNUM(DEELI);
+         DGARG(// RETURN);
+         DERRF(186);
+
+*
+*FUNCTION TO DO CODE OUT OF SEQUENCE
+* RETURNS NEW LOCATION
+* (IT IS ASSUMED THAT DCOS DOES NOT USE POINT)
+
+
+        PROGRAM DCOS;
+         INCLUDE DEBUG'DECS;
+
+         DI DCOSB;
+
+         FUNCTION DCOS(DCOSA), FRETURN;
+         DUSERF←-1;
+         DCOSB←CORE(DCOSA);
+         DUSERF←0;
+         FRETN IF DCOSB-DCOSB$INSSRD#DBRU;
+         RETN (DCOSA+DCOSB$INSSRD);
+
+*
+*THIS FUNCTION GETS A BREAKPOINT CORE ADDRESS
+
+
+        PROGRAM DGBKA;
+         INCLUDE DEBUG'DECS;
+
+         DI DGBA,DGBB;
+
+         FUNCTION DGBKA(DGBTN,DGBSI), FRETURN;
+         FRETN IF DGBTN=0 OR DGBSI=0;
+         DCEAA(DGBTN,DGBSI,0:DGBA,POINT);
+         DGBB←DCOS(DGBA//DGB1);
+         DGBA←DGBB IF DGBB>=DGBA AND DGBB<DGBA+POINT.PTLCODE;
+DGB1:    RETN (DGBA);
+
+*
+*
+*THIS FUNCITON RETURNS A TN AND SI AND WORD DISP FOR AN EDITOR ADDRESS
+*GIVEN AN ABSOLUTE CORE ADDRESS
+
+
+        PROGRAM DOEA;
+         INCLUDE DEBUG'DECS;
+
+         DI DPEAL,DPEAT,DPEATN,DPEASI;
+
+         FUNCTION DOEA(DPEAO), FRETURN;
+         SSELECT(0);
+*GET FUNCTION OF OCTAL ADDRESS
+         DPEATN ← ICFSTAT;
+DPEA2:   POINT ← DGSSET(DPEATN);
+         GOTO DPEA5 IF POINT.GSTYPE # IBTFN;
+         DPEAT←POINT.GSADDR;
+         DPEAL ← DPEAT + POINT.GSLCODE;
+         GOTO DPEA1 IF DPEAT<=DPEAO AND DPEAO<DPEAL;
+DPEA5:   DPEATN ← POINT.GSORD;
+         FRETN IF DPEATN = 0 ELSE GOTO DPEA2;
+DPEA1:   SSELECT(DPEATN);
+         DPEAT←@ICCODE[ICLLIT];
+         FRETN IF DPEAO<DPEAT OR DPEAO>=DPEAT+ICECODE;
+*GET STATEMENT OF OCTAL ADDRESS
+         DPEASI ← ICFSTAT;
+DPEA3:   POINT ← A(ICST,DPEASI);
+         DPEAT ← DCOS(DPEAT//DPEA6) IF POINT.PTCOS # 0;
+         DPEAT ← DPEAT + POINT.PTLCODE;
+         RETN (DPEATN,DPEASI,DPEAO-DPEAT+POINT.PTLCODE) IF DPEAO < DPEAT
+         OR POINT.PTFP=0;
+         DPEASI←POINT.PTFP;
+         GOTO DPEA3;
+DPEA6:   DERRF(0);
+
+*THIS FUNCTION PRINTS AN EDITOR ADDRESS GIVEN 
+*A FUNCTION TOKEN NUMBER AND SI FOR THE STATEMENT
+
+
+        PROGRAM DPEA;
+         INCLUDE DEBUG'DECS;
+
+         DI DPEAL;
+
+         FUNCTION DPEA(DPEATN,DPEASI);
+
+*PRINT <FCN NAME>
+         SSELECT(0);
+         CLS(PSTR);
+         DWCI('<');
+         DWN(DPEATN);
+         DWCI('>');
+*PRINT LABEL
+         SSELECT(DPEATN);
+         ZEDSA(DPEASI:DPEATN,DPEAL//DPEA0);
+         IF DPEATN # 0 DO;
+             DWN(DPEATN);
+*PRINT LINE COUNT DISPLACEMENT
+             IF DPEAL#0 DO;
+                 DWCI('+');
+                 DFCND(DPEAL,0);
+             ENDIF;
+         ELSE DO;
+             IF DPEAL#0 DO;
+                 DWCI('#');
+                 DFCND(DPEAL,0);
+             ENDIF;
+         ENDIF;
+         CSOUT(PSTR);
+         RETURN;
+DPEA0:   DERRF(0);
+
+*
+*
+*THIS FUNCTION CONVERTS AN EDITOR ADDRESS INTO A CORE ADDRESS
+*AND RETURNS THIS AS ITS VALUE
+
+
+        PROGRAM DCEAA;
+         INCLUDE DEBUG'DECS;
+
+         DI DCEAAI,DCEAAT,DCEAAL;
+
+         FUNCTION DCEAA(DCEATN,DCEASI,DCEADI);
+         DERRF(0) IF DCEATN<=1;
+         SSELECT(DCEATN);
+         DCEAAT ← @ICCODE[ICLLIT];
+         DCEAAL←DCEAAT;
+         FOR DCEAAI ← ICFSTAT,POINT.PTFP WHILE DCEAAI # DCEASI DO;
+             POINT ← A(ICST,DCEAAI);
+             DCEAAT ← DCOS(DCEAAT//DCEAA1) IF POINT.PTCOS # 0;
+             DCEAAT ← DCEAAT + POINT.PTLCODE;
+         ENDFOR;
+         RETURN (DCEAAT+DCEADI,A(ICST,DCEAAI));
+DCEAA1:  DERRF(0);
+
+*THIS FUNCTION NON DESTRUCTIVELY UNWINDS THE CALL STACK ONE LEVEL
+
+
+        PROGRAM DUNSTK;
+         INCLUDE DEBUG'DECS;
+
+
+         FUNCTION DUNSTK(), FRETURN;
+         FRETN IF DLREG=ENDCSTACK OR DLREG=0 OR DGRING(DPCNT)#DGRING(CORE(DLREG));
+         DPCNT←CORE(DLREG);
+         DLREG←CORE(DLREG+1)$IWGD;
+         DNEWF←CORE(DLREG+2)$IWGD;
+         DEC(DNOUN);
+         DERRF(197) IF DNOUN=0;
+         RETN (DPCNT,DLREG,DNEWF);
+
+*THIS FUNCTION INITIALIZES THE NON DESTRUCTIVE UNWINDING OF THE CALL STACK
+*
+
+
+        PROGRAM DUNSI;
+         INCLUDE DEBUG'DECS;
+
+
+         FUNCTION DUNSI(DUNSTN);
+         DNOUN←256;
+         DLREG←LREG;
+         DPCNT←PCNT;
+         DNEWF←CORE(DLREG+2)$IWGD;
+         SSELECT(0);
+         POINT←DGSSET(DUNSTN);
+         DERRF(187) IF POINT.GSTYPE#IBTFN;
+         DNEWL←POINT.GSNEWL;
+         SSELECT(DUNSTN);
+         DRLB←@ICCODE[ICLLIT];
+         DRUB←DRLB+ICECODE;
+         RETURN (POINT,DNEWF,DNEWL);
+
+*GETS DIMENSION INFORMATION
+
+
+        PROGRAM DGDIM;
+         INCLUDE DEBUG'DECS;
+
+         DI DLEB;
+
+         FUNCTION DGDIM(), FRETURN;
+         FOR DDIM←1 TO 7 DO;
+             FRETN IF DEEA$IWTYPE # IWTARR;
+             DLEB←DEEA$AIWLEB;
+             DSUB[DDIM]←(DEEA$AIWNLIM IF DLEB=0 ELSE DEEA$AIWLLIM);
+             GOTO DGDIM1 IF DEEB$IWTRAP=0;
+             DEGVI(DEEB,0,DEEX+1//FRETN);
+         ENDFOR;
+         FRETN;
+DGDIM1:  DLB←DEEA$AIWORG;
+         IF DLEB=0 DO;
+             DELSZ←0;
+             DSIZE←1+DEEA$AIWNMULT;
+         ELSE DO;
+             DELSZ←DSIZE←1+DEEA$AIWLMULT;
+         ENDIF;
+         DEGVI(DEEB,0,DEEX+1//FRETN);
+         DBASE←DEEX;
+         RETN;
+
+*
+*
+*THIS FUNCTION INITIALIZES GET NEXT TOKEN FROM PPTB
+
+
+        PROGRAM DISGNT;
+         INCLUDE DEBUG'DECS;
+
+
+         FUNCTION DISGNT(DGNTBB);
+         DGNTB←DGNTBB;
+         DGNTC ← 0;
+         DGNTI ← PTTO;
+         DGNTE←DGNTB.PTSIZE*2 + DGNTB.PTONT -(PTTO+1);
+         RETURN;
+
+*FUNCTION TO GET NEXT TOKEN
+
+
+        PROGRAM DGNT;
+         INCLUDE DEBUG'DECS;
+
+         DI DGNTT;
+
+         FUNCTION DGNT(), FRETURN;
+DGNT1:   FRETN IF DGNTC = DGNTE;
+         DGNTT ← DGNTB[DGNTI$L23B];
+         INC(DGNTI);
+         INC(DGNTC);
+         RETN ((DGNTT$L12B IF DGNTI$R1B # 0 ELSE DGNTT$R12B));
+
+*THIS FUNCTION GETS THE LOCAL ENVIRONMENT FOR THE CURRENT PROGRAM
+
+
+        PROGRAM DGLREG;
+         INCLUDE DEBUG'DECS;
+
+         DI DGLRV,DGLRI,DGLRC,GARBAGE;
+
+         FUNCTION DGLREG(DGLRF);
+         DGLRI←ICGTN;
+         GOTO DGLR1 IF ICTYPE#IBTFN;
+         DUNSI(DGLRI:GARBAGE,GARBAGE,DGLRV);
+         RETURN (DGLRV$FWNEWL) IF DGLRV$FWSTK=0 AND DGLRF=0;
+         DGLRV←LREG;
+         DGLRC←PCNT;
+         DUNSTK(:DGLRC,DGLRV,GARBAGE//DGLR1) FOR DGLRI←1 TO DLEVNO;
+         DUNSTK(:DGLRC,DGLRV,GARBAGE//DGLR1) WHILE DGLRC<DRLB OR DGLRC>=DRUB;
+         RETURN (DGLRV);
+DGLR1:   DERRF(194);
+
+*
+*
+*THIS FUNCTION SETS UP POINTER FOR GIVEN GNT ENTRY
+*ASSUMES GNT IS SELECTED
+
+
+        PROGRAM DGSSET;
+         INCLUDE DEBUG'DECS;
+
+
+         FUNCTION DGSSET(DGSSTN);
+         POINT ← A(ICTT,DGSSTN);
+         POINT ← A(ICST,POINT.TKSI);
+         RETURN (POINT);
+
+*THIS FUNCTION DELETES A DIRECT STATEMENT
+*1 TASK 1
+*2 TASK 2
+
+
+        PROGRAM DDEL;
+         INCLUDE DEBUG'DECS;
+
+
+         FUNCTION DDEL(DDELN);
+         IF DDELN=1 DO;
+             DTASK←0;
+             DERRF(198) IF DIRTN1=0 OR DIRSI1=0;
+             DRING(DIRRG1);
+             SSELECT(DIRTN1);
+             DDELN←DIRSI1;
+             DIRTN1←0;
+         ELSEIF DDELN=2 DO;
+             DTASK←1 IF DTASK=2;
+             DERRF(198) IF DIRTN2=0 OR DIRSI2=0;
+             DRING(DIRRG2);
+             SSELECT(DIRTN2);
+             DDELN←DIRSI2;
+             DIRTN2←0;
+         ELSE DO;
+DDEL1:       DERRF(0);
+         ENDIF;
+***************THIS IS A REMOVAL KLUDGE UNTIL FIXED
+         DERRF(0) IF DDELN#ICLSTAT;
+         POINT←A(ICST,DDELN);
+         ICBA.IBECODE←ICECODE←ICECODE-POINT.PTLCODE;
+         STDEL(DDELN,DDELN//DDEL1);
+         RETURN;
+
+*
+*
+*THIS FUNCTION SETS UP PARAMETERS FOR TRANSFER OF CONTROL
+*FRETN IF CAN NOT FIRE UP PROGRAM
+
+
+        PROGRAM DPROG;
+         INCLUDE DEBUG'DECS;
+         DECLARE INTEGER GARBAGE;
+
+
+         FUNCTION DPROG(DPROGI,DPGRG), FRETURN;
+         FRETN IF DPROGI=1 AND ((DTASK=0 AND BARE=0) OR BRKTN=0 OR BRKSI=0)
+         AND BRKFLG>=0;
+         DBKSP ← DCDA ← -1;
+* ASSUMES ARRAY CONTAINS EITHER 0 OR 1 IN REFERENCED LOCATIONS.
+         DEVERY ← (MODES['E'] - 1)   A' (PMODEN V' N' (MODES['N'] - 1));
+         DLOUD ← (MODES['L'] - 1)   A' (PMODLQ V' N' (MODES['Q'] - 1));
+         RETN IF DPROGI=-2;
+         ZRECOMP(0,0) IF RECOMPILE#0;
+         IF STKCHANGE#0 DO;
+             DZAP();
+             DERRF(200);
+         ENDIF;
+         IF NOGO>0 DO;
+             CLS(PSTR);
+             DFCND(NOGO,4B7);
+             DAPPND(" LEVELS MUST BE UNWOUND&307");
+             CSOUT(PSTR);
+             DERRF(-2);
+         ENDIF;
+         DRING(DSRING←DPGRG);
+         DPRING'PTR←DSRING'PTR;
+         RETN IF DPROGI=-1;
+         IF BRKFLG<0 DO;
+             PCNT←BRKDP;
+             RETN;
+         ENDIF;
+         PCNT←DCEAA(BRKTN,BRKSI,BRKDP:,GARBAGE);
+         SSELECT(BRKTN);
+         POINT←A(ICST,BRKSI);
+         RETN IF POINT.PTBKF=0;
+         DCDA←DGBKA(BRKTN,BRKSI//RETN) IF MODES['H']>0 OR
+         PMODGH>-1 AND MODES['G']<1;
+         RETN;
+
+*WRITES G'[#] , L'[#] , OR X'  DEPENDING ON ARG1 >,<,= 0
+*ARG1 IS OF SIZE GIVEN BY A RIGHT ADJUSTED MASK ARG2
+
+
+        PROGRAM DGLX;
+         INCLUDE DEBUG'DECS;
+
+
+         FUNCTION DGLX(DGLXV,DGLXM);
+         IF DGLXV#0 DO;
+             IF DGLXV>0 DO;
+                 DFNM(DGLXV,0// RETURN);
+                 DAPPND(DGPB);
+             ELSE DO;
+                 DGLXV←DGLXV+DGLXM;
+                 DFNM(DGLXV,1// RETURN);
+                 DAPPND(DLPB);
+             ENDIF;
+             DFCNB(DGLXV,0);
+             DWCI(']');
+         ELSE DO;
+             DAPPND(DXP);
+         ENDIF;
+         RETURN;
+
+*THIS FUNCTION WRITES A SYMBOL OR LABEL NAME IF IN CURRENT FUNCTION
+* OR FUNCTION NAME
+*0 G-RELATIVE
+*1 L-RELATIVE
+*2 LABEL
+*3 FUNCTION
+*** FRETN IF IT IS FOUND ELSE RETN
+
+
+        PROGRAM DFNM;
+         INCLUDE DEBUG'DECS;
+
+         DI DFNI,DFNJ,GARBAGE;
+
+         FUNCTION DFNM(DFNV,DFNT), FRETURN;
+         DFNI←0;
+         IF DFNT=0 DO;
+             DFNI$INSTAG←ATD;
+             DFNI$INSGD←DFNV;
+         ELSEIF DFNT=1 DO;
+             DFNI$INSTAG←ATREL;
+             DFNI$INSST←ASTLR;
+             DFNI$INSLRD←DFNV;
+         ELSEIF DFNT=2 DO;
+             DFNI$INSTAG←ATREL;
+             DFNI$INSRT←ARTSR;
+             DFNI$INSSRD←DFNV;
+         ELSEIF DFNT=3 DO;
+             DFNI←DFNV$IWGD+GBASE;
+         ELSE DO;
+             DERRF(0);
+         ENDIF;
+         FOR DFNJ←1 TO ICLTT DO;
+             POINT←A(ICTT,DFNJ);
+             IF (DFNT#2 AND POINT.TKSYM#0) OR
+             (DFNT=2 AND POINT.TKPARAM#0) DO;
+                 POINT←A(ICST,POINT.TKSI);
+                 DFNV←DFNI-POINT.SYVAL;
+                 IF DFNV=0 DO;
+                     DWN(DFNJ);
+                     FRETN;
+                 ELSEIF DFNV>=0 AND DFNV<4 AND DFNT<=1 DO;
+                     DGT(DFNJ:,GARBAGE//DFNM1);
+                     IF DFNV<(DEET+1 IF DEETD=0 AND (DEET=1 OR DEET=3)
+                     ELSE DTW[DEET]) DO;
+                         DWN(DFNJ);
+                         DWCI('$');
+                         DFCND(DFNV,4B7);
+                         FRETN;
+                     ENDIF;
+                 ENDIF;
+             ENDIF;
+         ENDFOR;
+         RETN;
+DFNM1:   DERRF(0);
+
+*
+*
+*THIS FUNCTION STORES INTO CORE
+
+
+        PROGRAM CORES;
+         INCLUDE DEBUG'DECS;
+
+         DP COREP;
+
+         FUNCTION CORES(COREA,COREB);
+         IF BARE=0 OR DUSERF<0 DO;
+             COREP←COREA;
+         ELSE DO;
+             COREP←(COREF(COREA) IF DABSF=0 ELSE COREA);
+         ENDIF;
+         PUT(COREP,COREB);
+         RETURN;
+*
+*
+*THIS FUNCTION READS FROM CORE
+         ENTRY CORE(COREA);
+
+         IF BARE=0 OR DUSERF<0 DO;
+             COREP←COREA;
+         ELSE DO;
+             COREP←(COREF(COREA) IF DABSF=0 ELSE COREA);
+         ENDIF;
+         COREB←GET(COREP);
+         RETURN (COREB);
+
+*
+*
+*THIS FUNCTION GETS A REAL CORE ADDRESS
+
+
+        PROGRAM COREF;
+         INCLUDE DEBUG'DECS;
+
+         DI COREJ;
+
+         FUNCTION COREF(COREI);
+         COREJ←DSPM[COREI$FPAGEA];
+         COREJ←((COREJ RSH 12) A' 3777B) IF COREJ<0;
+         DERRF(201) IF COREJ$FPAGEE#0;
+         COREI$FPAGEA←COREJ$FPAGEM;
+         RETURN (COREI);
+
+*
+*
+*DEBUGGER INITIALIZATION
+
+
+        PROGRAM DEINIT;
+        INCLUDE DEBUG'DECS;
+
+         DI DEINTI, USP'STATUS;
+        DECLARE PARAMETER DPNIM ← 1B6;
+
+         FUNCTION DEINIT();
+        DSPM[DEINTI]← 2B3 FOR DEINTI←0 TO 127;
+DEIN1:  DBKTN ← 0;
+        CALLSTACK ← LREG ← ENDCSTACK;
+        GREG ← GBASE;
+        PMODPT←PMODGH←PMODEN←PMODD←PMODP←PMODLQ←-1;
+        PMOD01←BRKFLG←0;
+        DZAP();
+        DTN1←0;
+        DLEVNO←0;
+        RETURN;
+
+*M1 MODE INIT
+*USER MUST HAVE SET UP M1MODE AND GBASE
+         ENTRY DEM1(DEMFLG);
+
+         IF DEMFLG#0 DO;
+            DZAP() IF DEMFLG=-1;
+            RETURN;
+        ENDIF;
+        SPLTM←READ'SPT'FIELD(-1,'TCM'//SYSERR);
+        USPNO←CREATE'SSP(-1//SYSERR);
+        SET'SPT'FIELD(-1,'TM',SPLTM V' (4B7 RSH BPTNO)//SYSERR);
+        SET'SPT'FIELD(USPNO,'TCM',SPLTM A' N' (4B7 RSH BPTNO)//SYSERR);
+        USP'STATUS ← READ'SPT'FIELD(USPNO, 'SB'//SYSERR);
+        SET'SPT'FIELD(USPNO, 'SB', USP'STATUS V' DPNIM//SYSERR);
+        GOTO DEIN1;
+
+*
+*
+
+
+        PROGRAM DECOM;
+        INCLUDE DEBUG'DECS;
+
+         DI DBR,DBT,DBI, GARBAGE;
+        DECLARE ARRAY DBA;
+
+         FUNCTION DECOM();
+        DCRING←RING;
+        .CLA, STA DERRT;
+        (DDEL(2) & DRING(DCRING)) IF DIRTN2#0;
+        (DDEL(1) & DRING(DCRING)) IF DIRTN1#0 AND DTASK=0;
+        DBKFL←-1 IF DBKTN=0 OR DBKSI=0;
+        DABSF←DUSERF←0;
+*IS STATEMENT DIRECT
+         DBR ← GETR(CSTR);
+        MODES[DBI]←0 FOR DBI←20B TO 72B;
+        DBC ← GCI(CSTR//DERR);
+        IF DBC = ' ' DO;
+SKIP:       GOTO SKIP IF (DBC ← GCI(CSTR// RETURN)) = ' ';
+            WCD(DBC, CSTR);
+            GOTO DIRECT;
+        ENDIF;
+        GOTO DB1 IF HERALD = HXDEBUG;
+*BEGINNER MODE
+         SETR(CSTR,DBR);
+        COMMAND(CSTR,DSTR,0:CSTR,DBC,DBI//DERR);
+*COLLECT MODIFIERS
+DB5:     DBR ← GETR(CSTR);
+DB8:    DBT ← GCI(CSTR//DB9);
+        GOTO DB8 IF DBT >= 'A' AND DBT <= 'Z'
+         OR DBT >= '0' AND DBT <= '9';
+        GOTO DB9 IF DBT # DCOLON;
+        SETR(CSTR,DBR);
+        DMOD();
+        GOTO DB10;
+DB9:    SETR(CSTR,DBR);
+*DISPATCH FOR BEGINNER MODE
+DB10:    (DFAA[DBI])();
+        RETURN;
+*EXPERT MODE
+DB6:     DBC ← GCI(CSTR//DERR);
+DB1:    GOTO DB6 IF DBC >= 'A' AND DBC <= 'Z'
+        OR DBC >= '0' AND DBC <= '9';
+*REPLACE COMMAND CHARACTER BY A COLON
+*AND COLLECT MODIFIERS
+         WCD(DCOLON,CSTR);
+        SETR(CSTR,DBR);
+        DMOD();
+        DBA ← DXCA;
+
+*DISPATCH
+DB11:    FOR DBI ← 0 TO NCOMMAND-1 DO;
+            IF DBC = DBA[DBI] DO;
+                QSTR←DCOPY(CSTR,QSTR);
+                (DFAA[DBI])();
+                RETN;
+            ENDIF;
+        ENDFOR;
+DERR:   DERRF(181);
+
+*
+*
+*DIRECT STATEMENT
+DIRECT:  WCI(';',CSTR);
+        DERRF(-1) IF BARE#0;
+*ABOUT TO DO TASK1
+         IF DTASK=0 DO;
+            SSELECT(DMYTN);
+            DPPDS(CSTR,5);
+*COMPILE AND TEST FOR RETURN OR GOTO WHICH ARE ILLEGAL
+             DBFLAG←0;
+            CSOUT("COMPILE 1&307");
+            ZCOMPS(:DBT,DIRSI1//RETN);
+            DZAP();
+            DIRTN1←DMYTN;
+            DIRRG1←DCRING;
+            IF DBFLAG#0 DO;
+*DELETE DIRECT STATEMENT
+DIRCT1:          DDEL(1);
+                DERRF(180);
+            ENDIF;
+*SET BREAKPOINT TO END DIRECT STATEMENT
+             DPLANT(@ICCODE[ICLLIT+DBT-1],-1,-1//DIRCT3);
+            DPROG(-1,DIRRG1//DIRCT3);
+            DTASK←1;
+            DSSAVE[DBI]←0 FOR DBI←0 TO (3*LSTATE-1);
+            DSSAVE[LSTATE*DBI+6]←ENDCSTACK FOR DBI←0 TO 2;
+            PCNT←DCEAA(DIRTN1,DIRSI1,0:,GARBAGE);
+            FOR DBI←0 TO NRINGS-1 DO;
+                IF REXISTS[DBI] DO;
+                    DRING(DBI);
+                    IF CORE(GBASE+1)#0 DO;
+                        CORES(GBASE+2,CORE(GBASE+1));
+                    ELSE DO;
+                        CORES(GBASE+2,STKBOT);
+                        CORES(GBASE+3,STKTOP);
+                    ENDIF;
+                ENDIF;
+            ENDFOR;
+
+*ABOUT TO DO TASK 2 DIRECT STATEMENT
+         ELSEIF DTASK=1 DO;
+            DIRRG2←DCRING;
+            SSELECT(ECLTN);
+            DPPDS(CSTR,5);
+*COMPILE
+             DBFLAG←0;
+            CSOUT("COMPILE 2&307");
+            ZCOMPS(:DBT,DIRSI2//RETN);
+*SET BREAKPOINT TO END DIRECT STATEMENT
+             DIRTN2←ECLTN;
+            DPLANT(@ICCODE[ICLLIT+DBT-1],-1,-1//DIRCT2);
+            DPROG(-1,DIRRG2//DIRCT2);
+            DTASK←2;
+*SAVE STATE OF TASK 1
+             DSTATE[DBI]←DSSAVE[DBI] FOR DBI←0 TO (3*LSTATE-1);
+            SBRKTN ← BRKTN;
+            SBRKSI ← BRKSI;
+            SBRKDP ← BRKDP;
+            SBRKFLG ← BRKFLG;
+            SBRKRG ← BRKRG;
+            SSELECT(DIRTN2);
+            DBR←DGLREG(DBFLAG);
+            DBT←LSTATE*DIRRG2;
+            DSSAVE[DBT+DBI]←0 FOR DBI←0 TO LSTATE-1;
+            PCNT←DCEAA(DIRTN2,DIRSI2,0:,GARBAGE);
+            LREG←DBR;
+        ELSE DO;
+            DERRF(0);
+        ENDIF;
+DIRCT5: DRLB←DSINIT←-1;
+        DRUB←1B6-1;
+        DCDC←1;
+        DBKMSH(0,-1);
+        CSOUT("GO&307");
+        DRUN();
+        RETN IF BARE=0 ELSE RETURN;
+*DELETE TASK 2 DIR. ST. IF ERROR
+DIRCT2:  DDEL(2);
+        DERRF(190);
+DIRCT3: DDEL(1);
+DIRCT4: DERRF(190);
+
+*
+* STARTUP BARE MACHINE
+         ENTRY DBGO();
+
+         .CLA, STA DERRT;
+        DABSF←DUSERF←0;
+        DSINIT←-1;
+        DSPM[DBI]←2B3 FOR DBI←0 TO 127;
+        DCRING←RING;
+        DDEL(1) IF DIRTN1#0;
+        DZAP();
+        BRKFLG←0;
+        BSTART();
+        DPROG(-2,DCRING//DIRCT4);
+        GOTO DIRCT5;
+
+*
+*ERROR FUNCTION (PUNT)
+* <-1 RETURN
+* -1 ? ERROR
+* 0 DEBUGGER ERROR
+* >0 ERROR MESSAGE
+DERR0:   GOTO DERR1;
+        ENTRY DERRF(DERRN);
+
+         DRING(DCRING);
+        CLS(PSTR);
+        IF DERRN=-1 DO;
+            DWCI('?');
+            CSOUT(PSTR);
+        ELSEIF DERRN=0 DO;
+            DAPPND("DEBUGGER ERROR AT ");
+DERR3:      .LDA L' [0], STA DERRN;
+            DFCNB(DERRN,4B7);
+            CSOUT(PSTR);
+        ELSEIF DERRN>0 DO;
+            ERRSET(DERR0);
+            CERR(DERRN);
+        ELSE DO;
+            GOTO DERR2;
+        ENDIF;
+DERR1:  CSOUT(MCR);
+DERR2:  .LDA DERRT, XLA;
+        RETURN;
+
+         ENTRY SYSTEM'ERROR();
+        CLS(PSTR);
+        DAPPND("&307SPL ERROR: ");
+        DW3(DBERC);
+        DWCI(',');
+        DFCND(DBERN,0);
+        DAPPND(" AT ");
+        GOTO DERR3;
+
+*
+*
+*THIS FUNCTION SCANS FOR NEXT BREAKPOINT
+*IN ORDER, FRETN WHEN NO MORE
+
+
+        PROGRAM DBKNXT;
+         INCLUDE DEBUG'DECS;
+
+
+         FUNCTION DBKNXT(), FRETURN;
+         IF E2TN > 0 DO;
+             SSELECT(E1TN);
+             E1SI ← DBKNP.PTFP;
+             GOTO DBKN1;
+         ENDIF;
+         SSELECT(0);
+         DBKNP ← DGSSET(E1TN);
+DBKN3:   E1TN ← F(DBKNP,GSORD);
+DBKN2:   FRETN IF E1TN = 0;
+         DBKNP ← DGSSET(E1TN);
+         GOTO DBKN3 IF DBKNP.GSTYPE # IBTFN;
+         E1SI ← F(DBKNP,GSBKSI);
+         E2TN ← 0;
+         RETN IF F(DBKNP,GSBMF) = 1;
+         GOTO DBKN3 IF E1SI = 0;
+         E2TN ← E1SI;
+         SSELECT(E1TN);
+         E1SI ← ICFSTAT;
+DBKN1:   DBKNP ← A(ICST,E1SI);
+         IF DBKNP.PTBKF = 0 DO;
+             GOTO DBKN1 IF ((E1SI ← DBKNP.PTFP) # 0);
+             DERRF(0);
+         ENDIF;
+         DEC(E2TN);
+         RETN;
+*INITIALIZE ENTRY POINT
+         ENTRY DBKINXT(), FRETURN;
+         E2TN ← 0;
+         SSELECT(0);
+         E1TN ← ICFSTAT;
+         GOTO DBKN2;
+
+*
+*
+*THIS FUNCTION SMASHES ALL CELLS FLAGGED WITH BREAKPOINTS
+
+
+        PROGRAM DBKMSH;
+        INCLUDE DEBUG'DECS;
+
+         DI DBKMA,DBKMI, DBKMIP, PREVIOUS'DBKMA;
+
+         FUNCTION DBKMSH(DBKMF,DBKMP);
+        DBKMIP ← DBKMP;
+        DTEMP[0]←0;
+        FOR DBKMI←0 TO NRINGS-1 DO;
+            IF REXISTS[DBKMI] DO;
+                DRING(DBKMI);
+                IF DBKMF#1 DO;
+                    DNSMASH ← 0;
+                    PREVIOUS'DBKMA ← -1;
+                    DBKINXT(//DBKMH3);
+DBKMH1:             DBKMA←DGBKA(E1TN,E1SI//DBKMH2);
+                    IF BARE#0 DO;
+                        DTEMP[0]←DTEMP[0]+1;
+                        DERRF(188) IF DTEMP[0]>=50;
+                        DTEMP[DTEMP[0]]←DBKMA;
+                    ELSE DO;
+                        IF DBKMA # PREVIOUS'DBKMA DO;
+                            GOTO DBKMH4 IF LITBUF+DNSMASH>=ELITBUF;
+                            LITBUF[DNSMASH] ← DBKMA;
+                            INC(DNSMASH);
+                            LITBUF[DNSMASH] ← CORE(DBKMA);
+                            INC(DNSMASH);
+                            (DBKMP←DPLANT(DBKMA,DBKMIP,DBKMP//DBKMH4));
+                        ENDIF;
+                        PREVIOUS'DBKMA ← DBKMA;
+                    ENDIF;
+                    DBKNXT(//DBKMH3);
+                    GOTO DBKMH1;
+* SETUP G-REGISTERS
+                 ENDIF;
+DBKMH3:         IF DBKMF#-1 DO;
+                    GREG←GBASE;
+                    DHSTACK[DBKMI]←CORE(GBASE+2) IF DTASK=2;
+                ENDIF;
+            ENDIF;
+        ENDFOR;
+        IF BARE#0 DO;
+            CORES(@(DPHMAP[DBKMI]),DTEMP[DBKMI]) FOR DBKMI←0 TO DTEMP[0];
+        ENDIF;
+        RETURN DBKMP;
+DBKMH2: DUNMSH(-1);
+        DERRF(0);
+DBKMH4: DUNMSH(-1);
+        DERRF(188);
+
+*
+*
+*THIS FUNCTION UNSMASHES ALL SMASHED CELLS
+
+
+        PROGRAM DUNMSH;
+         INCLUDE DEBUG'DECS;
+
+         DI DUNMI,DUNMJ;
+
+         FUNCTION DUNMSH(DUNMF);
+         RETURN IF BARE#0;
+         FOR DUNMI←0 TO NRINGS-1 DO;
+             IF REXISTS[DUNMI] DO;
+                 DRING(DUNMI);
+                 IF DUNMF#1 DO;
+DUNM1:               GOTO DUNM2 IF DNSMASH = 0;
+                     CORES(LITBUF[DNSMASH-2]$W0,LITBUF[DNSMASH-1]$W0);
+                     DNSMASH ← DNSMASH -2;
+                     GOTO DUNM1;
+*SAVE STATES IN CORE
+                 ENDIF;
+DUNM2:           IF DUNMF#-1 DO;
+                     CORES(CODEBOT-LSTATE+DUNMJ,DSSAVE[DUNMI*LSTATE+DUNMJ]$W0)
+                     FOR DUNMJ←0 TO LSTATE-1;
+                 ENDIF;
+             ENDIF;
+         ENDFOR;
+         RETURN;
+
+* PLANT BREAKPOINT.  TAKE NECESSARY ACTION IF IT IS AT THE
+* LOCATION WHERE EXECUTION IS TO RESUME
+
+
+
+        PROGRAM DPLANT;
+        INCLUDE DEBUG'DECS;
+
+* ARRAY OF OPCODE TYPES
+         DECLARE ARRAY DOPTY[8]←(
+         70000000B,00000000B,00000000B,00000007B,
+         00000000B,17777772B,27700777B,00000000B);
+        DECLARE INTEGER
+         BREAK'PC,     /*PC WHERE BREAKPOINT IS TO BE SET*/
+         BROKEN'PC,    /*PC WHERE PROGRAM IS CURRENTLY BROKEN*/
+         RESUME'PC;    /*PC WHERE EXECUTION IS TO BE RESUMED*/
+        DI DOPWRD,DOPTYP,DPNEWP,DPNEWL,DPLBKPT;
+        DQ DPMINOP←77734000B,DPMAXOP←DPMINOP+77B;
+        DF DOP1F(0:3,5),DOP2F(0:6,8);* HALVES OF OPCODE FIELD
+        DP DPBLLL;
+
+         FUNCTION DPLANT(BREAK'PC, BROKEN'PC, RESUME'PC), FRETURN;
+        DPLBKPT←CORE(FIXER+15B);
+        IF BREAK'PC = BROKEN'PC DO;
+            DOPWRD←CORE(BROKEN'PC);
+            GOTO FAIL IF DOPWRD$INSPOP#0 OR DOPWRD$INSOP=ZOPR AND
+             (DOPWRD<DPMINOP OR DOPWRD>DPMAXOP);
+            DOPTYP←DOPTY[DOPWRD$DOP1F] LSH (3*DOPWRD$DOP2F) RSH 21;
+            GOTO FAIL IF DOPTYP=7;
+            IF FIXER<GREG OR FIXER>GREG+37734B DO;
+* CAN'T GET TO FIXER G-RELATIVE
+                 GOTO FAIL;
+            ELSEIF DOPTYP=1 DO;
+* BRU - MUST BE SOURCE-RELATIVE
+                 GOTO FAIL IF DOPWRD$INSTAG#ATREL OR DOPWRD$INSRT#ARTSR;
+                CORES(BROKEN'PC,DPLBKPT);
+                RESUME'PC←BROKEN'PC+DOPWRD$INSSRD;
+            ELSEIF DOPTYP=2 DO;
+* BLL OR BLLN - MUST BE G- OR L-RELATIVE
+                 DPBLLL←(GREG+DOPWRD$INSGD IF DOPWRD$INSTAG=ATD ELSE
+                 LREG+DOPWRD$INSLRD IF DOPWRD$INSTAG=ATREL AND DOPWRD$
+                 INSST=ASTLR ELSE GOTO FAIL);
+                DPNEWP←CORE(DPBLLL+FNEWP);
+                DPNEWL←CORE(DPBLLL+FNEWL);
+                GOTO FAIL IF DPNEWP AA 77B6;
+                IF DPNEWL$FWCPA DO;
+                    DPNEWP←DPNEWP+1 WHILE CORE(DPNEWP)$FPLAST=0;
+                    DPNEWP←DPNEWP+1;
+                ENDIF;
+                GOTO FAIL IF DPNEWP = BROKEN'PC;
+                FRETURN IF LITBUF+DNSMASH>=ELITBUF;
+                LITBUF[DNSMASH] ← DPNEWP;
+                DNSMASH ← DNSMASH + 1;
+                LITBUF[DNSMASH] ← CORE(DPNEWP);
+                DNSMASH ← DNSMASH + 1;
+                CORES(FIXER, BROKEN'PC);
+                CORES(FIXER+1,DPNEWP);
+                CORES(FIXER+2,DPNEWP);
+                CORES(FIXER+3,CORE(DPNEWP));
+                CORES(DPNEWP,U(ZBRU,INSOP)+FIXER+5-GREG);
+            ELSE DO;
+* ORDINARY INSTRUCTION
+                 CORES(FIXER, BROKEN'PC);
+                CORES(FIXER+1,BROKEN'PC+1);
+                CORES(FIXER+2,FIXER+3);
+                RESUME'PC←FIXER+4;
+            ENDIF;
+            RETURN RESUME'PC;
+        ELSE DO;
+            CORES(BREAK'PC,DPLBKPT);
+            RETURN RESUME'PC;
+        ENDIF;
+FAIL:   CSOUT("BPT NOT SET&307");
+        RETURN RESUME'PC;
+
+
+* FIGURE OUT WHETHER THE PROGRAM BROKE BECAUSE OF A BREAKPOINT
+* RETURN (0) OR A RING TRAP RETURN (THE TRAP NUMBER)
+* AND ALSO FIX UP P AND L IN THE SAVED STATE
+
+
+
+        PROGRAM DPLFIX;
+         INCLUDE DEBUG'DECS;
+
+         DI DPLTNO;
+
+         FUNCTION DPLFIX();
+         RETURN 0 IF PCNT#FIXER+41B;* BKRET
+         PCNT←CORE(FIXER+32B) - 1;* BKPC
+         LREG←CORE(FIXER+33B);* BKLR
+         DPLTNO←PCNT-(FIXER+16B);* RTRAP
+         IF DPLTNO>=0 AND DPLTNO<10 DO;
+             PCNT←CORE(GREG+4);* P SAVED BY RING TRAP
+             RETURN DPLTNO+1;
+         ELSE DO;
+             RETURN 0;
+         ENDIF;
+
+        PROGRAM SP'TRAP'ENTRY;
+         INCLUDE DEBUG'DECS;
+
+         DI NO= L' [0],PAR= L' [1];
+
+*TRAP ENTRY POINT
+         FUNCTION S'T(), SP'ENTRY ←0;
+         .STX TX, EAX TP, STORS;
+         TRAP'LOGIC(NO,PAR);
+
+        PROGRAM RING'TRAP'ENTRYS;
+
+         FUNCTION RING'TRAP'ABE(), TRAP'ENTRY ←1;
+         RING'TRAP(1);
+
+         FUNCTION RING'TRAP'FLO(), TRAP'ENTRY ←2;
+         RING'TRAP(2);
+
+         FUNCTION RING'TRAP'FLU(), TRAP'ENTRY ←3;
+         RING'TRAP(3);
+
+         FUNCTION RING'TRAP'RO(), TRAP'ENTRY ←4;
+         RING'TRAP(4);
+
+         FUNCTION RING'TRAP'IATRP(), TRAP'ENTRY ←5;
+         RING'TRAP(5);
+
+         FUNCTION RING'TRAP'UFN(), TRAP'ENTRY ←6;
+         RING'TRAP(6);
+
+         FUNCTION RING'TRAP'FLXO(), TRAP'ENTRY ←7;
+         RING'TRAP(7);
+
+         FUNCTION RING'TRAP'DIZ(), TRAP'ENTRY ←8;
+         RING'TRAP(8);
+
+         FUNCTION RING'TRAP'STKOV(), TRAP'ENTRY ←9;
+         STACK'OVERFLOW();
+
+         FUNCTION RING'TRAP'BLL(), TRAP'ENTRY ←10;
+         RING'TRAP(10);
+         END;*
+        PROGRAM RING'TRAP;
+         INCLUDE DEBUG'DECS;
+
+         FUNCTION RING'TRAP(RTNO);
+         PTERNO("SPL ERROR: RINGTRAP", RTNO, RTPC, RTPAR, RTMSG);
+         EXIT();
+         END;*
+        PROGRAM STACK'OVERFLOW;
+         INCLUDE M1'COMM;
+         FIXED;
+
+         FUNCTION STACK'OVERFLOW();
+         SP' ← INIT'SP;
+         RING'TRAP(9);
+         END;*
+        PROGRAM RUN;
+         INCLUDE DEBUG'DECS;
+*EXECUTION CONTROL FOR USE IN PLACE OF THE SIMULATOR
+
+         DI RTRPNO,TSPNO,BLLTNO;
+         DECLARE LABEL L1←RUN1,L2←QUIT'BRANCH,L3←TRAP'RET,L4←EXIT'SPL;
+         DA SPCA[5];
+         DI TTP,RET'ADD;
+         DECLARE INTEGER TRAPPC;
+         MACRO RUN'REWIND←.LDA RUNLR, XLA;
+         MACRO TRAPSYSERR←TRAP'SYSERR:ERRSPEC;
+
+         FUNCTION RUN();
+         RETURN QUITRT IF QUITF;
+         BCOPY(@TP,@PCNT,10);
+         TTP←TP;
+*      PFLUSH();* 5/24/73 JF - DELETED THIS CALL.  WHAT WAS PFLUSH?
+         .CLA, STA RUNLR;
+         IF DSINIT=-1 DO;
+             DSINIT←0;
+             SET'SPT'FIELD(USPNO,'EG',GBASE//SYSERR);
+             SET'SPT'FIELD(USPNO,'EP',GBASE+10//SYSERR);
+             SP'BRANCH(USPNO,TTP,TL,TG//SYSERR);
+             .LDA RUNLR, .XLA;
+             RETURN SPRET;
+         ELSE DO;
+             TP←@RUN1;
+             MODIFY'CALL(0,TTP,TL,TG,T940//SYSERR);
+             .EAX TP, LOADS;
+RUN1:        SP'RETURN(//SYSERR);
+         ENDIF;
+
+         ENTRY TRAP'LOGIC(TRAPNO,TRAPPAR);
+         READ'SPCS(0,SPCA//TRAPSYSERR);
+         SET'SPT'FIELD(-1,'TM',SPLTM//TRAPSYSERR);
+         TP←SPCA[0]$SPPCTR;
+         TL←SPCA[0]$SPLREG;
+         TG←SPCA[0]$SPGREG;
+         T940←SPCA[0]$SP940;
+         TSPNO←SPCA[0]$SPSPNO;
+         IF TSPNO#SSPNO DO;
+             ALLOW'INTS();
+             BCOPY(@PCNT,@TP,10);
+             DRING(DSRING←DGRING(TP));
+             DPRING'PTR←DSRING'PTR;
+             IF TRAPNO=BPTNO DO;
+                 RTRPNO←DPLFIX();
+                 IF RTRPNO=0 DO;
+                     RUN'REWIND;
+                     RETURN BPTRET;
+                 ELSE DO;
+                     TRAPPC←CORE(GREG+4);
+                     TRAPPAR←CORE(GREG+5);
+                     PTERNO("RING TRAP",RTRPNO,TRAPPC,TRAPPAR,RTMSG);
+                     GOTO BLL'ERR IF RTRPNO=RBLLNO;
+                     RUN'REWIND;
+                     RETURN ERRRET;
+                 ENDIF;
+             ELSEIF TRAPNO=QUITNO DO;
+                 RUN'REWIND;
+                 RETURN QUITRT;
+             ELSE DO;
+                 PTERNO("SUBPROCESS TRAP",TRAPNO,TP,TRAPPAR,TRMSG);
+                 IF TRAPNO=SBLLNO DO;
+BLL'ERR:             TRAPNO←TRAPPAR$BLLERRNO;
+                     IF TRAPNO<7 DO;
+                         CSOUT(BLLMSG[TRAPNO]);
+                         CSOUT(MCR);
+                     ENDIF;
+                 ENDIF;
+                 RUN'REWIND;
+                 RETURN ERRRET;
+             ENDIF;
+         ELSE DO;
+             IF TRAPNO=QUITNO DO;
+                 IF QUITMODE=0 DO;
+                     QUITF ← QUITF + 1;
+                     IF QUITF >= QUIT'ABORT'LEVEL DO;
+                         RET'ADD ← @QUIT'BRANCH;
+                         GOTO MOD'RET;
+                     ENDIF;
+                 ELSE DO;
+                     RET'ADD←@QUIT'BRANCH;
+                     GOTO MOD'RET;
+                 ENDIF;
+             ELSE DO;
+                 PTERNO("SPL ERROR: SUBPROCESS TRAP",TRAPNO,TP,TRAPPAR,TRMSG);
+                 RET'ADD←@EXIT'SPL;
+                 GOTO MOD'RET;
+             ENDIF;
+         ENDIF;
+EXIT'TRAP:TP←@TRAP'RET;
+         .CLA, SUB 2, STA G' [2];
+         .EAX TP, LOADS;
+TRAP'RET:SP'RETURN(//TRAPSYSERR);
+
+QUIT'BRANCH:GOTO QUITGO;
+
+TRAP'SYSERR:RET'ADD←@TRAP'ERROR;
+MOD'RET: MODIFY'CALL(0,RET'ADD,TL,TG,0//TRAPSYSERR);
+         GOTO EXIT'TRAP;
+
+TRAP'ERROR:CSOUT("ERROR IN TRAP LOGIC&307");
+EXIT'SPL:EXIT();
+
+* ZAP
+
+
+        PROGRAM DZAP;
+         INCLUDE DEBUG'DECS;
+
+         DI DZAPL,DZAPLR,DZAPGR;
+         DA ARRAY5[5];
+
+         FUNCTION DZAP();
+         DTASK←BRKTN←NOGO←STKCHANGE←0;
+         RETURN IF M1MODE=0;
+         DZAPL←-1;
+DZAP1:   INC(DZAPL);
+         READ'SPCS(DZAPL,ARRAY5//DZAP3:ERRSPEC);
+         IF ARRAY5[0]$SPSPNO=SSPNO DO;
+             .CLA, STA DZAPLR;
+             .CGA, STA DZAPGR;
+             MODIFY'CALL(DZAPL,@DZAP3,DZAPLR,DZAPGR,0//SYSERR);
+             JUMP'RETURN(DZAPL//SYSERR);
+DZAP3:       RETURN;
+         ENDIF;
+         GOTO DZAP1;
+
+*PRINT ERROR MESSAGES
+
+
+        PROGRAM PTERNO;
+         INCLUDE DEBUG'DECS;
+
+
+         FUNCTION PTERNO(STRING PTST,INTEGER PTNO,PTPC,PTPAR,ARRAY PTMA);
+         CLS(PSTR);
+         DAPPND(MCR);
+         DAPPND(PTST);
+         DWCI(' ');
+         IF PTNO>=0 AND PTNO<ARRAYSIZE(PTMA) DO;
+             PTNO←PTMA[PTNO];
+             DWCI('&'');
+             (DWCI(PTNO RSH 18) & PTNO←PTNO LSH 6) WHILE PTNO;
+             DWCI('&'');
+         ELSE DO;
+             DWCI('#');
+             DFCND(PTNO,4B7);
+         ENDIF;
+         DAPPND(" AT ");
+         DFCNB(PTPC,4B7);
+         DAPPND(" PARAMETER=");
+         DFCNB(PTPAR,4B7);
+         DAPPND(MCR);
+         CSOUT(PSTR);
+         RETURN;
+
+*CREATE PAGE
+
+
+        PROGRAM MCRTPG;
+         INCLUDE DEBUG'DECS;
+
+         DI BYTE;
+
+         FUNCTION MCRTPG(BYTENO);
+         BYTE←READ'MAP'BYTE(USPNO,BYTENO//SYSERR);
+         IF BYTE=0 DO;
+             BYTE←ACQPMT(-1//SYSERR);
+             NPPMT(BYTE//SYSERR);
+             SET'MAP'BYTE(USPNO,BYTENO,BYTE//SYSERR);
+         ENDIF;
+         RETURN BYTE;
+
+*DESTROY PAGE
+         ENTRY MDELPG(BYTENO);
+         BYTE←READ'MAP'BYTE(USPNO,BYTENO//SYSERR);
+         IF BYTE#0 DO;
+             DELPMT(BYTE//SYSERR);
+         ENDIF;
+         RETURN;
+
+*READ MAP (PMT)
+         ENTRY MRDMAP(BYTENO);
+
+         BYTE←READ'MAP'BYTE(USPNO,BYTENO//SYSERR);
+         RETURN BYTE;
+
+*THIS FUNCTION EVALUATES AN EXPRESSION
+*FRETN IF NOT LEGAL EXPR
+
+
+        PROGRAM DEE;
+         INCLUDE DEBUG'DECS;
+
+         DI DEEK,DEEW,DEEAD,DEER,DEENG;
+         DI DEET1,DEETP1,DEETD1,DEEK1,DEEK2;
+
+         FUNCTION DEE(DEEZ,DEEY);
+         DEENG←1;
+         DDIM2←0;
+*PREPROCESS EXPR
+         DGPROG(DEEZ,DEEY:DEEZ,DEEY// VALUE (DEEZ←ECLTN & DEEY←DCRING));
+         IF DEEZ#0 DO;
+             DTN2←DEEZ;
+             DRG2←DEEY;
+         ELSE DO;
+             DTN2←DMYTN;
+             DRG2←DCRING;
+         ENDIF;
+         SSELECT(DTN2);
+         CSTR←DCOPY(PSTR,CSTR);
+         DPPDS(CSTR,4);
+*INITIALIZE TOKEN STRING AND GET TOKEN
+         DISGNT(@PPTB[0]);
+         DEEK ← DGNT(//DEE5);
+         DELSZ←DEEAD←DUNF←0;
+         IF DEEK=DTKMINUS DO;
+             DEENG←-1;
+             DEEK←DGNT(//DEE5);
+         ENDIF;
+         IF DEEK=DTKATSIGN DO;
+             DEEAD←-1;
+             DEEK←DGNT(//DEE5);
+         ENDIF;
+*INDIRECTION
+         IF DEEK = DTKDOL DO;
+             DGV(DGNT(//DEE5)//DEE5);
+             GOTO DEE5 IF DGTYPE # TTINT;
+             DIGV(DEEA$IWGD);* CHANGED FROM DIGV(...//DEE5); 5/15/73 JF
+             DKIND2←2;
+             DADD2←DEEX;
+             GOTO DEE3;
+         ENDIF;
+         DGV(DEEK//DEE5);
+         DADD2←DEEX;
+*1ST TOKEN IS SYMBOL OR CONST
+*IF NO MORE TOKENS THEN SIMPLE VALUE
+         DEEK ← DGNT(//DEE6);
+
+*TAILING
+         IF DEEK = DTKDOT DO;
+             DEEZ ← DEEA;
+             DGV(DGNT(//DEE5)//DEE5);
+             GOTO DEE5 IF DGMODE # SMFIELD;
+             DEEZ ← CORE(DEEZ$IWGD + DEEA$FIWDISP);
+             DEEZ ← DEEZ LSH DEEA$FIWBA;
+             DEEY ← 1 LSH DEEA$FIWBL;
+             DEEZ ← DEEZ RSH (24 - DEEA$FIWBL);
+             (DEEZ←DEEZ-DEEY) IF DEEA$FIWSIGN#0 AND (DEEZ AND (DEEY RSH 1))#0;
+             DABCD(DEEZ);
+             DPD;
+             DADD2←DEEX←-1;
+             DKIND2←3;
+             GOTO DEE3;
+         ENDIF;
+         GOTO DEE5 IF DEEK # DTKLBRAC;
+
+*SUBSCRIPTING
+         GOTO DEE5 IF DGMODE # SMARRAY;
+         IF DEET=9 DO;
+             DEET←7;
+         ELSEIF DEET=16 DO;
+             DEET←15;
+         ENDIF;
+         DEEK1←DLOC2;
+         DEEK2←DKIND2;
+         DEET1 ← DEET;
+         DEETP1 ← DEETP;
+         DEETD1 ← DEETD;
+DEE2:    DEEY ← DEEA;
+         DEEW ← DEEB;
+         DEER←DEEX+1;
+*GET SUBSCRIPT
+         DGV(DGNT(//DEE5)//DEE5);
+         GOTO DEE5 IF DGTYPE # TTINT;
+         DEEZ ← DEEA;
+         DEEK ← DGNT(//DEE5);
+*SUBSCRIPT HAS SECOND OPERAND
+         IF DEEK = DTKPLUS OR DEEK = DTKMINUS DO;
+             DGV(DGNT(//DEE5)//DEE5);
+             GOTO DEE5 IF DGTYPE # TTINT;
+             DEEA ← -DEEA IF DEEK = DTKMINUS;
+             DEEZ ← DEEZ + DEEA;
+             DEEK ← DGNT(//DEE5);
+         ENDIF;
+*DO SUBSCRIPT ADDRESS CALCULATION
+         DDIM2←DDIM2+1;
+         DSUB2[DDIM2]←DEEZ;
+         GOTO DEE5 IF DEEZ < DEEY$AIWORG OR DEEZ > DEEY$AIWLLIM;
+         GOTO DEE5 IF DEEW$IWTRAP=1 AND DEEK = DTKRBRAC;
+         DEEZ←DEEZ - DEEY$AIWORG;
+         DEEA←DEEZ*((DEEY$AIWLMULT IF DEEY$AIWLEB#0 ELSE DEEY$AIWNMULT)+1);
+         DEGVI(DEEW,DEEA,DEER//DEE5);
+         GOTO DEE2 IF DEEK = DTKCOMMA;
+         GOTO DEE5 IF DEEK # DTKRBRAC;
+         DELSZ←1+DEEY$AIWLMULT IF DEEY$AIWLEB#0;
+         DADD2←DEEX;
+*WE HAVE SUCCESSFULLY SUBSCRIPTED
+         DLOC2←DEEK1;
+         DKIND2←DEEK2;
+         DEET ← DEET1;
+         DEETP ← DEETP1;
+         DEETD ← DEETD1;
+
+*PPTB EMPTY?
+DEE3:    DGNT(//DEE1);
+DEE5:    DERRF(183);
+DEE6:    IF DGMODE=SMARRAY DO;
+             DTPD(12);
+         ELSEIF DGMODE=SMFIELD DO;
+             DTPD(10);
+         ENDIF;
+DEE1:    IF DEEAD#0 DO;
+             GOTO DEE5 IF DEEX<0;
+             DABCD(DADD2);
+             DTPD(1);
+             DEEX←DADD2←-1;
+             DELSZ←DDIM2←0;
+             DKIND2←3;
+         ENDIF;
+         DEET←14 IF DUNF<0;
+         (DEEA←-DEEA IF DEET=0 ELSE GOTO DEE5) IF DEENG<0;
+         RETURN;
+
+*
+*
+*THIS FUNCTION GETS THE TYPE OF SYMBOL OR CONST
+*WITH GIVEN TOKEN NUMBER
+
+
+        PROGRAM DGT;
+         INCLUDE DEBUG'DECS;
+
+         DI DGTTK,DGTVAL;
+
+         FUNCTION DGT(DGTTN), FRETURN;
+         FRETN IF DGTTN > TNCMAX;
+         DEETP ← DEETD ←-1;
+*SHORT CONSTANT
+         IF DGTTN >= TNCMIN DO;
+             DGTVAL ← DGTTN - TNCMIN;
+             GOTO DGT1;
+         ENDIF;
+         POINT ← A(ICTT,DGTTN);
+         DGTTK ← POINT[0];
+         POINT ← A(ICST,DGTTK$TKSI);
+         DGTVAL ← POINT.SYVAL;
+         DGMODE ← POINT.SYMODE;
+         DGDTYPE ← POINT.SYDTYPE;
+*LONG CONSTANT
+         IF DGTTK$TKSYM = 0 DO;
+DGT1:        DEET ← 0;
+             DGTYPE ← TTINT;
+             DGMODE←SMVALUE;
+             RETN (0,DGTVAL);
+         ENDIF;
+*SYMBOL
+         DGTYPE←DGTTK$TKTYPE;
+         IF DGMODE=SMVALUE OR DGMODE=SMARRAY OR DGMODE=SMFIELD DO;
+             IF DGTYPE=TTUND DO;
+                 IF DGMODE=SMVALUE DO;
+                     DUNF←-1;
+                     DEET←14;
+                 ELSE DO;
+                     DEET←1;
+                 ENDIF;
+             ELSEIF DGTYPE=TTINT DO;
+                 IF DGDTYPE=SDNOR DO;
+                     DEET←0;
+                 ELSEIF DGDTYPE=SDOCTAL DO;
+                     DEET←1;
+                 ELSEIF DGDTYPE=SDCHAR DO;
+                     DEET←2;
+                 ELSEIF DGDTYPE=SDPOINT DO;
+                     DEET←0; DEETP←0;
+                 ELSE DO;
+                     DERRF(0);
+                 ENDIF;
+
+             ELSEIF DGTYPE=TTREAL DO;
+                 DEET←3;
+             ELSEIF DGTYPE=TTDBL DO;
+                 DEET←3; DEETD←0;
+             ELSEIF DGTYPE=TTCPLX DO;
+                 DEET←5;
+             ELSEIF DGTYPE=TTSTR DO;
+                 DEET←(17 IF DGTTK$TKPARAM#0 AND DGMODE#SMARRAY ELSE 6);
+             ELSEIF DGTYPE=TTLAB DO;
+                 DEET←(9 IF DGTTK$TKPARAM#0 ELSE 7);
+             ELSEIF DGTYPE=TTLONG DO;
+                 DEET←1; DEETD←0;
+             ELSEIF DGTYPE=TTLLONG DO;
+                 DEET←11;
+             ELSEIF DGTYPE=TTARRAY DO;
+                 DEET←12;
+             ELSEIF DGTYPE=TTFIELD DO;
+                 DEET←10;
+             ELSEIF DGTYPE=TTFUNC DO;
+                 GOTO DGT3;
+             ELSEIF DGTYPE=TTMAC DO;
+                 DEET←13;
+             ELSE DO;
+                 DERRF(0);
+             ENDIF;
+         ELSEIF DGMODE=SMFUNC DO;
+DGT3:        DEET←(16 IF DGTTK$TKPARAM#0 ELSE 15);
+         ELSE DO;
+             DERRF(0);
+         ENDIF;
+         DLOC2←DGTVAL;
+         RETN (1,DGTVAL);
+
+*
+*
+*THIS FUNCTION GETS THE VALUE OF SYMBOL OR CONST
+*WITH GIVEN TOKEN NUMBER
+
+        COMMON DGV'COMMON;
+*VARIABLES NEEDED FOR COMMUNICATION BETWEEN DGV AND GRAB4
+         DECLARE INTEGER LNTH, CNT, CON;
+         END;
+
+        PROGRAM DGV;
+        INCLUDE DEBUG'DECS, KTDEC, PPDEC, DGV'COMMON;
+
+         DI DGVAL, TKN, OCT, DEC'VALUE, I, DIG;
+        DECLARE FIELD F1(0:12,15);
+
+         FUNCTION DGV(DGVTN), FRETURN;
+        DEEX ← -1;
+        IF DGVTN>=KTMIN AND DGVTN<=KTMAX DO;
+            IF (LNTH ← DGVTN$KTSIZE) = 0 DO;
+                LNTH ← DGNT(// FRETURN);
+            ENDIF;
+            OCT ← 0; CNT ← 1; DEC'VALUE ← 0;
+            FOR TKN ← 1 TO (LNTH*4 + 11)/12 DO;
+                CON ← DGNT(// FRETURN);
+                FOR I ← 1 TO 3 DO;
+                    DIG ← GRAB4(//DGV2);
+                    IF DIG < 10 DO;
+                        OCT ← OCT LSH 3 + DIG;
+                        DEC'VALUE ← DEC'VALUE*10 + DIG;
+                    ELSEIF DIG = KCB DO;
+                        DEC'VALUE ← OCT;
+                        DEC'VALUE ← OCT LSH (3*GRAB4(//DGV2));
+                        GOTO DGV2;
+                    ELSEIF DIG = KCD DO;
+                        DEC'VALUE ← DEC'VALUE*10 FOR DIG ← GRAB4(//DGV2)-1 BY -1 TO 0;
+                        GOTO DGV2;
+                    ENDIF;
+* NOTE THAT WE JUST IGNORE EVERYTHING EXCEPT DIGITS, 'B', AND 'D'
+                 ENDFOR;
+            ENDFOR;
+DGV2:       DEEA ← DEC'VALUE;
+            DBCD;
+            DKIND2 ← 3;
+            DEETP ← DEETD ← -1;
+            DEET ← 0;
+            DGTYPE ← TTINT;
+            DGMODE ← SMVALUE;
+            RETURN;
+        ELSE DO;
+            DGT(DGVTN:,DGVAL// FRETURN);
+            GOTO DGV4;
+        ENDIF;
+
+*THIS ENTRY POINT WILL COMPUTE THE EFFECTIVE ADDRESS AND OPERAND
+*OF THE GIVEN INTRUCTION
+         ENTRY DEGV(DGVAL), FRETURN;
+
+*DIRECT ADDRESSING
+DGV4:    IF DGVAL$INSTAG = ATD DO;
+            DKIND2←0;
+            DGVAL ← DGVAL$INSGD + GREG;
+*L-RELATIVE
+         ELSEIF DGVAL$INSTAG = ATREL AND DGVAL$INSST = ASTLR DO;
+            DKIND2←1;
+            DGVAL ← DGVAL$INSLRD + DGLREG(0);
+*S-RELATIVE
+         ELSEIF DGVAL$INSTAG = ATREL AND DGVAL$INSRT = ARTSR DO;
+            DKIND2←2;
+            DGVAL←DGVAL$INSSRD + @ICCODE[ICLLIT];
+*IMMEDIATE
+         ELSEIF DGVAL$INSTAG = ATREL AND DGVAL$INSST = ASTIM DO;
+            DKIND2←3;
+            DEEA ← DGSGN(DGVAL,INSLRD);
+            DBCD;
+            DEEX←-1;
+            RETN;
+        ELSE DO;
+            FRETN;
+        ENDIF;
+        GOTO DGV5;
+
+*
+*THIS ENTRY GETS CONTENTS OF THE ADDRESS
+         ENTRY DIGV(DGVAL);
+
+*DGVAL NOW CONTAINS THE EFFECTIVE ADDRESS
+DGV5:    DEEA ← CORE(DGVAL);
+        DEEB ← CORE(DGVAL+1);
+        DEEC ← CORE(DGVAL+2);
+        DEED ← CORE(DGVAL+3);
+        DEEX ← DGVAL;
+        RETN;
+
+*GETS FOR INDIRECT WORDS
+         ENTRY DEGVI(DGVAL,DGVX,DGVR), FRETURN;
+
+         FRETN IF DGVAL$IWTYPE#0;
+        IF DGVAL$IWTAG=ATD DO;
+            DGVAL←DGVAL$IWGD;
+        ELSEIF DGVAL$IWTAG=ATX DO;
+            DGVAL←DGVAL$IWGD+DGVX;
+        ELSEIF DGVAL$IWTAG=ATREL AND DGVAL$IWST=ASTLR DO;
+            DGVAL←DGVAL$IWLRD+DGLREG(0)+
+             (0 IF DGVAL$IWRELX=0 ELSE DGVX);
+        ELSEIF DGVAL$IWTAG=ATREL AND DGVAL$IWRT=ARTSR DO;
+            FRETN IF DGVR<0;
+            DGVAL←DGVAL$IWSRD+DGVR+
+             (0 IF DGVAL$IWRELX=0 ELSE DGVX);
+        ELSE DO;
+            FRETN;
+        ENDIF;
+        GOTO DGV5;
+
+*THIS LITTLE FUNCTION GETS A 4-BIT BYTE FOR DGV.
+         FUNCTION GRAB4(), FRETURN;
+        FRETURN IF CNT > LNTH;
+        CNT ← CNT + 1;
+        DIG ← CON$F1;
+        CON ← CON LSH 4;
+        RETURN DIG;
+
+*
+*
+*THIS FUNCTION PRINTS THE NEXT VALUE AFTER LAST VALUE TYPED
+*FRETN IF BOUND OF ENVIRONMENT EXCEEDED
+
+
+        PROGRAM DPNV;
+         INCLUDE DEBUG'DECS;
+
+         DI DPNVS,DPNVI,DPNVV,DPNVD,DPNVB;
+
+         FUNCTION DPNV(DPNVL), FRETURN;
+         DRING(DRG1);
+         SSELECT(DTN1);
+         DPRSZ←0;
+         IF DKIND1=0 OR DKIND1=1 OR DKIND1=2 AND DDIM1>0 DO;
+             IF DDIM1>0 DO;
+                 DEGV(DLOC1//DPNVE);
+                 DGDIM(//DPNVE);
+                 DPRSZ←DELSZ;
+                 FOR DPNVI←DDIM1 BY -1 TO 1 DO;
+                     DSUB1[DPNVI]←DSUB1[DPNVI]+DPNVL;
+                     IF DSUB1[DPNVI]>DSUB[DPNVI] DO;
+                         DSUB1[DPNVI]←DLB;
+                     ELSEIF DSUB1[DPNVI]<DLB DO;
+                         DSUB1[DPNVI]←DSUB[DPNVI];
+                     ELSE DO;
+                         DADD1←DADD1+DSIZE*DPNVL;
+                         GOTO DPNV2;
+                     ENDIF;
+                 ENDFOR;
+                 FOR DPNVI←0 TO DDIM1 DO;
+                     DSUB1[DPNVI]←(0 IF DPNVL<0 ELSE DSUB[DPNVI]);
+                 ENDFOR;
+                 FRETN;
+             ENDIF;
+             DPNVD←1B7;
+             SSELECT(DTN1);
+             FOR DPNVI←1 TO ICLTT DO;
+                 POINT←A(ICTT,DPNVI);
+                 IF POINT.TKSYM#0 DO;
+                     POINT←A(ICST,POINT.TKSI);
+                     DPNVV←POINT.SYVAL;
+                     IF DKIND1=0 AND DPNVV$INSTAG=ATD OR
+                     DKIND1=1 AND DPNVV$INSTAG=ATREL AND DPNVV$INSST=ASTLR DO;
+                         DPNVS←(DPNVV-DLOC1)*DPNVL;
+                         IF DPNVD>DPNVS AND DPNVS>0 DO;
+                             DPNVD←DPNVS;
+                             DPNVB←DPNVI;
+                         ENDIF;
+                     ENDIF;
+                 ENDIF;
+             ENDFOR;
+             FRETN IF DPNVD=1B7;
+
+             DPNVS←DLOC2;
+             DGV(DPNVB//DPNVE);
+             DLOC1←DLOC2;
+             DKIND1←DKIND2;
+             DLOC2←DPNVS;
+             GOTO DPNV0 IF DEET=14;
+             IF DGMODE=SMARRAY DO;
+                 DTPD(12);
+             ELSEIF DGMODE=SMFIELD DO;
+                 DTPD(10);
+             ENDIF;
+DPNV0:       DMSET(0);
+             DADD1←DEEX;
+             DDIM1←0;
+*INCREMENT TO NEXT VALUE
+         ELSEIF DKIND1=2 DO;
+             IF DPNVL>0 DO;
+                 DADD1←DADD1+DINC;
+             ELSEIF DPNVL<0 DO;
+                 DADD1←DADD1-DLOC1;
+             ELSE DO;
+                 DERRF(0);
+             ENDIF;
+             FRETN IF DADD1<0 OR DADD1>=1B6;
+         ELSE DO;
+DPNV1:       DERRF(192);
+         ENDIF;
+         GOTO DPNV2;
+
+*
+*PRINT VALUE
+         ENTRY DPV(DPNVL), FRETURN;
+
+DPNV2:   DRING(DRG1);
+         SSELECT(DTN1);
+         CLS(PSTR);
+         IF DKIND1=0 OR DKIND1=1 DO;
+             DFNM(DLOC1,DKIND1//DPNV3);
+DPNVE:       DTN1←0;
+             DERRF(196);
+         ELSEIF DKIND1=2 DO;
+             DINC←DLOC1;
+             DFNM(DADD1-@ICCODE[ICLLIT] IF DDIM1=0 ELSE DLOC1,2//DPNV3);
+             DFCNB(DADD1,4B7);
+         ELSEIF DKIND1=3 DO;
+             DPVAL();* CHANGED FROM ZDPVAL() - 5/12/73  JACK FREEMAN
+             RETN;
+         ELSE DO;
+             DTN1←0;
+             DERRF(0);
+         ENDIF;
+DPNV3:   IF DDIM1>0 DO;
+             DWCI('[');
+             FOR DPNVI←1 TO DDIM1 DO;
+                 DFCND(DSUB1[DPNVI],0);
+                 DWCI(',' IF DPNVI#DDIM1 ELSE ']');
+             ENDFOR;
+         ENDIF;
+         DWCI(' ');
+         CSOUT(PSTR) IF DPNVL#0 ELSE CLS(PSTR);
+         DIGV(DADD1);* CHANGED FROM DIGV(...//DPNV1); 5/15/73 JF
+         DPVAL();* CHANGED FROM ZDPVAL() - 5/12/73  JACK FREEMAN
+         RETN;
+
+*
+*
+*THIS FUNCTION TRANSFERS CONTROL TO USER PROGRAM WITH CURRENT STATE
+*IT ALSO HANDLES REENTRY FROM USER PROGRAM AND WILL UNSMASH
+*ALL SMASHED CELLS.
+
+
+        PROGRAM DRUN;
+         INCLUDE DEBUG'DECS;
+
+         DI DRUNI,DRUNL,DRUNU, GARBAGE;
+
+         FUNCTION DRUN();
+DRUN1:   IF M1MODE DO;
+             DRTNF←RUN();
+         ELSE DO;
+             ZSIM(DRLB,DRUB:DRTNF);
+             DSPM[DRUNI]←CORE(@(DPHMAP[0])) FOR DRUNI←0 TO 127;
+         ENDIF;
+         CALLSTACK ← BLREG;
+         ECLLN ← 0;
+*UNSMASH BREAKPOINTS
+         DUNMSH(0) IF DBKSP<0;
+*RETURN FROM TASK 2
+         IF DTASK=2 DO;
+             (DPBM(1) & DERRF(198)) IF DIRTN2=0 OR DIRSI2=0;
+             DRING(DIRRG2);
+             DUNSI(DIRTN2:GARBAGE,GARBAGE,GARBAGE);
+*GET BOUNDS OF DIRECT STATEMENT
+             DRUNL←DCEAA(DIRTN2,DIRSI2,0:,GARBAGE);
+             POINT←A(ICST,DIRSI2);
+             DRUNU←DRUNL+POINT.PTLCODE;
+             DDEL(2);
+             DTASK←1;
+*DELETE DIRECT STATEMENT
+             DRUNI←BPCNT;
+*SCAN STACK UNTIL FIND DIRECT STATEMENT OR ELSE TOP
+DRUN4:       IF DRUNL<=DRUNI AND DRUNI<DRUNU DO;
+*FOUND DIRECT STATEMENT
+                 DPBM(-1) IF DRUNI#BPCNT;
+                 DSSAVE[DRUNI] ← DSTATE[DRUNI]
+                 FOR DRUNI ← 0 TO 3*LSTATE-1;
+                 BRKTN ← SBRKTN;
+                 BRKSI ← SBRKSI;
+                 BRKDP ← SBRKDP;
+                 BRKFLG ← SBRKFLG;
+                 BRKRG ← SBRKRG;
+                 FOR DRUNI←0 TO NRINGS-1 DO;
+                     IF REXISTS[DRUNI] DO;
+                         DRING(DRUNI);
+                         CORES(GBASE+2,DHSTACK[DRUNI]);
+                     ENDIF;
+                 ENDFOR;
+                 DRING(DIRRG2);
+                 CSOUT("&307EXIT TASK 2&307");
+                 GOTO DRUN2;
+             ENDIF;
+*BACKUP ANOTHER LEVEL
+             DUNSTK(:DRUNI,GARBAGE,GARBAGE//DRUN3);
+             GOTO DRUN4;
+         ENDIF;
+
+*ERROR RETURN
+DRUN3:   IF DRTNF =-1 DO;
+             DRUNI←DPBM(-1);
+             BRKDP←0 IF BRKFLG>=0;
+             GOTO DRUN7 IF DRUNI=1 ELSE GOTO DRUN5;
+*PANIC RETURN
+         ELSEIF DRTNF=-2 DO;
+             DPBM(-1);
+DRUN5:       CSOUT(MCR);
+         ELSEIF DRTNF=0 DO;
+             GOTO DRUN7;
+*BREAKPOINT RETURN
+         ELSEIF DRTNF=1 DO;
+*CHECK FOR RETURN OF DIRECT STATEMENT
+             GOTO DRUN6 IF BARE#0;
+             DERRF(198) IF DIRTN1=0 OR DIRSI1=0;
+             DPBM(1);
+             DRING(DIRRG1);
+             DRLB←DCEAA(DIRTN1,DIRSI1,0:,GARBAGE);
+             POINT←A(ICST,DIRSI1);
+             IF BPCNT=DRLB+POINT.PTLCODE-1 DO;
+DRUN7:           CSOUT("&307EXIT TASK 1&307");
+                 DDEL(1);
+                 DZAP();
+             ELSE DO;
+DRUN6:           DEC(DCDC) IF DCDA = -1 OR DCDA = BPCNT;
+                 IF DCDC<=0 OR (DCDA#BPCNT AND DCDA#-1) DO;
+                     CSOUT("&307BREAK");
+                     DPBM(0);
+                     GOTO DRUN2;
+                 ENDIF;
+                 DPBM(0) IF DEVERY = 0;
+                 IF M1MODE DO;
+                     BPCNT ← DBKMSH(-1, BPCNT);
+                     DBKSP ← -1;
+                 ELSE DO;
+                     DBKSP ← 0;
+                     DRLB ← DRUB ← BPCNT;
+                 ENDIF;
+             ENDIF;
+*ELSE CONTINUE COMMAND RETURN OR
+*STEP COMMAND RETURN
+         ENDIF;
+DRUN2:   RETURN (DRTNF);
+
+*
+*
+*THIS FUNCTION PRINTS A BREAK MESSAGE
+
+
+        PROGRAM DPBM;
+         INCLUDE DEBUG'DECS;
+
+         DI DPBP,DPBMC,DPBV,GARBAGE;
+
+         FUNCTION DPBM(DPBMF);
+         DRING(DSRING);
+         DPBV←0;
+         DPBP←PCNT;
+         DRGFIX() IF DCRING#RING;
+         BRKRG←DCRING←RING;
+*PRINT BREAK ADDRESS AND SET AS CURRENTLINE
+         GOTO DPBM4 IF BARE#0;
+         DERRF(198) IF DIRTN1=0 OR DIRSI1=0;
+         GOTO DPBM4 IF DCRING#DIRRG1;
+         DRLB←DCEAA(DIRTN1,DIRSI1,0:,GARBAGE);
+         POINT←A(ICST,DIRSI1);
+         IF DRLB<=DPBP AND DPBP<DRLB+POINT.PTLCODE DO;
+             BRKTN←DIRTN1;
+             BRKSI←DIRSI1;
+             BRKDP←DPBP-DRLB;
+             DPBV←1;
+             RETURN DPBV IF DPBMF>0;
+             CSOUT(MCR);
+             CSOUT(DBT1);
+         ELSE DO;
+             GOTO DPBM4;
+DPBM3:       BRKFLG←-1;
+             BRKDP←DPBP;
+             BRKTN←BRKSI←0;
+             GOTO DPBM6;
+DPBM4:       DOEA(DPBP:BRKTN,BRKSI,BRKDP//DPBM3);
+             BRKFLG←0;
+DPBM6:       ECLTN ← BRKTN;
+             ECLSI ← BRKSI;
+             RETURN DPBV IF DPBMF>0;
+             CSOUT(MCR);
+             IF BRKFLG<0 DO;
+                 CLS(PSTR);
+                 DFCNB(BRKDP,4B7);
+                 CSOUT(PSTR);
+             ELSE DO;
+                 DPEA(BRKTN,BRKSI);
+             ENDIF;
+         ENDIF;
+         CSOUT(MCR);
+         RETURN DPBV IF DPBMF < 0;
+*PRINT CURRENT STATEMENT IF REQUESTED
+         IF DLOUD = 0 AND BRKFLG>=0 DO;
+             SSELECT(BRKTN);
+             ZUNPP(BRKSI,BRKTN,2);
+             CSOUT(UPS);
+             CSOUT(MCR);
+         ENDIF;
+*PRINT EXPRESSIONS
+         QSTR←DCOPY(REPS,QSTR);
+DPBM1:   DGARG(//DPBM5);
+         DWCI(' ');
+         CSOUT(PSTR);
+         SETR(PSTR,0);
+         DEE(DREPTN,DREPRG);
+         DPRSZ←DELSZ;
+         DMSET(1);
+         DPVAL();* CHANGED FROM ZDPVAL() - 5/12/73  JACK FREEMAN
+         GOTO DPBM1;
+DPBM5:   DRING(DCRING);
+         RETURN DPBV;
+
+*
+*THIS FUNCTION FIXES THINGS UP ON A RING CHANGE
+
+
+        PROGRAM DRGFIX;
+         INCLUDE DEBUG'DECS;
+
+
+         FUNCTION DRGFIX();
+         GREG←GBASE;
+         RETURN;
+
+*
+*THIS FUNCTION FIXES THE CURRENT STATE
+
+        PROGRAM DRING;
+         INCLUDE DEBUG'DECS;
+
+         FUNCTION DRING(RING'NO);
+         SRING(RING'NO);
+         DSRING'PTR←@DSSAVE[RING'NO*LSTATE];
+         RETURN;
+
+*
+*
+* PRINT PHYSICAL MAP
+
+
+        PROGRAM DPPM;
+         INCLUDE DEBUG'DECS;
+
+         DI DPPMI,DPPMV,DPPMU;
+
+         FUNCTION DPPM();
+         RETURN IF M1MODE;
+         FOR DPPMI←0 TO 127 DO;
+             DPPMV←DSPM[DPPMI];
+             DPPMU←((DPPMV RSH 12) A' 3777B IF DPPMV<0 ELSE DPPMV);
+             IF DPPMU$FPAGEE=0 DO;
+                 CLS(PSTR);
+                 DFCNB(DPPMI,4B7);
+                 DWCI(' ');
+                 IF DPPMV<0 DO;
+                     DWCI('(');
+                     DFCNB(DPPMU,4B7);
+                     DWCI(')');
+                 ELSE DO;
+                     DFCNB(DPPMV,4B7);
+                 ENDIF;
+                 DAPPND(MCR);
+                 CSOUT(PSTR);
+             ENDIF;
+         ENDFOR;
+         RETURN;
+
+*
+*
+*THIS FUNCTION SETS A BREAKPOINT
+
+
+        PROGRAM DBKSET;
+         INCLUDE DEBUG'DECS;
+
+
+         FUNCTION DBKSET();
+         (DBKTN ← E1TN & DBKSI ← E1SI) IF MODES['T'] = 1;
+         SSELECT(E1TN);
+         POINT ← A(ICST,E1SI);
+         IF POINT.PTBKF=0 DO;
+             POINT.PTBKF←1;
+         ELSE DO;
+             DBKFL←0 IF MODES['T'] = 1;
+             RETURN;
+         ENDIF;
+         IF ICGSP.GSBMF = 1 DO;
+             ICGSP.GSBMF ← 0;
+             ICGSP.GSBKCT ← 2;
+         ELSEIF ICGSP.GSBKCT = 0 DO;
+             ICGSP.GSBKSI ← E1SI;
+             ICGSP.GSBMF ← 1;
+         ELSE DO;
+             INC(ICGSP.GSBKCT);
+         ENDIF;
+         RETURN;
+
+*
+*
+*THIS FUNCTION CLEARS A BREAKPOINT
+
+
+        PROGRAM DBKCLR;
+         INCLUDE DEBUG'DECS;
+
+
+         FUNCTION DBKCLR();
+         IF DBKFL=0 AND DBKTN=E1TN AND DBKSI=E1SI DO;
+             DBKFL←-1;
+             RETURN;
+         ENDIF;
+         SSELECT(E1TN);
+         POINT ← A(ICST,E1SI);
+         RETURN IF POINT.PTBKF = 0;
+         POINT.PTBKF←0;
+         IF ICGSP.GSBMF = 1 DO;
+             ICGSP.GSBMF ← 0;
+             ICGSP.GSBKCT ← 0;
+         ELSE DO;
+             DEC(ICGSP.GSBKCT) IF ICGSP.GSBKCT;
+         ENDIF;
+         RETURN;
+
+*
+*
+*THIS FUNCTION CLEARS THE TRACE BREAKPOINT
+
+
+        PROGRAM DBKTCLR;
+         INCLUDE DEBUG'DECS;
+
+
+         FUNCTION DBKTCLR();
+         RETURN IF DBKTN = 0;
+         E1TN ← DBKTN;
+         E1SI ← DBKSI;
+         DBKCLR();
+         DBKTN ← 0;
+         RETURN;

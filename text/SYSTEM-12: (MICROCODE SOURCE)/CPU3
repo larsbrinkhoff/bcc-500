@@ -1,0 +1,409 @@
+*
+           ORG 700B;
+*
+*
+*
+*  THE FOLLOWING CODE IS ENTERED IF AN EMPTY
+*    PAGE IS REFERENCED, OR THE RING PROTECTION
+*    IS VIOLATED.
+*
+PAGEF:     M←Z←R0 , Q←0, SETA, GOTO PAGE1;
+*
+*  OR IF A STORE IS ATTEMPTED INTO A PAGE WHICH
+*  IS READ-ONLY OR NOT DIRTY.
+CSTORE:    Z←Q←M←R0, CLEARA, GOTO PAGEF IF R0<0;
+*  PREPARE MACC TRAP (#1)
+PAGE1:     R0←Q LCY 3, Q←3777B, GOTO PAGE5 IF M[4];
+           MAPAD, M←E1, IR←1, DGOTO MACC IF M[1];
+           PARAM←Z AND Q ! M AND NOT Q, Q←77B, GOTO PRO IF R0<0;
+           Z←M LCY 12, M←MBA;
+           R0←Z AND Q+M, .VCY, Q←7777B, DGOTO PAGE2 IF Z<0;
+           FETCH;
+           M←M LCY 12;
+PAGE2:     MAPRO←M←M AND Q, Q←377B;
+           Z←M AND Q LCY 2, Q←MBA;
+*  60 IS 300B-200B-4
+           Z←Z+Q, Q←60, GOTO PNIM IF Z=0;
+           R0←Z+Q;
+           FETCH, Z←P;
+           UN0←Z←M, R0←R0+1, SSOURCE;
+           FETCH, IR←Q;
+           UN1←M, R0←R0+1;
+           R0←R0+1, Q←2B7, FETCH;
+           M LCY 12, K←0, GOTO PNIC IF X>=0;
+           PMTRO←M←M OR Q, STORE, K←0; * PREPARE PNIC TRAP
+           Q←Z, M←UN1, CALL CHTSRCH;
+           Q←4B7, DGOTO PAGE3 IF A;
+           IR←M AND Q LCY 8;
+           M←M OR Q, IR←200B, STORE;
+PAGE3:     M←NOT M LCY 12 MRG 3777700B, Q←MAPRO;
+           Z←NOT M LCY 1, M←PMTRO;
+           Q←Q LCY 12;
+           M←M OR Q LCY 8, Q←200B;
+           M←M AND Q LCY 1, Q←IR;
+           Q←Q LCY 2, R0←PARAM;
+           Z←M OR Q ! Z;
+           ZTOMAP, .VCY, DGOTO IDLE3;
+*  BEWARE OF DIRTY TRICK
+PNIC:      Q←K, M←2, UNPROTECT;
+*  NOTE THAT 2 AND 4 = 0 USED AT PAGE4
+           Q, Q←IR←4, GOTO PAGE4 IF X>=0;
+*  SEND STROBE2 IF UN NOT FOUND AT WAKEUP
+           M←K, 2, STOP;                  * STROBE2,
+           R0←Y←CPUNO*4+2454B, STORE, GOTO 1721B;
+           S←3B6, CLEARA, GOTO TOSP2;
+*
+PNIM:      IR←3, Q←0, GOTO PAGE4;
+PRO:       IR←2, Q←0, GOTO PAGE4;
+MACC:      M←4B5, Q←E1, READS;
+PAGE4:     Q←M AND Q LCY 1, Q←PARAM, GOTO FIXTRP;
+*
+*  SCAN PHYSICAL MAP FOR PAGE
+PAGE5:     R0←Y←CPUNO*4+2455B, FETCH;
+           Z←M;
+           SCAN, E1, M←4B7, GOTO PAGE6 IF Y<0;
+           STORE, IR←12, Q←0, GOTO FIXTRP;
+PAGE6:     STORE, GOTO IDLE3;
+*
+*
+*  Q=UN0, M=UN1, ROUTINE PUTS CHT INDEX+1 INTO R0
+*
+CHTSRCH:   Q←IR←M EOR Q, M←132B3;
+           2, PROTECT, GOTO * IF NPROTECT;
+           M←M EOR Q LCY 8, Z←400B;
+           M←M EOR Q LCY 8 MRG 777774B2, Q←IR, .TCY←1;
+           R0←M EOR Q+Z;
+CHT1:      FETCH, Q←77B6;
+           IR←R0←M AND NOT Q;
+           FETCH, NOT M AND NOT Q, Q←UN0, GOTO PNIC IF LB=0;
+           R0←R0+1, Q EOR M, GOTO CHT2 IF LB#0;
+           FETCH, Q←UN1;
+           Q EOR M, R0←R0+1, GOTO CHT3 IF LB=0;
+CHT2:      Z←IR, Q←5, DGOTO CHT1;
+           R0←Z+Q, Q←77B6;
+CHT3:      R0←R0+1, FETCH, Q←36B6, DRETURN;
+           M AND Q, Q←774B3, GOTO PNIC IF LB#0;
+*
+*  K=BASE ADDRESS-1, DO NOT CHANGE HOLDING REGISTERS
+*
+SSTATE:    R6←OS;
+           R0←K←K+1;
+           M←P, CALL SST2 IF B;
+           M←AR, CALL SST1;
+           M←BR, CALL SST1;
+           M←CR, CALL SST1;
+           M←DR, CALL SST1;
+           M←ER, CALL SST1;
+           R0←K←K+1;
+           M←XR, CALL SST2 IF B;
+           M←LR, CALL SST1;
+           M←GR, CALL SST1;
+           CALL GETSR;
+           Z←R6, CALL SST1;
+           GOTO Z;
+*
+*  S=BASE ADDRESS
+*
+LSTATE:    R6←OS;
+           R0←S, CALL LST1;
+           R0←S←S+1, Q←M, CALL LST1;
+           R0←S←S+1, AR←M, CALL LST1;
+           R0←S←S+1, BR←M, CALL LST1;
+           R0←S←S+1, CR←M, CALL LST1;
+           R0←S←S+1, DR←M, CALL LST1;
+           R0←S←S+1, ER←M, CALL LST1;
+           R0←S←S+1, XX←M, CALL LST1;
+           R0←S←S+1, LR←M, CALL LST1;
+           R0←S←S+1, GR←M, CALL LST1;
+           K←Q, CALL LOADSR;
+           Z←R6;
+           Q←K, GOTO Z;
+*
+*  LOAD OR STORE ABSOLUTE DEPENDING ON B
+SST1:      R0←K←K+1;
+SST2:      MAP, GOTO SST3 IF B;
+           R0←E1, GOTO CSTORE IF STERR, .VCY;
+SST3:      E1, STORE, RETURN;
+*
+LST1:      MAP, GOTO LST2 IF B;
+           R0←E1, GOTO PAGEF IF Y<0;
+LST2:      E1, FETCH, RETURN;
+*
+*  TRAPNO=TRAP, Q←PARAM
+RDTRAP:    Z←GR, M←4, GOTO TOSP IF INTRPT1;
+           R0←K←Z+M, Z←M←P, ABCD0;
+           R6←15000006B, SSOURCE, CALL STOR1;
+           M←Q, CALL STORX;
+           R0←S←K+1, GOTO IA;
+*
+FIXTRP:    S←Q, Z←6B5, SETB;
+           SSOURCE, K←MBA MRG 2751B, CALL SSTATE;
+           M←S, Q←61B, X23LCK;
+           4, Z←SR, PROTECT, GOTO * IF NPROTECT;
+           SR←Z AND NOT Q, Z←IR, CLM940;
+           XR←Z;
+           AR←M, Q←6B5, ABCD0, DGOTO NX5;
+           GR←Q, R0←P←Z←604002B;
+*
+T940:      P, GOTO NY8 IF M940;
+TOSP:      S←3B6, CLEARA, GOTO TOSP1 IF TO;
+TOSP2:     K←MBA MRG 2763B, SETB, CALL SSTATE;
+           Z←CTCR, ALERT;
+           PIN, M←E2, CALL SST1;
+           Z←ITR, ALERT;
+           Z←8, PIN, M←E2, CALL SST1;
+           Q←M LCY 8, M←PRTINDEX, DGOTO TOSP3 IF SPANL;
+           R0←Z+M,  GOTO TOSP3 IF A;
+           Q←12343210B, M←0;
+           R0←Y←23B+CPUNO, STORE;
+BRK:       Q EOR M, Z←406B5, GOTO IDLE2 IF LB=0;
+TOSP3:     Z←6B5, FETCH, GOTO BRK IF Z<0;
+           Z←Q LCY 1, Q←776B5;
+           M←M AND NOT Q ! Z AND Q, Z←2, STORE;
+TOSP4:     10B, PROTECT, GOTO * IF NPROTECT;
+           R0←Y←USIBTOP, FETCH;
+           M←M+Z, Q←USIBMSK;
+           M AND Q, GOTO TOSP5 IF LB=0;
+           STORE;
+       R0←M, M←S, .VCY, .TSPY, .SSP←@PRTINDEX, CALL SST3, START/STOP; * M←PRTINDEX;
+           M←CPUNO , R0←R0+1, STORE;
+           10B, M←0, UNPROTECT, DGOTO IDLE;
+           2, STROBE;
+*
+*
+*  SYSTEM INITIALIZING
+*
+RSET1:     17B, UNPROTECT;
+           2, LPF;
+           CLEARSP;
+           X23LCK;
+           CRSL2;
+           NONE;
+*
+*
+IDLE:      R0←6+CPUNO, GOTO IDLE1 IF NSP;
+           CLEARSP, GOTO IDLEA;
+IDLE1:     R0←Y←CPUNO*4+2455B;
+           M, M←4B7, GOTO IDLE IF X<0;
+           SCAN;
+            GOTO IDLE;
+IDLEA:     FETCH;
+           Q←M, M←0, X23LCK, GOTO IDLEA IF LB=0;
+           STORE, PRTINDEX←IR←Q;
+           R0←IR, FETCH;
+           4, UNPROTECT;
+           UN0←Q←M, R0←R0+1, FETCH;
+*  NOTE THAT K IS PREPARED TO CRASH IF PNIC
+           UN1←M, K←4B7, SETB, CALL CHTSRCH;
+           MBA←M←M AND Q MRG 200B, CLEARMAP;
+           Q←M LCY 12, R0←602764B;
+*  SET DIRTY BIT IN CONTEXT BLOCK ENTRY
+           Z←Q LCY 1 MRG 1000B, DGOTO PATCH;
+           ZTOMAP, .VCY, Z←R0;
+IDLE2:     S←MBA MRG 2764B, SSOURCE, CALL LSTATE;
+           R0←S←S+1, Z←CTCL, CALL LST1;
+           Q←XX, P←Q, ALERT;
+           POT, Z←M, R0←S+1, CALL LST1;
+           XR←Q, Z←ITL, ALERT;
+           Z←M, POT;
+           2;              *UNPROTECT REMOVED
+IDLE3:     R0←S←Z←P, ABCD0;
+           MFETCH, R0←E1, .VCY, GOTO PAGEF IF Y<0;
+           R0+1, TAKE, DGOTO NX3;
+           R6←M, Q←7B7, SSOURCE, GOTO 1712B IF INTRPT3;
+*
+TOSP5:     10B, UNPROTECT, GOTO TOSP4;
+*
+TOSP1:     IR←5, Q←0, GOTO FIXTRP;
+*
+*
+*
+*
+*
+*
+NY1:       Z←P←P+1;
+NY2:       M←NI, SABCDE0, GOTO NY6 IF INTRPT, .C←1, .TSPY←0;
+NY3:       R0←H2←M LCY 1, Z←XR, DGOTO INDEX IF M[1];
+           H3←X←M, Q←7774B4, SETA, GOTO POP940 IF R0[1];
+NY4:       Z←R0←H1←M AND NOT Q, GOTO INDIRECT IF M[9];
+NY5:       M←H2, Q←176B5, GOTO NY9;
+           GOTO TOSP;
+NY9:       Q←AR, DGOTO M AND Q LCY 8 MRG BASE940 IF A;
+           MFETCH, .VCY, R0←E1, DGOTO ASGNA IF A;
+*  A HAS BEEN CLEARED IF THE INSTRUCTION IS A SYSPOP
+           M←H2, Q←176B5, RESETCM;
+           IR←M AND Q LCY 8, Q←LR;
+           Z←3, ABCD0;
+           Z←R0←Z+Q, M←P, CALL STOR1;
+           K←Z-1, CALL SSTATE;
+           Q←LR, Z←9;
+           R0←Q+Z, M←XR, CALL STOR1;
+           M←IR;
+           XR←M, M←H1;
+           AR←M, Z←2, DGOTO NX5;
+           R0←Z←P←Z+Q, CLM940;
+*
+*  PAGE CROSSING IN THE INSTUCTION SEQUENCE
+NY6:       R0←P+1, .C←1, GOTO TOSP IF INTRPT2;
+NY8:       MAP, DGOTO NY3;
+           R0←E1, TAKE, GOTO PAGEF IF Y<0;
+*
+*  ENTRY TO THE MAIN LOOP AT INSTRUCTION R0=Z
+NY7:       MFETCH, R0←E1, .VCY, GOTO PAGEF IF Y<0;
+           GOTO BRU1, ABCD0;
+*
+*
+INDEX:     Z←M+Z, GOTO INDA;
+* 
+INDIRECT:  MFETCH, .VCY, R0←E1, Z←114B5, GOTO TOSP IF INTRPT1;
+           Q←H2;
+           Q←Q EOR Z, Z←176B5;
+           Z←Q AND Z, Q←H2;
+           Z←132B5, GOTO RCH IF Z=0;
+           Z←Q AND Z;
+           Q←7774B4, GOTO NY5 IF Z=0;
+           H3←M, Z←XR, DGOTO INDEX IF M[1];
+           GOTO PAGEF IF R0<0;
+           GOTO NY4;
+* 
+ASGNA:     GOTO PAGEF IF R0<0;
+           AR←M, DGOTO NY2;
+           Z←P←P+1;
+* 
+BRX1:      XR←Z←Z+1, Q←4B4;
+           Z←Z AND Q, DGOTO 1710B;
+           Z←H1, GOTO NY1 IF Z=0, ABCD0;
+*  BRU, Z=EFF. ADDRESS, M=NEW INSTR. , R0=Z MAPPED
+BRU1:      P←Z, R0+1, TAKE, DGOTO NY3;
+           R0←P+1, SABCDE0, GOTO 1706B IF INTRPT, .C←1;
+* 
+XMA1:      R0, GOTO CSTORE IF STERR, .VCY;
+           AR←M, M←H1;
+ST940:     R0, GOTO CSTORE IF STERR, .VCY;
+           STORE, Z←P←P+1, GOTO NY2;
+*
+BRM1:      Z←H1+1, DGOTO BRM2 IF OV;
+BRM3:      M←M OR Q, Q←4B7, GOTO CSTORE IF R0[2];
+           M←M EOR Q;
+BRM2:      STORE, DGOTO NY7;
+           R0←Z;
+* 
+SKB1:      Z←M AND Q;
+SKE1:      Z←P, Q←2, GOTO NY1 IF Z#0;
+           R0←Z←Z+Q, GOTO NY7;
+* 
+BRR1:      Z←R0←M AND NOT Q, Q←4B7, GOTO NY7 IF Z>=0;
+           Q+M, ROV, GOTO NY7;
+* 
+*
+SUC1:      GOTO SUB IF Z<0;
+           M←Q+NOT M, ROV, GOTO ADD1;
+ADC1:      GOTO ADD IF Z>=0;
+           M←Q+M, .LOC, ROV;
+ADD1:      AR←M, Q←4B7, GOTO ADD2 IF CAR;
+           XR←Z AND NOT Q, Z←P←P+1, GOTO NY2;
+ADD2:      XR←Z OR Q, Z←P←P+1, GOTO NY2;
+* 
+SKR1:      Z←M, Q←2, GOTO CSTORE IF R0[2];
+           STORE, Z←P, GOTO NY1 IF Z>=0;
+           R0←Z←Z+Q, GOTO NY7;
+* 
+SKM1:      Z←M AND Q, GOTO SKE1;
+* 
+EAX1:      Z←H1;
+LDX1:      XR←M AND NOT Q ! Q AND Z, Z←P←P+1, GOTO NY2;
+* 
+LDB1:      BR←M, Z←P←P+1, GOTO NY2;
+*
+SKG1:      GOTO SKG2 IF OVFLW;
+SKN1:      Z←P, Q←2, GOTO NY1 IF Z>=0;
+           Z←R0←Z+Q, GOTO NY7;
+SKG2:      Z←P, Q←2, GOTO NY1 IF Z<0;
+           R0←Z←Z+Q, GOTO NY7;
+*
+ROV1:      Q AND M, M←2, GOTO REO IF LB#0;
+           Q AND M, Q←E1, GSB, GOTO ROV2 IF LB=0;
+           CLEAROV;
+ROV2:      GOTO NY1 IF NZ[16];
+           Z←Q AND M, GOTO SKE1;
+REO:       Q←M←XR, Z←37777B3;
+           M←M LCY 1;
+           M←M EOR Q, Q←1B3, DGOTO NY2;
+           M AND Q+Z, ROV, Z←P←P+1;
+*
+RCH1:      M←M LCY 12, H2←0, GOTO RCH2 IF NZ[16];
+           Q←77777B3;
+RCH2:      M←M LCY 1, Z←AR, CALL CNA IF X<0;           *  CNA
+           M←M LCY 1, Z←AR, CALL CX IF X<0;            *  CAX
+           M←M LCY 1, Z←XR, CALL CA IF X<0;            *  CXA
+           M←M LCY 2, CALL CB IF X<0;                  *  CXB
+           M←M LCY 1, Z←BR, CALL CX IF X<0;            *  CBX
+           M←M LCY 1, Z←BR, CALL CA IF X<0;            *  CBA
+           M←M LCY 1, Z←AR, CALL CB IF X<0;            *  CAB
+           M←M LCY 1, Z←0, CALL CB IF X<0;             *  CLB
+           M←M LCY 1, CALL CA IF X<0;                  *  CLA
+           M←M LCY 2, CALL CX IF X<0;                  *  CLX
+           Z←R0, CALL CCA IF A;
+           Z←H1, CALL CCB IF B;
+           Z←H2, CALL CCX IF D;
+           Z←P←P+1, GOTO NY2;
+*
+CCA:       M←AR, DRETURN;
+           AR←M AND Q ! Z AND NOT Q;
+CCB:       M←BR, DRETURN;
+           BR←M AND Q ! Z AND NOT Q;
+CCX:       XR←Z AND NOT Q, RETURN IF NZ[15];
+           XR←Z OR Q, RETURN;
+*
+CNA:       Z←NOT Z+1;
+CA:        R0←R0, .TXW, Z, SETA, RETURN;
+CB:        H1←H1, .TXW, Z, SETB, RETURN;
+CX:        H2←H2, .TXW, Z, SETD, RETURN;
+*
+SKD1:      M←Z AND Q, Z←BR, GOTO SKD2 IF NZ[15];
+           M←M OR NOT Q;
+SKD2:      Q←Z AND Q, Z←777B, GOTO SKD3 IF NZ[15];
+           Q←Q OR NOT Z;
+SKD3:      R0←Z←Q-M;
+           M←Q EOR M, Q←777B, GOTO SKD4 IF R0>=0;
+           Z←NOT Z+1;
+SKD4:      XR←M AND NOT Q ! Q AND Z, Z←R0, GOTO SKN1;
+*
+RS1:       R0←M LCY 8, M←H1;
+           CLEARA, M←M AND Q, Q←48, DGOTO RCY IF R0[2];
+           Z←NOT M+1, M←H3, DGOTO ASDR IF NR0[2];
+           M←BR, Q←77B, GOTO NY1 IF Z=0;
+RCY:       M LCY 12, Q←48, GOTO LRSH IF X<0;
+           R0←Z←Q+Z, DGOTO CYDL;
+           Q←77B, GOTO NX1 IF R0<0;
+LRSH:      M←BR, Q←77B, SETA, GOTO ASDR;
+LS1:       M←M LCY 2, Z←H1;
+           CLEARA, Z←Z AND Q, R0←Q←48, GOTO NORM IF M[9];
+           M LCY 8, M←BR, GOTO ASDL IF X>=0;
+           R0←Q-Z, DGOTO CYDL;
+NORM:      S←M←AR, SETC, GOTO NY1 IF R0<0;
+           Q←BR, K←Z, SETBB, CALL LLT1;
+           Z←Z-1, M←XR, GOTO NORM1 IF Z#0;
+           Z←47, S, GOTO NORM1 IF Y<0;
+           Z←48;
+NORM1:     Q-Z, GOTO NORM2 IF X>=0;
+           Z←Q;
+NORM2:     XR←M-Z, DGOTO ASDL;
+           M←BR, SETA;
+*
+*
+POP940:    H3, GOTO SYSPOP IF Y<0;
+           M←H2, R0←0;
+           MAP, .VCY, R0←E1, Q←376B5, GOTO CSTORE IF STERR;
+           Z←M AND Q LCY 8, Q←4324B4, DGOTO BRM3;
+           M←P, CLEAROV, DGOTO BRM2 IF OV;
+*
+SYSPOP:    CLEARA, DGOTO NY4;
+           GOTO INDEX IF M[1];
+*
+*
+*
+*
+           R0←P+1, GOTO NX6 IF XPAGE;
+           GOTO NY3;
+           END;

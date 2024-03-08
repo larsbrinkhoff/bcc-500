@@ -1,0 +1,652 @@
+              *********  SWAPPER  *********
+              *******  RR VAN TUYL  *******
+              *******  19 MAY 1969  *******
+*T.8,17,26,35,44,53,62.M.*. 1,. 4LK.. 5,. 9LS.
+*      R0       R1       R2       R3       R4       R5       R6
+*      .        .        .        .        .        .        .
+*      ADR                                          SUBR     STKP
+
+
+*      CALL              SRET              FRET
+* M 
+* Q
+* Z
+
+*      THIS IS THE CODING OF THE SWAPPER.
+*  DECLARATION MACROS
+       MACRO MO ← MACRO;
+       MO DEF←DEFINE;
+       MO REG←DEF REGISTER *2* AS *1*;
+       MO SC←DEF SCONDITION *1* ← *2*,(*3*);
+       MO PM←DEF PARAMETER *1* ← *2*;
+       MO BC←DEF BCONDITION *1* ← *2*,(*3*);
+       MO BCF←DEF BCONDITION *1*,*3*←*2*,(*4*);
+
+
+*  THE LAYOUT OF THE MAIN REGISTERS IS AS FOLLOWS:
+
+*      R0       R1       R2       R3       R4       R5       R6
+*      .        .        .        .        .        .        .
+*      ADR      T4,NODE  T3,NPTR  T2       T1,PPTR  SUBR,T   STKP
+
+       REG(ADR,R0);
+       REG(T4,R1);
+       REG(T3,R2);
+       REG(T2,R3);
+       REG(OFFSET,R3);
+       REG(T1,R4);
+       REG(T,R5);
+       REG(SUBR,R5);
+       REG(STKP,R6);
+       REG(NPTR,R2);
+       REG(PPTR,R4);
+       REG(NODE,R1);
+       REG(FCPTR,R2);
+       REG(FCNTR,R1);
+       REG(PEPW,R1);
+       REG(PE,R2);
+       REG(LN,T);
+       REG(PEPA,R2);
+       REG(HEADER,R4);
+       REG(SP,R0);
+       REG(FP,R3);
+       REG(SU,R2);
+       REG(FU,R1);
+       REG(TSUN,R4);
+       REG(ABSP,R1);
+
+
+*      THE FOLLOWING IS THE LAYOUT OF THE SCRATCH PAD REGISTERS
+*  SK0 - DEDICATED TO SAVING M FOR BREAKPOINT, ETC.
+*  SK1 - BASE ADDRESS OF DHT1 (DHT1B)
+*  SK2 - BASE ADDRESS OF DHT2  (DHT2B)
+*  SK3 - SIZE OF DHT (SZDHT)
+*  SK4 - BASE ADDRESS OF DRUM SECTOR READ LIST
+*  SK5 - BASE ADDRESS OF FREE DRUM TABLE
+*  SK6 - BASE ADDRESS OF DISK CYLINDER QUEUES
+*  SK7 - CTXCOST
+*  SK8 - DSKCOST
+
+       MO SPM←REG(*1*,SK$GLBS)↑;
+              PM(GLBS,GLBS+1);
+       PM(GLBS,0);
+
+       SPM(SSMREG);
+       SPM(BOUND);
+       SPM(RELL);
+       SPM(P);
+       SPM(CSTK);
+       SPM(AR);
+       SPM(BR);
+       SPM(XR);
+       SPM(SR0);
+       SPM(ST4);
+       SPM(ST3);
+       SPM(ST2);
+       SPM(ST1);
+       SPM(ST0);
+       SPM(FA0);
+       PM(GLBS,15);
+       SPM(DHT1B);
+       SPM(DHT2B);
+       SPM(SZDHT);
+       SPM(NKT);*  NUMBER OF DISK TRANSFERS PENDING
+       SPM(FLAGRG);*  FLAG REGISTER (EACH BIT IS A DIFFERENT FLAG)
+       SPM(EW0);  SPM(EW1);  SPM(EW2);  SPM(EW3);  SPM(EW4);
+       SPM(EW5);  SPM(EPTR);
+
+
+*  MACROS TO HELP IN OPTIMIZING SCRATCHPAD.
+*  DEFINE LOCAL VARIABLES BY USING BASE
+*  ADDRESS.  THE LOCATIONS ARE THEN ALLOCATED
+*  TO A FIXED PLACE IN THE SCRATCHPAD.
+*  EXAMPLE:
+*    LOC2(25, MUMBLE, FOO);
+*  MUMBLE IS ALLOCATED AT SK(GLBS+26)
+*  SCRATCHPAD ALLOCATION
+       MO LOC1←REG(*2*,SK$GLBS+*1*)↑;
+               PM(LOCBS,*1*+1);
+       MO LOC2←LOC1(*1*,*2*)↑;
+               LOC1(*1*+1,*3*);
+       MO LOC3←LOC1(*1*,*2*)↑;
+               LOC2(*1*+1,*3*,*4*);
+       MO LOC4←LOC1(*1*,*2*)↑;
+               LOC3(*1*+1,*3*,*4*,*5*);
+       MO LOC5←LOC1(*1*,*2*)↑;
+               LOC4(*1*+1,*3*,*4*,*5*,*6*);
+       MO LOC6←LOC1(*1*,*2*)↑;
+               LOC5(*1*+1,*3*,*4*,*5*,*6*,*7*);
+       MO LOC7←LOC1(*1*,*2*)↑;
+               LOC6(*1*+1,*3*,*4*,*5*,*6*,*7*,*8*);
+       MO LOC8←LOC1(*1*,*2*)↑;
+               LOC7(*1*+1,*3*,*4*,*5*,*6*,*7*,*8*,*9*);
+
+
+       PM(LOCBS,0);
+
+*  SCRATCHPAD LOCAL REGISTERS 
+
+       LOC2(0,UN0,UN1);*  CHT ROUTINES,
+       LOC4(0,DHT0,DHT1,DHT2,DHT3);*  DHT ROUTINES
+       LOC1(0,PATI);
+       LOC1(0,GFDT0);
+       LOC1(0,NPTRWD);
+
+
+       PM(GLBS,GLBS+4);
+       SPM(KCQCNT);
+       SPM(SAVEPATI);
+       SPM(TSUNM);                     *TSU NUMBER IN SELECT POSITION
+       SPM(FSTRPM);                    *FIND SECTOR PARAMETER
+
+
+*  LIST OF PARAMETERS USED
+       PM(NKSECT,5);*  NUMBER OF DISK SECTORS
+       PM(NKCQ,256);*  NUMBER OF DISK CYLINDER QUEUES
+       PM(NMBIT,12);
+       PM(BCSTK,1);
+       PM(LGR,4);
+       PM(LACT,4);
+       PM(NADB,77B6);
+       PM(LADB,777777B);
+       PM(NKAD,6B7);
+       PM(CHTB,400B);*  BASE ADDRESS OF CHT1
+       PM(CHT2,1000B);* BASE ADDRESS OF CHT2
+       PM(CWSB,2755B-1);*  BASE ADDRESS OF CORE WORKING SET
+       PM(PMTBA,300B);*  PMT BASE ADDRESS
+       PM(NSKPAD,64);* NUMBER OF SCRATCHPAD REGISTERS
+       PM(LSKPR,63);*  LAST SCRATCHPAD REGISTER
+       PM(LDB0,25);
+       PM(LDB1,127);
+       PM(USIBTOP,15B);
+       PM(WAKCOM,1B6);*  WAKEUP COMMAND GIVEN TO USCHEDULER
+       PM(AMCIWD,4B4);
+       PM(LGUSIB,5);*  LOG BASE 2 OF SIZE OF USCHEDULER INPUT BUFFER
+       PM(LG2DBT,4);*  LOG BASE 2 OF SIZE OF FREE DRUM PAGT TABLE ENTRY
+       PM(NBASAD,16);
+
+
+*  RELATIVE ADDRESS KNOWN TO THE SWAPPER MICROCODE
+
+*  LINK VECTOR NAMES
+       PM(GENREQ,1B);
+       PM(ACTREQ,2B);
+       PM(DMCOM,3B);
+       PM(DKCOM,4B);
+       PM(NEWPAGE,4B);                 *NEW PAGE LINK
+       PM(CLPRC,5B);
+       PM(NDPRC,6B);
+       PM(NDCTX,7B);
+       PM(CCYLF,10B);
+       PM(APUWRITE,12B);               *APU WRITE
+
+*  THE TSU STATE IS DUMPED AT 100B - 18 = 56B
+
+       PM(TSUSTATE,100B-18);
+
+*  THE CORE STACK BEGINS AT 101B
+
+       PM(BASCSTK,101B);
+
+
+*  SYMBOLIC NAMES OF TSU REGISTERS
+       PM(TSIN,1);* INSTRUCTION
+       PM(TSMP,2);* MAP
+       PM(TSDA,4);* DEVICE ADDRESS
+      PM(TSCMA,1B1);* CENTRAL MEMORY ADDRESS
+       PM(TSWC,2B1);* WORD COUNT
+       PM(TSUN1,4B1);* CLASS WORD 1
+       PM(TSUN0,1B2);* CLASS WORD 0
+       PM(TSHU,2B2);* (HOLDING) UNIT NUMBER
+       PM(TSFU,4B2);* (FUNCTIONAL) UNIT NUMBER
+       PM(TSPC3,1B3);* POSITION COUNTER 3
+       PM(TSPC2,2B3);* POSITION COUNTER 2
+       PM(TSPC1,4B3);* POSITION COUNTER 1
+       PM(TSPC0,1B4);* POSITION COUNTER 0
+       PM(TSCH1,2B4);* CHECK WORD 1
+       PM(TSCH0,4B4);* CHECK WORD 0
+       PM(TSSTS,1B5);* STATUS
+       PM(TSEL,2B5);* ENABLE LOAD
+       PM(TSDAT,4B5);* DISABLE ATTENTION
+       PM(TSEA,1B6);* ENABLE ATTENTION
+       PM(TSUA,6B6);* TSU ADDRESS
+       PM(TSPSR,1);* PRESENT STTUS READ
+       PM(TSRLV,2);* REGISTER LOADING VIOLATION
+       PM(TSDNA,4);* DEVICE NOT AVAILABLE
+       PM(TSDPV,1B1);* DRUM POLICY VIOLATION
+       PM(TSDTL,2B1);* DATA TRANSFER LATE
+       PM(TSMPE,4B1);* MEMORY PARITY ERROR
+       PM(TSCN0,1B2);* CHECK NOT ZERO
+       PM(TSETC,2B2);* EXCESSIVE TIME CONSUMED
+       PM(TSPNV,4B3);* POSITION NOT VALID
+*  NEXT THREE ARE NORMALLY ZERO IN DRUM TSU
+       PM(TSCNE,4B2);* CLASS NOT EQUAL
+       PM(TSDPE,1B3);* DEVICE PARITY ERROR
+       PM(TSHNE,2B3);* HEADER NOT EQUAL
+
+
+*  POSITION COUNTER BITS
+       PM(PCHWE,4B7);*  HOLDING REGISTER WAITING EXEUTION
+       PM(PCFEX,2B7);*  FUNCTIONAL REGISTERS EXECUTING
+       PM(PCHCL,1B7);*  HOLDING REGISTER WAITING FOR CLEANUP
+       PM(PCEOS,2B3);*  END OF SECTOR < 1 SECTOR AWAY
+
+
+*  TSU OPCODES
+       PM(CONT,4B1);
+       PM(READ,0);
+       PM(WRITE,4B1);
+       PM(WRTHD,1B2);* WRITE HEADERS
+       PM(WTFCCE,14B);* WRITE IF CLASS CODES EQUAL
+       PM(POSONLY,4);* POSITION ONLY
+       PM(POSBUSY,300B);
+
+*  SYSTEM REGISTER AND INITIALIZATION DEFINITIONS
+       PM(DRCON,44B);* CONV. FOR DRUM ADDRESS
+       PM(DBITM,134B);* LAST DRUM SECTOR
+       PM(DKBITM,NKSECT*4);* LAST DISK SECTOR
+       PM(DKCON,200B-DKBITM);* CONV. FOR DISK ADDRESS
+
+
+*  LIST OF CODES SENT TO SPECIAL PROCESS FOR HANDLING SWAPPER
+*  ERRORS
+
+       MO ERCD←PM(*1*,*2*B6);
+
+       ERCD(CTXBLR,1);
+
+
+*  LIST OF FIELDS
+
+*          MACRO'S TO IMPLEMENT FIELD LOGIC--
+*  ONE MAY DEFINE A FIELD BY SAYING
+*          DF(NAME, DISPLACEMENT, FIRST BIT, LAST BIT);
+*  THEN THE FOLLOWING OPERATIONS ARE POSSIBLE
+*          OPERATION               RESULT
+*         DISP(NAME)               DISPLACEMENT OF FIELD
+*         MASK(NAME)               MASK OF FIELD
+*         NMASK(NAME)              MASK OF FIELD EOR-1
+*         SHFT(NAME)               SHIFT REQUIRED TO RIGHT ADJUST FIELD.
+*         ONE(NAME)                VALUE OF ONE IN FIELD.
+*         LDCY(NAME)               VALUE OF CYCLE TO DO
+*                                  ON A LOAD IN ORDER TO
+*                                  RIGHT ADJUST THE FIELD
+*         STCY(NAME)               VALUE OF CYCLE TO DO
+*                                  ON A STORE TO RESTORE
+*                                  FIELD FROM RIGHT ADJUSTED
+*                                  POSITION TO PROPER POSITION
+*                                  IN WORD.
+*         STUFF(NAME)              M AND Q LCY LDCY(NAME)
+*                                  IDEA IS TO RIGHT ADJUST
+*                                  FIELD
+*         NSTUFF(NAME)             M AND NOT Q LCY LDCY(NAME)
+
+
+          PM(TWO0,1);
+          PM(TWO1,2);
+          PM(TWO2,4);
+          PM(TWO3,10B);
+          PM(TWO4,2B1);
+          PM(TWO5,4B1);
+          PM(TWO6,1B2);
+          PM(TWO7,2B2);
+          PM(TWO8,4B2);
+          PM(TWO9,1B3);
+          PM(TWO10,2B3);
+          PM(TWO11,4B3);
+          PM(TWO12,1B4);
+          PM(TWO13,2B4);
+          PM(TWO14,4B4);
+          PM(TWO15,1B5);
+          PM(TWO16,2B5);
+          PM(TWO17,4B5);
+          PM(TWO18,1B6);
+          PM(TWO19,2B6);
+          PM(TWO20,4B6);
+          PM(TWO21,1B7);
+          PM(TWO22,2B7);
+          PM(TWO23,4B7);
+
+          PM(MSK0,1);
+          PM(MSK1,3);
+          PM(MSK2,7B);
+          PM(MSK3,17B);
+          PM(MSK4,37B);
+          PM(MSK5,77B);
+          PM(MSK6,177B);
+          PM(MSK7,377B);
+          PM(MSK8,777B);
+          PM(MSK9,1777B);
+          PM(MSK10,3777B);
+          PM(MSK11,7777B);
+          PM(MSK12,17777B);
+          PM(MSK13,37777B);
+          PM(MSK14,77777B);
+          PM(MSK15,177777B);
+          PM(MSK16,377777B);
+          PM(MSK17,777777B);
+          PM(MSK18,1777777B);
+          PM(MSK19,3777777B);
+          PM(MSK20,7777777B);
+          PM(MSK21,17777777B);
+          PM(MSK22,37777777B);
+          PM(MSK23,-1);
+
+          MO TWO←TWO*1*;
+          MO DF←PM(PM0,*2**TWO12)↑;
+       PM(PM1,*3**TWO18/TWO12)↑;
+       PM(PM2,*4**TWO18/TWO18)↑;
+       PM(*1*,PM0+PM1+PM2);
+*      PM(PM1,MSK($*4*-*3*))↑;
+*      PM(*1*M,TWO($23-*4*)*PM1);
+     MO MASK←MSKK($-*1*/TWO6+*1**TWO18/TWO18)*TWO($-*1**TWO18/TWO18+23);
+          MO LBIT←*1* *1B4/1B6;
+          MO DISP←*1*/1B4;
+*    MO MASK←*1*M;
+          MO NMASK←- MASK(*1*)-1;
+          MO SHFT←-*1* *TWO18/TWO18+23;
+          MO ONE←TWO($-*1**TWO18/TWO18+23);
+          MO STCY←-*1**TWO18/TWO18+23;
+          MO LDCY←*1**TWO18/TWO18+1;
+          MO STUFM←M AND *2* Q LC*3* LDCY(*1*);
+       MO STUFF←STUFM(*1*,,Y);
+       MO STUFL←STUFM(*1*,,L);
+       MO STUFH←M LCH LDCY(*1*);
+          MO NSTUFF←STUFF(*1*,NOT,Y);
+          MO MSKK←MSK*1*;
+
+
+       DF(STKCQ,0,1,1);*  FLAG REGISTER BIT FOR STOPING THE CYL SEARCH
+       DF(KADR,5,2,23);
+          DF(SUBIX,0,17,19);
+       DF(BITF,0,20,23);
+       DF(DMAPF,0,16,23);
+       DF(FDPTF,0,24-LG2DBT,23);
+       DF(SF,3,12,12);
+       DF(USIB,0,24-LGUSIB,23);
+*  FOLLOWING FIELDS ARE FOUND IN A CWS ENTRY
+       DF(CWS,0,13,13);
+       DF(CBSW,0,14,14);
+*  FOLLOWING FIELDS ARE FOUND IN AN ENTRY
+       DF(EPRT,3,6,23);
+       DF(EQP,5,6,23);
+       DF(OPC,4,19,23);* OPCODE MASK
+       DF(RCD,4,18,23);
+       DF(ORCD,5,0,5);
+       DF(WAKF,3,0,3);
+       DF(WKANY,3,0,0);
+       DF(WKCT,3,1,1);
+       DF(WKAT,3,2,2);
+       DF(WKBT,3,3,3);
+       DF(EPMT,4,0,7);
+       DF(ECHTI,4,10,16);
+       DF(DUMP,4,16,16);
+       DF(RCVR,4,17,17);
+       DF(TIMING,4,14,15);
+       DF(DIOWDC,4,0,4);
+*  FOLLOWING FIELDS ARE FOUND IN PRT ENTRIES
+       DF(DTC,5,16,23);* DRUM TRANSFER COUNT MASK
+*  FOLLOWING FIELDS ARE FOUND IN CHT ENTRIES
+       DF(UB,3,1,1);
+       DF(DB,3,0,0);
+       DF(PGS,3,2,4);
+       DF(PL,5,0,5);
+       DF(CLP,5,6,23);
+       DF(PG,3,6,12);
+       DF(FCLP,4,6,23);
+       DF(SCH,3,16,23);
+*  FOLLOWING FIELDS ARE FOUND IN A DRUM ADDRESS
+       DF(DSTR,0,17,21);
+       DF(DTSU,0,3,4);
+       DF(DBND,0,10,16);
+       DF(DNUMR,0,22,23);
+       DF(DRCD,0,22,23);
+*  FOLLOWING FIELDS ARE FOUND IN A CONTEXT BLOCK ENTRY
+       DF(PMTF,0,16,23);
+*  FOLLOWING FIELDS ARE FOUND IN A DISK ADDRESS
+       DF(KUNIT,0,22,23);
+       DF(KTSU,0,2,3);
+       DF(KTRK,0,4,11);
+       DF(KBD,0,12,17);
+       DF(KSTR,0,18,21);
+*  FOLLOWING FIELDS ARE USED IN PRT TO DEFINE THE 'STATE' OF A PROCESS
+       DF(SWERWD,4,0,23);
+       DF(TSUINF,0,16,21);
+       DF(DIOWDC,4,0,4);
+       DF(TSUWDC,0,14,23);
+       PM(PRST,8);
+       MO DFB←DF(TEMPAR,*2*,*3*,*3*);
+       MO DFBA←PM(*1*,MASK(TEMPAR));
+       DFB(WAQ,PRST,13);DFBA(WAQ);
+       DFB(CBC,PRST,14);DFBA(CBC);
+       DFB(PDK,PRST,15);DFBA(PDK);
+       DFB(PQ,PRST,16);DFBA(PQ);
+       DFB(SWQ,PRST,17);DFBA(SWQ);
+       DFB(SCQ,PRST,18);DFBA(SCQ);
+       DFB(MSQ,PRST,19);DFBA(MSQ);
+       DFB(LDD,PRST,20);DFBA(LDD);
+       DFB(RUN,PRST,21);DFBA(RUN);
+       DFB(CPUN,PRST,22);DFBA(CPUN);
+       DFB(RES,PRST,23);DFBA(RES);
+*  FOLLOWING ARE FIELDS IN DHT
+       DF(INVALID,0,0,0);
+       DF(DHTER,0,1,1);
+       DF(DHTSTS,1,0,1);
+       DF(WUN,1,2,2);
+       DF(UCF,1,14,23);
+       DF(DHTDEST,1,3,3);
+       DF(DHTKDT,1,4,4);
+       DF(DHTDKT,1,5,5);
+       DF(UNDCK,1,6,6);
+*  FOLLOWING FIELDS ARE FOUND IN A POSITION COUNTER
+       DF(PCSTR,0,15,19);* POSITION COUNTER SECTOR
+       DF(PCRCD,0,20,21);* POSITION COUNTER RECORD
+       DF(PCRCP,0,20,23);*  POSITION COUNTER RECORD POSITION
+       DF(POSITION,0,15,23);*  POSITION OF DEVICE
+*  FOLLOWING FIELDS ARE FOUND IN A TSU
+       DF(RSLTSU,0,3,4);
+       DF(TSINF,0,17,18);
+       DF(POSTRK,0,4,11);
+       DF(DATRK,0,2,9);
+
+
+*  FOLLOWING FIELDS ARE FOUND IN SRMEM
+       DF(SRTSU,0,7,8);*  TSU FIELD
+       DF(SRBND,0,5,6);*  BAND ADDRESS FIELDD
+       DF(SRUNT,0,4,4);*  UNIT NUMBER FIELD
+       DF(SRDST,0,2,2);*  DRUM/DISK STARTUP FLAG
+       DF(SRSOLD,0,3,3);*  STORE OLD SYSTEM
+
+
+*  LIST OF BRANCH CONDITIONS
+
+       BC(ATTS,36B,QCALL ATTSF),NOVCY;
+       BC(NORQ,27B,QCALL NORQF);
+       BC(ENDLT,14B);
+       BC(NENDLT,15B);
+       BC(ATTNS,26B,QCALL ATTNSF),NOVCY;
+       BC(PRONS,30B);
+       BC(LBEQ,22B),NOVCY;
+       BCF(LB=0,22B,LBEQ),NOVCY;
+       BCF(BL=0,22B,LBEQ),NOVCY;
+       BC(LBNE,23B),NOVCY;
+       BCF(LB#0,23B,LBNE),NOVCY;
+       BCF(BL#0,23B,LBNE),NOVCY;
+       BC(YEVEN,24B);
+       BC(YODD,25B);
+       BCF(R0>=0,12B,R0GE),NOVCY;
+       BCF(R0<0,11B,R0LT),NOVCY;
+       BCF(Z>=0,16B,ZGE),NOVCY;
+       BCF(Z<0,17B,ZLT),NOVCY;
+       BCF(Y>=0,7,YGE);
+       BCF(Y<0,10B,YLT);
+       BC(RQ2NS,31B,QCALL RQ2NF),NOVCY;
+       BC(BRKON,45B,QCALL BRKF);
+
+
+*  PREDEFINED BRANCH CONDITIONS
+*        X BUSS   Y BUSS
+* =      2        
+* #      3        
+* >      6
+* <      4        10B
+* >=     5        7
+* <=     13B
+
+
+*  SPECIAL CONDITIONS
+
+       SC(SNDRQS,17B);
+       SC(RSTRQL2,32B,QCALL RSTRQ2);
+       SC(SNRQS2,33B,QCALL PUNTF);
+       SC(RSTRQL,23B,QCALL RSTRQF);
+       SC(UNPROTECT,20B);
+       SC(PROTECT,25B);
+       SC(ALERTSC,14B,QCALL ALERTQ);
+       SC(POTSC,15B,QCALL POTQ);
+       SC(PINSC,16B,QCALL PINQ);
+
+
+*  SWAPPER LISTS IN MAIN MEMORY
+
+*   20  BREAK ADDRESS
+*   25  BREAKWAIT CELL
+*  100  (AMCA) ACTIVATE CELL
+*  101  (AMCA) ACTIVATE CELL
+*  102  (AMCQ) ACTIVATE QUEUE HEADER
+*  103  (AMCQ) ACTIVATE QUEUE HEADER
+*  104  (SWAPRQ) GENERAL REQUESTS
+*  105  (SWAPRQ) GENERAL REQUESTS
+*  106  (SWAPIN) PROCESS INPUT QUEUE
+*  107  (SWAPIN) PROCESS INPUT QUEUE
+*  110  FREL HEADER (SWFREL)
+*  111  FREL HEADER (SWFREL)
+*  112  FCL FREE CORE LIST HEADER (MUST STAY FIXED AT 112 BECAUSE OF US)
+*  113  FCL FREE CORE LIST HEADER
+*  114  RIPQ PROCESS READS IN PROGRESS HEADER (FIXED BY US ***********)
+*  115  RIPQ PROCESS READS IN PROGRESS HEADER
+*  116 CTXQ CONTEXT BLOCK QUEUE
+*  117 CTXQ
+*  120 WRTQ WRITE QUEUE
+*  121 WRTQ
+*  122  NFCL NO ON FCL
+*  123  NFREL NO ON FREL (NFSWQN)
+*  124  CLBUF CLEANUP BUFFER HEADERS ONE FOR EACH TSU = 4 HEADERS
+*  134 ERPROC ERROR PROCESS FOR SWAPPER
+
+
+*       BSS(KSQ,24);
+       PM(NPGQ,166B);                  *NEW PAGE QUEUE
+
+
+*  400B-777B  CHT1
+*  1000B-2377B  CHT2
+*  3100B - 3677B  PRT
+*  4000B-6477B  DHT1
+*  6500B-13677B  DHT2
+*  13700B - 13777B  DSRL
+*  14000B-14777B  DFPT
+*  15000B - 15777B  KCQ
+*  16000B-16577B  FREL
+
+       PM(SRMEM,5);
+       PM(BREAK,20B);
+       PM(BRKWAIT,25B);
+
+
+*  BASE OF SWAPPER STORE IN MAIN MEMORY
+       PM(SWST,100B);
+       MO CORE←PM(*1*,SWST)↑; PM(SWST,SWST+1);
+       MO HEAD←BSS(*1*,2);
+       MO BSS←CORE(*1*)↑; PM(SWST,SWST+*2*-1);
+
+       HEAD(ACTCL);*  ACTIVATE CELL
+       HEAD(ACTHD);*  ACTIVATE HEADER
+       HEAD(GRQ);*  GENERAL REQUEST QUEUE
+       HEAD(SWAPIN);*  REQUEST PROCESS INPUT
+       HEAD(FREL);
+       HEAD(FCL);
+       HEAD(RIPQ);
+       HEAD(CTXQ);
+       HEAD(WRTQ);
+       CORE(NFCL);
+       CORE(NFREL);
+       CORE(ERPROC);
+       CORE(ROFN);
+       BSS(CLBUF,8);
+       BSS(KSQ,24);
+
+
+*  2501  DHT1  (DHTS) BASE ADDRESS
+*  2502  DHT2  (DHTS2) BASE ADDRESS (DHT2 = DHT1 + SZDHT)
+*  2503  SZDHT (DHTSI)
+*  2504  DSRL  (DRSCR) BASE ADDRESS
+*  2505  DFPT  (FRDR) BASE ADDRESS
+*  2506  KCQ   (DKCQ) BASE ADDRESS
+*  2507  MCTX MAXIMUM NUMBER OF CONTEXT BLOCKS
+*  2510  NRDSRL NUMBER OF REQUESTS ON DRUM SECTER READ LIST
+*  2511  DIOCOST
+*  2512  CTXCST
+*  2513  DSKCST
+*  2514  DMAP
+
+*  BASE OF SAVE STATE AREA
+       PM(SWST,2500B);
+       BSS(SAVESK,NSKPAD);
+       BSS(SAVER0,7);
+       CORE(SAVEOS);
+       CORE(SAVEQ);
+       CORE(SAVEZ);
+
+
+*  MACRO'S
+
+       MO FUNCTION←*1*:SUBR←Y←*1*+1,GOTO STKLK;
+       MO FUNCTIONX←*1*:SUBR←*1*+1,GOTO STKLK;
+       MO DFUNCTION←*1*:SUBR←Y←*1*+2,DGOTO STKLK;
+       MO DFUNCTIONX←*1*: SUBR←*1*+2, DGOTO STKLK;
+       MO C←SUBR←*1*,CALL STKLK;
+       MO FR ← CALL FRET;
+       MO R ← CALL RET;
+       MO DR ← DCALL RET;
+       MO DFR ← DCALL FRET;
+       MO FRA ←SUBR←*1*,FR;
+        MO GRA←SUBR ←*1*,GOTO FRET;
+       MO DFRA ←SUBR←*1*,DFR;
+       MO INC ← *1* ← *1*+1;
+       MO DEC ← *1* ← *1*-1;
+       MO MIN←ADR←*1*,  HFETCH,  CALL MINF;
+       MO MDC←ADR←*1*,  HFETCH,  CALL MDCF;
+       MO ISC ←M←*1*,Z←1,CALL ASCH;
+       MO DSC ←M←*1*,Z←-1,CALL ASCH;
+       MO PUNT←CALL PNT;
+       MO DPUNT←DCALL PNT;
+       MO RSEFL←Q←*1*,GOTO SETFL+1;
+       MO SEFL ←Q←*1*,CALL SETFL;
+       MO REFL ←Z←*1*,CALL REFFL;
+       MO SRQS←*1*, SNDRQS;
+       MO SRQS2←*1*,SNRQS2;
+       MO PRO←.C←*1*,.TCX,PROTECT,GOTO * IF PRONS;
+       MO UNPRO←.C←*1*,.TCX,UNPROTECT;
+       MO SENTRY ←Z←@EW0,CALL SENTR;
+          MO INSK←Q←*1*, Z←@*1*, CALL INSKF;
+          MO DCSK←Q←*1*, Z←@*1*, CALL DCSKF;
+          MO ENDL←*2*, *3*GOTO *1* IF ENDLT;
+          MO DENDL←ENDL(*1*, *2*, D);
+          MO NENDL←*2*, *3*GOTO *1* IF NENDLT;
+          MO DNENDL←NENDL(*1*, *2*, D);
+       MO RCY←LCY 24-;
+       MO RCL←LCH 24-;
+       MO RCH←LCL 24-;
+       MO ALERT←CALL ALERTF;
+       MO POT←CALL POTF;
+       MO PINB←E2,PINSC,.VCY;
+       MO PIN←E2, PINSC,.VCY;
+       MO IMS ←ADR←Z←Z+1, STORE;
+*  MACRO TO DISPATCH, CALL: DISPAT(INDEX OF FIRST ENTRY, INDEX OF
+*  LAST ENTRY, BEGINNING OF DISPATCHER TABLE, FAIL ADDRESS)
+       MO DISPAT←Z←*1*↑; R0←M←M-Z, Z←*2*-*1*, DCALL DISPAF↑;
+       GOTO *4* ON M-Z>0, Z←*3*;
+@      FREEZE;
+@      NOLIST EXT;
+       END;

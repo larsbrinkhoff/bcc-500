@@ -1,0 +1,37 @@
+MICRO-PROCESSOR CARD LAY-OUT.
+
+SLOT  RACK A                   RACK B
+
+33                             ROM 20
+32                             ROM 21
+31                             ROM 22
+30                             ROM 23
+29                             ROM 24
+28    TTY/PAPER TAPE INTF.     ROM 25
+27    64 W SCR PAD 00-07       ROM 26
+26    64 W SCR PAD 00-07 (OPT) ROM 27
+25    HOLDING REG 00-07        ROM 00
+24    ADDER CYCLER 00-07       ROM 01
+23    MQZ REG 00-07            ROM 02
+22    64 W SCR PAD 08-15       ROM 03
+21    64 W SCR PAD 08-15 (OPT) ROM 04
+20    HOLDING REG 08-15        ROM 05
+19    ADDER CYCLER 08-15       ROM 06
+18    MQZ REG 08-15            ROM 07
+17    PARITY CHECKER           I-REGISTER I5
+16    64 W SCR PAD 16-23       I-REGISTER I4
+15    64 W SCR PAD 16-23 (OPT) I-REGISTER I3
+14    HOLDING REG 16-23        I-REGISTER I2
+13    ADDER CYCLER 16-23       I-REGISTER I1
+12    MQZ REG 16-23            I-REGISTER I0
+11    O & OS REGISTER          ROM 10
+10    REQ STROBE W/O TERM      ROM 11
+ 9    BRANCH COND #1           ROM 12
+ 8                             ROM 13
+ 7    SPECIAL FUNC #1          ROM 14
+ 6    SPECIAL FUNC #2          ROM 15
+ 5    CONTROL LOGIC            ROM 16
+ 4    MEMORY INTERFACE         ROM 17
+ 3    MP TO LOC CORE CC        ROM 30
+ 2    MP TO MPMBM CABLE CARD   ROM 31
+ 1    LOCAL CONTROL            ROM 32

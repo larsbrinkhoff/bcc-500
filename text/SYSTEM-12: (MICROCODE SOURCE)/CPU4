@@ -1,0 +1,244 @@
+*
+*
+*  MAIN INSTRUCTION TABLE
+*
+           ORG 1400B;
+TI:        IR←X←7, .LQY, GOTO FIXTRP;             *  HLT
+       CALL 1776B;             *ILLEGAL MICRO INSTRUCTION
+           Z←P←P+1, DGOTO NX2;                    *  LDA
+           RES←AR←M;
+           Z←P←P+1, DGOTO NX2;                    *  LDB
+           RES←BR←M;
+           Z←P←P+1, DGOTO NX2;                    *  LDX
+           XR←M;
+           Q←SR, CALL DBL IF AORB;                *  LDD
+           AR←M, R0←S←R6+1, GOTO LDD1;         
+           RESETCM, DGOTO NX2;                    *  EAX
+           XR←Z, Z←P←P+1, GOTO BRUA IF A;
+           Z←P←P+1, DGOTO NX2;                    *  LNX
+           XR← NOT M+1;
+           K←Q, DGOTO XMAA;                       *  XMA
+           GOTO TI IF A;
+           Z←P←P+1, DGOTO NX2;                    *  AND
+           RES←AR←M AND Q;
+           Z←P←P+1, DGOTO NX2;                    *  IOR
+           RES←AR←M OR Q;
+EOR:       Z←P←P+1, DGOTO NX2;                    *  EOR
+           RES←AR←M EOR Q;
+           Q←40B, Z←SR, DGOTO STD1;               *  STD
+           K←R6, M←Z AND NOT Q, GOTO CSTORE IF R0[2];
+STFX:      IR←M←BR, Z←Q, SETBB, DGOTO STF1;       *  STF
+           K←ER, Q←7777B, SETBB, CALL FROUND;
+           M←Q, GOTO STRFLD IF ST;                *  STA
+           STORE, Z←P←P+1, GOTO NX2;
+           M←BR, GOTO STRFLD IF ST;               *  STB
+           STORE, Z←P←P+1, GOTO NX2;
+           M←XR, GOTO STRFLD IF ST;               *  STX
+           STORE, Z←P←P+1, GOTO NX2;
+           Z←P←P+1, DGOTO NX2;                    *  ADD
+           RES←AR←M+Q, ROV;
+SUCA:      Z←P←P+1, DGOTO NX2;                    *  SUB
+           RES←AR←Q-M, ROV;
+           GOTO ADCA IF CAR;                      *  ADC
+           RES←AR←M+Q, ROV, GOTO NX1;
+           GOTO SUCA IF CAR;                      *  SUC
+           RES←AR←NOT M+Q, ROV, GOTO NX1;
+           K←M←M+Q, ROV, DGOTO XMAA;              *  ADM
+           GOTO TI IF A;
+           Q←XR, DGOTO NX2;                       *  ADX
+           XR←Q+M, Z←P←P+1;
+           AR←RES←M←M+1, ROV, GOTO STRFLD IF ST;  *  MIN
+           STORE, Z←P←P+1, GOTO NX2;
+           AR←RES←M←M-1, ROV, GOTO STRFLD IF ST;  *  MDC
+           STORE, Z←P←P+1, GOTO NX2;
+* WHEN A SCRATCHPAD IS SPECIFIED BUT LOADING OVERRIDDEN, THE MULTIPLIER
+* IS LOADED INSTEAD.
+MUL:           MH1←Q, K←0, DGOTO MUL1, .LSPX←0;   *  MUL
+           M, R0←AR, CLEARTOV, GOTO MUL2 IF X<0; *I.E., IF MULTIPLIER IS <0;
+DIV:       IR←Q←M, Z←M←AR, ABCD0, DGOTO DIV1;     *  DIV
+           S←M EOR Q, Z←BR, SETA, GOTO DIV11 IF Z<0;
+           RES←Q←Q-M, M←4B7, HROV, DGOTO NX2;     *  ICP
+           Z←P←P+1, GOTO ICP1 IF OVFLW;
+           Z←P←P+1, DGOTO NX2;                    *  CPZ
+           RES←M;
+           Z←P←P+1, DGOTO NX2;                    *  CMZ
+           RES←M AND Q;
+           IR←R0, DGOTO ISD1;                     *  ISD
+           Q←Z←M, R0←R6+1, CALL DBL IF AORB;
+           R0←R6+1, DGOTO DSD1;                   *  DSD
+           Z←M, CALL DBL IF AORB;
+           S←Z, Q←7B7, ABCD0, DGOTO EXUA;         *  EXU
+           ILIM←0, GOTO TOSP IF INTRPT1;
+           Z←M, Q←77B, CLEARA, DGOTO ASDL;        *  ASHD
+           M←BR, Z←Q AND M, CLEARTOV, GOTO ASDR IF Z<0;
+           Z←M, Q←77B, CLEARA, DGOTO ASAL;        *  ASHA
+           Z←Q AND M, CLEARTOV, GOTO ASAR IF Z<0;
+           Z←M, Q←77B, SETA, DGOTO ASDL;          *  LSHD
+           Z←Q AND M, M←BR, GOTO ASDR IF Z<0;
+           Z←M, Q←77B, SETA, DGOTO ASAL;          *  LSHA
+           Z←Q AND M, GOTO ASAR IF Z<0;
+           Z←M, Q←77B, DGOTO CYDL;                *  CYD
+           Z←Q AND M, GOTO CYDR IF Z<0;
+           Z←M, Q←77B, DGOTO CYAL;                *  CYA
+           Z←Q AND M, M←24, GOTO CYAR IF Z<0;
+           DGOTO TSB1;                            *  TSB
+           IR←M, CALL GETSR;
+           Q←R6 MRG 4B6, RESETCM, DGOTO NX2;      *  LAX
+           XR←Q, Z←P←P+1, GOTO BRUA IF A;
+BRU:       P←Z, R0+1, TAKE, DGOTO NX3;            *  BRU
+           R6←M, Q←7B7, SABCDE0, GOTO BRUA IF INTRPT;
+           Z←RES, DGOTO BRU;                      *  BLT
+           Z←R6, GOTO SKIP IF Z>=0;
+           Z←RES, DGOTO BRU;                      *  BEQ
+           Z←R6, GOTO SKIP IF Z#0;
+           Z←RES, DGOTO BRU;                      *  BLE
+           Z←R6, GOTO SKIP IF Z>0;
+           Z←RES, DGOTO BRU;                      *  BGT
+           Z←R6, GOTO SKIP IF Z<=0;
+           Z←RES, DGOTO BRU;                      *  BNE
+           Z←R6, GOTO SKIP IF Z=0;
+           Z←RES, DGOTO BRU;                      *  BGE
+           Z←R6, GOTO SKIP IF Z<0;
+           Q←GR, Z←200B, SETBB, DGOTO BLL1;       *  BLL
+           NEWG←Q, Q←77B6, CALL DBL IF AORB;
+           Q←GR, Z←40000200B, SETBB, DGOTO BLL1;  *  BLLN
+           NEWG←Q, Q←77B6, CALL DBL IF AORB;
+           IR←XR, DGOTO BRXA;                     *  BRX
+           Z←IR+1, DGOTO BRU;
+           Z←P+1, DGOTO BRU;                      *  BSX
+           XR←Z, Z←R6;
+           IR←M, Q←1, DGOTO SRS1;                 *  SRS
+           R0←M AND Q, CALL GETSR;
+           IR←XR, Q←7B7, SETBB, DGOTO EAC1;       *  EAC
+           S←Z, CALL DBL IF AORB;
+           GOTO TI;                               *  65B
+ADCA:      RES←AR←M+Q, .LOC, ROV, GOTO NX1;
+           GOTO TI;                               *  66B
+BRXA:      Z←R6, XR←Z, GOTO SKIP IF Z>=0;
+           GOTO TI;                               *  67B
+       CALL 1776B;             *ILLEGAL MICROINSTRUCTION
+           SETBB, DGOTO FLX1;                     *  FLX
+           Q←2B7, SETBB, CALL FOP;
+           Q←2B7, SETBB, CALL FOP;                *  FLD
+           ER←Q, SETBB, GOTO FLD1;
+           IR←Q, Q←2B7, SETBB, CALL FOP;          *  FCP
+           RES←Q←IR MRG 1, M←Q, SETBB, GOTO FCP1;
+           IR←Q, Q←2B7, SETBB, CALL FOP;          *  FAD
+           Z←ER, R0←Q, SETBB, GOTO FAD1;
+           SETBB, DGOTO FSB1;                     *  FSB
+           IR←Q, Q←2B7, SETBB, CALL FOP;
+           Q←2B7, CALL DBL IF AORB;               *  FMP
+           M←M EOR Q, Q←2001B4, SETBB, GOTO FMUL1;
+           Q←2B7, SETBB, CALL FOP;                *  FDV
+           S←Z, SETBB, GOTO FDIV1;
+           R0←NOT M, Q←MAXOPR, SETBB, DGOTO OPR1; *  OPR
+           R0←M-Q, Q←R0+1, SETBB, GOTO SYSCLL IF R0>=0;
+*
+*
+           ORG 1600B;
+*
+*  TABLE OF INSTRUCTIONS IN 940 COMPATIBILITY MODE
+*    H1 = EFFECTIVE ADDRESS
+*    H2 = INSTRUCTION WORD
+*    H3 = EFFECTIVE ADDRESS BEFORE X MODIFICATION
+*    M = CONTENTS(H1), BUT NO CHECK HAS BEEN EXECUTED
+*      FOR PAGE-FAULT
+*    Q = A REGISTER, R0 = MAP(H1)
+*  A DGOTO ASGNA IS IN PROGRESS
+*
+           GOTO TI;                               *  HLT
+           P←Z, Z←H1, GOTO BRU1 IF R0>=0, ABCD0;    *  BRU
+           GOTO TI;                               *  02
+           GOTO TI1;                              *  03
+           GOTO TI;                               *  04
+           GOTO TI1;                              *  05
+           GOTO TI;                               *  06
+           GOTO TI1;                              *  07
+           GOTO TI;                               *  10
+           GOTO TI1;                              *  11
+           GOTO TI;                               *  12
+           GOTO TI1;                              *  13
+           M←M AND Q;                             *  ETR
+           GOTO TI1;                              *  15
+           M←M OR Q;                              *  MRG
+           M←M EOR Q;                             *  EOR
+           Z←P←P+1, GOTO NY2;                     *  NOP
+           GOTO TI;                               *  21
+           Q←Z←H2, M←20B, GOTO ROV1;              *  ROV,REO,OVT
+           GOTO NY3 IF R0>=0;                     *  EXU
+           GOTO TI;                               *  24
+           GOTO TI1;                              *  25
+           GOTO TI;                               *  26
+           GOTO TI1;                              *  27
+           GOTO TI;                               *  30
+           GOTO TI1;                              *  31
+           GOTO TI;                               *  32
+           GOTO TI1;                              *  33
+           GOTO TI;                               *  34
+           M←Q,   GOTO ST940 IF R0>=0, RESETCM;   *  STA
+           M←BR,   GOTO ST940 IF R0>=0, RESETCM;  *  STB
+           M←XR,   GOTO ST940 IF R0>=0, RESETCM;  *  STX
+           GOTO TI;                               *  40
+           Z←XR, GOTO BRX1;                       *  BRX
+           GOTO TI;                               *  42
+           M←P, Q←432B5,  GOTO BRM1 IF R0>=0, RESETCM;  
+           GOTO TI;                               *  44
+           GOTO TI;                               *  45
+RCH:       M←Z←H2, Q←R0←H1←0, ABCD0, GOTO RCH1;   *  RCH
+           GOTO TI;                               *  47
+           Z←M EOR Q, GOTO SKE1 IF R0>=0;         *  SKE
+           Z←M←M+1, Q←7774B4, GOTO BRR1 IF R0>=0; *  BRR
+           Q←BR, GOTO SKB1 IF R0>=0;              *  SKB
+           Z←M, GOTO SKN1 IF R0>=0;               *  SKN
+SUB:       M←Q-M, ROV, Z←XR, GOTO ADD1 IF R0>=0;  *  SUB
+ADD:       M←Q+M, ROV, Z←XR, GOTO ADD1 IF R0>=0;  *  ADD
+           Z←XR, CLEAROV, GOTO SUC1 IF R0>=0;     *  SUC
+           Z←XR, CLEAROV, GOTO ADC1 IF R0>=0;     *  ADC
+           M←M-1, ROV, GOTO SKR1 IF R0>=0;        *  SKR
+           M←M+1, ROV, GOTO ST940 IF R0>=0;       *  MIN
+           H1←Q, GOTO XMA1 IF R0>=0;              *  XMA
+           M←Q+M, ROV, GOTO ST940 IF R0>=0;       *  ADM
+           GOTO MUL IF R0>=0;                     *  MUL
+           GOTO DIV IF R0>=0;                     *  DIV
+RS:        RESETCM, M←H3, Q←777B, GOTO RS1;       *  RSHIFT
+LS:        RESETCM, M←H3, Q←777B, GOTO LS1;       *  LSHIFT
+           M←M EOR Q, Q←BR, GOTO SKM1 IF R0>=0;   *  SKM
+           Q←0, GOTO LDX1 IF R0>=0;               *  LDX
+           Z←M AND Q, GOTO SKE1 IF R0>=0;         *  SKA
+           Z←M-Q, HROV, GOTO SKG1 IF R0>=0;       *  SKG
+           Z←M, Q←777B, GOTO SKD1 IF R0>=0;       *  SKD
+           GOTO LDB1 IF R0>=0;                    *  LDB
+           R0←R0;                                 *  LDA
+           M←XR, Q←37777B, RESETCM, GOTO EAX1;    *  EAX
+*
+* 
+*   THIS TEXT IS BEING ADDED TO THE QUASI-COPY OF RECORD
+*   FOR THE CPU 1.5, AND INCLUDES ADDITIONAL SOURCE
+*   INSTRUCTIONS FOR LOCATIONS 1700B TO 1714B....  JD 4/12/73
+           ORG 1700B;
+BREAK:     Q←12343210B, FETCH, DGOTO NEXT;
+           Q EOR M, GOTO TOSP IF LB=0;
+INDA:      M←M AND Q ! Z AND NOT Q, GOTO NY4;
+LDM1:      ZTOMAP, Z←P←P+1, GOTO NX2;
+IDLE6:     2, UNPROTECT, GOTO IDLE2;
+           RES←0, GOTO NX1;
+           GOTO NY8 IF XPAGE;
+           GOTO TOSP;
+           P←Z, GOTO BRU1 IF R0>=0;
+            GOTO PAGEF;
+           Q←E1, GSB;
+           Q←Q LCY 2, R0←P+1, DGOTO NY8;
+           Q LCY 12, Q←7B7, GOTO NX6 IF X>=0;
+PATCH:     START/STOP, GOTO IDLE6;
+BMACC1: Z← R0, Q← 3777B;
+       MAPAD, M←E1, IR←1;
+       PARAM←Z AND Q!M AND NOT Q, GOTO MACC;
+       M←PRTINDEX, CALL 1775B;
+       M←UN0, CALL 1775B;
+       M←UN1, CALL 1775B;
+       GOTO 744B;
+       ORG 1775B;
+       R0←R0+1, STORE, RETURN;
+       M←OS, R0←2456B+4*CPUNO, STORE;
+       GOTO SSTATE, STOP, .C←6B7;
+           END;

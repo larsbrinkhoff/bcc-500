@@ -1,0 +1,312 @@
+**RUNOFF 
+                                                               Page  1
+
+
+              The general procedure for producing mailing  labels  on
+         the BCC 500 is:
+
+              1.  Prepare a file consisting of all of the addressees.
+                   Usually  this  file  will  have been prepared pre-
+                   viously but may require updating.  The text editor
+                   (QED) is used for this purpose.
+
+              2.  Retrieve and run the  label-making  program.   This
+                   program  re-formats  the  addressee  file from one
+                   which is convenient for creation and  modification
+                   via  a  terminal  into  one  which fits a standard
+                   sheet of mailing labels.
+
+              3.  Install the mailing label forms in the line  print-
+                   er.  The processed addressee file (the output file
+                   of the label-maker program) is then printed on the
+                   forms,  after  which the line printer is re-fitted
+                   with  normal  paper   and   restored   to   normal
+                   operation.
+
+              Detailed instructions for each of the three steps  fol-
+         low:
+
+
+
+         1.__Preparation_of_the_Addressees_File.         __  ___________ __ ___ __________ _____
+
+              The file is prepared using  the  text  editor.   It  is
+         possible  (and  it  has been done successfully) to copy into
+         the system via magnetic tape an existing mailing list  file.
+         For  example,  many  such  lists exist in punched-card form.
+         Without any further program preparation, such a  file  (con-
+         sisting  of  boxes  of  cards)  can be read in the Computing
+         Center and transferred to 800 BPI,  9-track  magnetic  tape.
+         The  BCC-500  can copy this tape into a file consisting of a
+         line of text for each card read.  The text editor  can  then
+         be  used  to make any modifications required to get the file
+         into correct format for the label-making program.
+
+              The format of the addressee file is quite simple.   The
+         file  consists  of  an  entry (a few lines of text) for each
+         mailing label to be printed.   Entries  are  separated  from
+         each  other  by  a single line which begins with one or more
+         asterisks.  After the initial asterisk  the  separator  line
+         may  contain any information which might be later useful for
+         file maintenance.  The size of a mailing label restricts the
+         number  of  lines  in  each  entry  to be no more than five.
+         Similarly, each line may have in it no more than 39  charac-
+         ters.   If  either  of  these  restrictions is violated, the
+                                                               Page  2
+
+
+         label-making program will truncate the  information  to  fit
+         within the available space on the label.
+
+              The following example shows the first few lines of such
+         a file.
+
+
+         ROBERT P. ABBOTT
+         LAWRENCE LIVERMORE LAB
+         BOX 808
+         LIVERMORE, CALIFORNIA 94550
+         ***
+         DR. SAUL AMAREL
+         DEPT. OF COMPUTER SCIENCE
+         RUTGERS UNIVERSITY
+         HILL CENTER FOR MATH SCIENCES
+         NEW BRUNSWICK, NEW JERSEY  08903
+         ***
+         DR. M. C. ANDREWS
+         IBM RESEARCH LABORATORY
+         DATA COMMUNICATIONS CENTER
+         SAEUMERSTRASSE 4
+         CH-8803 RUSCHLIKON, SWITZERLAND
+         ***
+
+              .
+              .
+              .
+
+
+              The addressee file  can  now  be  considered  complete.
+         Mailing  lists  prepared from it will have identical form in
+         each label, i.e., the labels will be printed  in  upper-case
+         only.  Alternatively, the file can be processed further into
+         a format which is suitable for RUNOFF.  The RUNOFF output of
+         such  a  file  will  have upper- and lower-case letters; the
+         entries will appear more as if they had been typed  individ-
+         ually.
+
+              Of course the file could  have  been  created  in  this
+         RUNOFF-compatible  format  initially.   It  is perhaps a bit
+         cumbersome to do this for a large number  of  entries,  how-
+         ever;  and  it  would  be most trying to modify a previously
+         existing upper-case file or one just  copied  from  magnetic
+         tape.   Thus  a  program has been prepared to capitalize (in
+         the RUNOFF sense) all words beginning with  letters  in  the
+         entries.  This is generally correct; but it will not produce
+         perfect results.  The program is intended merely  to  reduce
+         the  amount  of  manual  editing  of the file down to a very
+         small level.  The program -- called  "CAPS"  --  copies  the
+         addressee file onto a new file, transforming the information
+                                                               Page  3
+
+
+         from a form like that shown above into one like the  follow-
+         ing:
+
+
+         .NOFILL
+         .PAGING MODE OFF
+         .LAYOUT 1,80,6,66,79,0
+         .LINE LAYOUT 1,72
+         /ROBERT /P. /ABBOTT
+         /LAWRENCE /LIVERMORE /LAB
+         /BOX 808
+         /LIVERMORE, /CALIFORNIA 94550
+         ***
+         /DR. /SAUL /AMAREL
+         /DEPT. /OF /COMPUTER /SCIENCE
+         /RUTGERS /UNIVERSITY
+         /HILL /CENTER /FOR /MATH /SCIENCES
+         /NEW /BRUNSWICK, /NEW /JERSEY  08903
+         ***
+         /DR. /M. /C. /ANDREWS
+         /IBM /RESEARCH /LABORATORY
+         /DATA /COMMUNICATIONS /CENTER
+         /SAEUMERSTRASSE 4
+         /CH-8803 /RUSCHLIKON, /SWITZERLAND
+         ***
+
+              .
+              .
+              .
+
+
+              To use CAPS, first retrieve the file from PFS (the file
+         is  a  940  DUMP  file).   Type  the system command "RECOVER
+         CAPS".  Then type "START;G".  CAPS first asks for  an  input
+         file  name.   Type  the name of the totally upper-case file,
+         followed by ".".  Next CAPS asks for an  output  file  name.
+         Type  a new file name surrounded by double-quotes and then a
+         period.  The program then does its work and exits by ringing
+         the bell on the terminal and typing an extra carriage return
+         and line feed.  Return to the system command level by typing
+         "%F".
+
+              The (new) addressee file is now in a form suitable  for
+         RUNOFF.   Processing  the file with RUNOFF will yield a file
+         which needs only re-formatting to  fit  the  mailing  labels
+         form.  If the addressee file has just been processed by CAPS
+         however, it should first be  processed  by  RUNOFF  and  the
+         output printed for proofreading to see where further editing
+         of the addressee file may be required.  After final editing,
+         the addressee file will be saved on the disk under PFS.  The
+         text editor will be used  subsequently  to  make  additions,
+                                                               Page  4
+
+
+         deletions,  and  changes to the file.  The editing should be
+         done such that each of the new or modified entries appear as
+         in  the  second  case  given  above.   The  CAPS  program is
+         intended to be used only  once  in  the  preparation  an  an
+         addressee file.
+
+
+
+         2.__Making_the_Actual_Labels_File.         __  ______ ___ ______ ______ _____
+
+              Beginning with a valid addressee file, the  first  step
+         is  to process the file with RUNOFF.  (That is, assuming the
+         file is in the form of RUNOFF input; otherwise, one can skip
+         down  to  the re-formatting paragraph below.)  This is quite
+         easy.  RUNOFF is a subsystem, so one merely types  the  name
+         "RUNOFF"  as  a  system  command (i.e., after the "@" sign).
+         When RUNOFF becomes active it asks for an input file.   Type
+         the  name  of  the  addressee file, followed by ".".  Typing
+         errors can be cancelled with control-A.   After  doing  some
+         processing,  RUNOFF will ask for the name of an output file.
+         Do NOT give the name of the input file; give the name  of  a
+         new  file  (and  surround  it with double-quotes).  The file
+         thus produced will have upper- and lower-case characters  in
+         it  and is almost ready for re-formatting.  But it will also
+         have a couple of undesirable features in it which should  be
+         removed  before  this  step.   The easiest way to do this is
+         with QED.
+
+              Read in the file and delete the first line.  (The  line
+         will  say  "**RUNOFF"  and  is  a command from RUNOFF to the
+         printing program to let it know what  kind  of  file  it  is
+         about  to  print.   We  don't want the line since we are not
+         going to print this file.)  Second, delete  every  control-L
+         in  the  file.  (These are likewise page eject commands from
+         RUNOFF to the printing program and are out of  place  here.)
+         Simply  say  to  QED, "@SUBSTITUTE // FOR /<control-L>/.  To
+         type the control-L in this command, you must type  control-V
+         followed  by  control-L.   After deleting the first line and
+         removing all the control-L's, write the file back  out.   It
+         is now ready for re-formatting and appears as follows:
+
+
+         Robert P. Abbott
+         Lawrence Livermore Lab
+         Box 808
+         Livermore, California 94550
+         ***
+         Dr. Saul Amarel
+         Dept. of Computer Science
+         Rutgers University
+         Hill Center for Math Sciences
+                                                               Page  5
+
+
+         New Brunswick, New Jersey  08903
+         ***
+         Dr. M. C. Andrews
+         IBM Research Laboratory
+         Data Communications Center
+         Saeumerstrasse 4
+         Ch-8803 Ruschlikon, Switzerland
+         ***
+
+              .
+              .
+              .
+
+
+              Re-formatting  is  done  by  means   of   the   program
+         LABEL-MAKER.  After getting the program from the disk (it is
+         in the form of a 940 DUMP file),  type  the  system  command
+         "RECOVER  LABEL-MAKER".  Then type START;G.  Like RUNOFF the
+         program asks for an input file.  Type the name of  the  file
+         just  made  and  edited, followed by ".".  The programs then
+         asks for an output file name.  Type the name of  yet  a  new
+         file.   The  program  then copies information from its input
+         file onto its output file, re-formatting it  so  that  three
+         columns  are made and placed exactly where labels will be on
+         the label forms.  The program will terminate by ringing  the
+         terminal  bell  and  doing an extra carriage return and line
+         feed.  Other label files can be made, each  time  by  typing
+         "START; G"  and  repeating the file name business.  When the
+         last file has been processed, exit to  the  command-language
+         level of the system by typing "%F".
+
+
+
+         3.__Printing_the_Labels.         __  ________ ___ _______
+
+              The final step must be performed in Holmes Hall.   Pos-
+         sibly  someone  working with the system regularly can assist
+         in setting up the printer.  Anyone can do it, however,  once
+         having  been  shown how.  These instructions are intended as
+         reminders for someone previously checked out on the  proced-
+         ure.
+
+              The line printer should not be in use.  Type  "PREEMPT"
+         to  KDF  (the  peripheral devices program) to insure that no
+         one will start a print going while you are  setting  up  the
+         printer.
+                                                               Page  6
+
+
+              Turn on the printer, hit the TOP OF FORM  button,  open
+         the printer cabinet, and remove the paper from it.  Move the
+         left tractor mechanisms about  1"  to  the  right.   Install
+         label forms on the left tractors only and place them so that
+         the left edge of the  paper  just  barely  covers  the  slot
+         containing  the  print hammers.  Make sure the upper tractor
+         is placed so that the paper  is  perfectly  vertical.   Then
+         move the right tractors so they engage the forms properly.
+
+              Log in the system  on  one  of  the  nearby  terminals,
+         retrieve your print file if it is presently on PFS, and also
+         retrieve the file "ALIGNMENT-TXT".  Turn the printer  platen
+         so  that  the  gap  between labels is aligned with the black
+         top-of-form alignment mark on the left side of the  printer.
+         Close  the  printer  cabinet, hit the PRINT button, and then
+         type to KDF, "PRINT @<your  name>:ALIGNMENT-TXT, A".   Allow
+         only  a few lines to print and then hit the STOP button.  on
+         the printer.  Inspect the printing for  vertical  alignment.
+         If  it  is  not correct (there really isn't much tolerance),
+         make a slight correction of the printer  platen,  hit  PRINT
+         again  and  let  a few more lines print before hitting STOP.
+         Repeat as required until  vertical  alignment  is  achieved;
+         then  let  the  rest of the file print.  It is less than one
+         page long and will not waste many labels.  Now return to KDF
+         and  type  "PRINT  @<your  name>:<your file>,A".  The labels
+         will now be printed.  This can be done  for  as  many  label
+         print  files as exist at the moment, after which the printer
+         must be restored to normal operation.
+
+              Remove the label form paper and push the left  tractors
+         back  into  normal  position.  There is a groove on the rods
+         holding the tractor mechanisms into  which  a  detent  fits.
+         Push  each  tractor  all  the  way to the left and then back
+         right just enough that a "click" is felt.   Push  the  right
+         tractors  back  toward  the  right.   Place the normal paper
+         forms in the left tractors and then adjust the  right  trac-
+         tors  so  that  the paper is held properly; the teeth in the
+         right mechanisms should be exactly  in  the  center  of  the
+         holes.   Hit  the  TOP OF FORM button and move the platen so
+         that the nearest crease in the paper  is  aligned  with  the
+         black  alignment mark to the left of the printer.  Close the
+         printer cabinet and type "UNPREEMPT" to KDF.  If no printing
+         begins, turn off the printer.
+→→

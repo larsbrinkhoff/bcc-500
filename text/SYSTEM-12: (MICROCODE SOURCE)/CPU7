@@ -1,0 +1,256 @@
+           ORG 2750B;
+BASEFP:    R0←R0;
+           Q←Q LCY 12, R0←1, GOTO FP2;
+           Q←Q LCY 12, R0←3, GOTO FP2;
+           Q←Q LCY 12, R0←7, GOTO FP2;
+           Z←Q←IR←RES, GOTO FP1;
+           Z←P←P+1, ER←0, SETBA, GOTO NX2;
+           AR←RES←6B7, M←K;
+           Q←1B4, DGOTO TFO;
+           ER←M←M+Q;
+*
+FP1:       CALL FRSH;
+           HROV, ER←Q;
+           BR←M, DGOTO FPT;
+           RES←AR←Z, DGOTO TFOL;
+*
+FP2:       Z←K, K←Z;
+           ER←Z-Q, Z←K;
+           M←M LCL Z;
+           M←M LCH Z, Q←RES;
+           Q←Q LCL Z;
+           Z←Q LCH Z, Q←R0;
+           AR←RES←Z←M AND Q ! Z AND NOT Q, DGOTO FPT;
+           BR←M←M AND NOT Q, DGOTO TFOL;
+
+FAD1:      Q←Z-Q, R6←BR, GOTO XCH IF X<0;
+           Z←Q LCY 12, Q←24;
+FAD2:      Z←Q-Z, GOTO FAD5 IF X<0;
+*
+FAD3:      M←M LCH Z, GOTO FAD6 IF Z<0;
+           R0←M←M LCL Z, Q←S;
+           M←Q LCH Z;
+           DGOTO Z MRG BASEMSK;
+           SETBB, DGOTO *+1;
+           Z←M LCL Z,M←R0;
+           M←M AND Q ! Z AND NOT Q, S, GOTO FAD7 IF Y<0;
+           Z←Z AND Q, Q←R6;
+FAD4:      BR←M+Q, HROV, Q←IR;
+FAD9:      GOTO FAD8 IF CARRY;
+           AR←RES←Z←Z+Q, HROV, DGOTO TFOL;
+FPT:       M, .VCY, Q←Z←E1, GOTO FNORM IF FPN;
+FNORM:     K←ER, GOTO Q MRG BASEFP;
+*
+XCH:       R6←M, M←R6;
+           Q←R0, Z←Q LCY 12 MRG 7777B4;
+           ER←Q, Q←IR;
+           IR←S;
+           S←Q, Q←24, DGOTO FAD3;
+           Z←Q+Z, GOTO FAD5 IF X<0;
+*
+FAD5:  Z←Z+Q, M←S, .VCY, DGOTO FAD3 IF Y<0;
+       S←-1;
+       S←0, GOTO FAD3;
+*
+FAD6:      M←Z←0, Q←R6, GOTO FAD4;
+*
+FAD7:      Z←Z OR NOT Q, Q←R6, DGOTO FAD9;
+           BR←M+Q, HROV, Q←IR;
+*
+FAD8:      AR←RES←Z←Z+Q, .LOC, HROV, DGOTO TFOL;
+           M, .VCY, Q←Z←E1, GOTO FNORM IF FPN;
+*
+FSB1:      M←NOT M+1, HROV;
+           S←NOT Z, Z←ER, DGOTO FAD1;
+           R0←Q, GOTO FSB2 IF CARRY;
+FSB2:      S←S+1, GOTO FAD1;
+FLD1:      BR←M, SETBA, P←P+1, DGOTO NX2;
+           RES←AR←Z, Z←P;
+FMUL1:     M EOR Q, S←Q←3777B4, GOTO UFN IF LB=0;
+           R0←R6+1, Q←M AND Q, DGOTO FMUL5 IF M[1];
+           MFETCH, Z←M, R0←E1, .VCY, GOTO BPAGEF IF Y<0;
+FMUL6:     K←Q, GOTO FMUL2 IF Z>=0;
+           M←NOT M+1, HROV, S←4B7, CALL FNS;
+FMUL2:     Q←Z;
+           M←M LCY 12;
+           Z←Q LCY 12, Q←7777B;
+           MH1←Z AND NOT Q ! M AND Q, .LSPX←0;
+           ML1←M, Q←7777B, .LSPX←0;
+           Z←AR;
+           M←IR←BR, CALL FROUND;
+           R0←Q←S, GOTO FMUL3 IF Z>=0;
+           R0←NOT Q;
+           M←NOT M+1, HROV, CALL FNS;
+FMUL3:     ML2←M←M LCY 1, .LSPX←0;
+           Q←Z;
+           Z←Q LCY 1, Q←1;
+           MH2←Z AND NOT Q ! M AND Q, Q←K, .LSPX←0;
+           Z←ER, M←1B4;
+           Q←Z+Q;
+           ER←Q+M, HROV;
+*  MULTIPLICATION IS COMPLETED, RESULT IS IN MHR,MMR AND MLR
+           M←MMR, DGOTO FMUL4 IF R0<0, .TSPY←0;
+           Z←MHR, .TSPY←0;
+           BR←M, DGOTO FPT;
+           RES←AR←Z, DGOTO TFOL;
+*
+FMUL4:     M←NOT M+1, HROV, CALL FNS;
+           BR←M+0, HROV, DGOTO FPT;
+           RES←AR←Z, DGOTO TFOL;
+FMUL5:     Q←Q MRG 4B7, GOTO FMUL6;
+*
+FDIV1:     K←NOT Z, GOTO FDIV2 IF Z>=0;
+           M←NOT M+1, HROV, CALL FNS;
+FDIV2:     DV1←Z, IR←0, GOTO FDIVZ IF Z=0;
+           DV2←M, R6←0;
+FDIV3:     Z←ER, M←1B4;
+           Z←Z-M, RES←37777732B;
+           ER←Z-Q;
+           Z←AR;
+           M←BR, GOTO FDIVD IF Z>=0;
+           S←K, M←NOT M+1, HROV, CALL FNS;
+FDIVD:     S←Z, Z←S;
+           DSIGN←Z;
+           Z←K←M, M←S, DGOTO FDIV7;
+           Q←DV2;
+*
+FDIV4:     M←M LCY 1, Q←R6;
+           Z←Q LCY 1, Q←1, DGOTO FDIV5 IF R0>=0;
+           IR←M AND NOT Q ! Z AND Q;
+           R6←Z AND NOT Q, Q←K, DGOTO FDIV6;
+           Z←Q LCY 1, M←S;
+FDIV5:     R6←Z AND NOT Q MRG 2B3, Q←LO;
+           Z←Q LCY 1, M←R0;
+FDIV6:     M←M LCY 1, Q←1;
+           S←M←M AND NOT Q ! Z AND Q, RES, GOTO FDIV9 IF Y<0;
+           K←Z←Z AND NOT Q, Q←DV2;
+FDIV7:     Z←Z-Q, HROV, Q←DV1;
+           LO←Z, RES←RES+1, GOTO FDIV8 IF CARRY;
+           R0←M+NOT Q, M←IR, GOTO FDIV4;
+FDIV8:     R0←M-Q, M←IR, GOTO FDIV4;
+*
+FDIV9:     Z←K, Z←M;
+           Z←IR, S←1B3, DGOTO FDIVA IF Z#0;
+           Q←K←ER;
+           S←0;
+FDIVA:     M←R6, CALL FRSH IF Z<0;
+           ER←Q, Q←S;
+           DSIGN, GOTO FDIVC IF Y<0;
+FDIVB:     BR←M OR Q, HROV, DGOTO FPT;
+           RES←AR←Z, DGOTO TFOL;
+FDIVC:     M←NOT M+1, HROV, CALL FNS;
+           GOTO FDIVB;
+
+FCP1:      Z EOR Q, Z←ER, SETBA, GOTO NX1 IF X<0;
+           Z←Z-M, M←BR;
+           RES←Z EOR Q, Q←K, SETBA, GOTO NX1 IF Z#0;
+           IR←M-Q, HROV, M←AR;
+           Q←S, GOTO FCP2 IF CARRY;
+           RES←Z←M+NOT Q, GOTO FCP3;
+FCP2:      RES←Z←M-Q;
+FCP3:      Z←IR, SETBA, GOTO NX1 IF Z#0;
+           Z←P←P+1, SETBA, GOTO NX2 IF Z=0;
+           RES←1, SETBA, GOTO NX2;
+
+*  ROUND TO NEAREST NUMBER
+*  IR = M = LOW ORD., Z = HIGH, Q = 7777B, K = EXP
+*
+FROUND:    M←Q AND M, Q←2B3;
+           Q EOR M, M←IR, RETURN IF LB=0;
+           M←Q+M, HROV, Q←3777B, DRETURN;
+           M←M AND NOT Q, GOTO FRO1 IF CARRY;
+FRO1:      Z←Z+1, HROV, DRETURN;
+           GOTO FRSH IF OVFLW, IR←Z;
+*
+*  SHIFT (Z,M) RIGHT 1.  IR = Z, K = EXP
+*
+FRSH:      M←M LCY 20;
+           M←M LCY 3, Q←IR;
+           Q←Q LCY 20;
+           Z←Q LCY 3, Q←4B7;
+           IR←M AND NOT Q ! Z AND Q, M←IR;
+           M←M AND Q;
+           Z←Z AND NOT Q ! M EOR Q, M←1B4;
+           Q←K, DRETURN;
+           Q←K←M+Q, M←IR;
+*
+
+STF1:      Q←S←Z, SETBA, GOTO ROIA IF D;
+           M←M LCY 12, R0, .VCY, GOTO BCSTORE IF STERR;
+           Z←M LCY 1;
+           Q←Q LCY 12;
+           M←Q LCY 1, Q←17777B;
+           IR←Z AND Q ! M AND NOT Q, Z←K;
+           Q←7777B, S, DGOTO STF2 IF Y<0;
+           M←M AND Q ! Z MRG 4B7, Q←0;
+           Q←4B7;
+STF2:      Q←Q MRG 2B7;
+           Z←IR, M←M EOR Q, STORE;
+           M←Z, R0←R6+1, CALL BSTR1;
+           M←K, DGOTO TFO;
+           GOTO BLL84 IF C;
+*
+FIXS:      Q←Q LCY 12, IR←4B7, GOTO FIXS2 IF Z>=0;
+           M, IR←0, GOTO FIXS3 IF LB#0;
+           S←NOT Z+1, GOTO FIXS2;
+FIXS3:     S←NOT Z;
+FIXS2:     R6, M←22, GOTO FIXS1 IF Y<0;
+           R0←Q←M-Q, M←24;
+           Z←M-Q, M←S, GOTO FXTRP IF R0<0;
+           M←M LCL Z;
+           DGOTO Z MRG BASEMSK;
+           SETBB, DGOTO *+1;
+           M←M LCH Z;
+           Z←M AND Q, IR, RETURN IF Y<0;
+           Z←NOT M OR NOT Q+1, RETURN;
+FIXS1:     Z←0, RETURN;
+
+TFOL:      M←ER;
+TFO:       Z←P←P+1, Q←0, SETBA, GOTO NX2 IF M[0]=M[1];
+TFO1:      M, IR←2, .VCY, SETBA, GOTO RDTRAP IF X>=0;*  FOV
+           IR←3, SETBA, GOTO RDTRAP;                *  FUFL
+*
+FDIVZ:     IR←8, Q←0, SETBA, GOTO RDTRAP;
+FXTRP:     IR←7, Q←0, SETBA, GOTO RDTRAP;
+UFN:       IR←6, Q←0, SETBA, GOTO RDTRAP;
+
+FLX1:      CALL FIXS;
+           XR←Z, Z←P←P+1, SETBA, GOTO NX2;
+FIX1:      M←Q, R6←Q←ER, CALL FIXS;
+           AR←RES←Z, SETBA, GOTO NX1;
+FNA1:      AR←RES←NOT Z+1, SETBA, GOTO NX1 IF CARRY;
+           AR←RES←NOT Z, SETBA, GOTO NX1;
+FLOAT1:    RES←Z+0, HROV, DGOTO FPT;
+           ER←26B4, DGOTO TFOL;
+*
+FOP1:      FETCH;
+           SETBA, GOTO TI IF A;
+           CLEARA;
+FOP:       S←M←M EOR Q, Q←2001B4, GOTO FOP1 IF AORB;
+           M EOR Q, Q←3777B4, GOTO UFN IF LB=0;
+           R0←R6+1, Z←M AND Q;
+           Q←NOT M LCY 3 MRG 1B5, DGOTO FOP3 IF M[1];
+           MFETCH, R0←E1, .VCY, GOTO BPAGEF IF Y<0;
+           R6←Z;
+FOP2:      Z←NOT Q LCY 8, R0←S, DGOTO FOP4 IF Y<0;
+           M←M LCY 3, DGOTO *+1 IF R0<0;
+           M←M LCY 8, Q←3777B;
+           S←Z←Z AND NOT Q ! M AND Q, DRETURN;
+           K←M←M AND NOT Q, Q←R6;
+*
+FOP3:      R6←Z MRG 4B7, GOTO FOP2;
+*
+FOP4:      Z←Z MRG 4B7;
+*
+*
+*  FLOATING NEGATE, CALL:  M←NOT M+1, HROV, CALL FNS
+*
+FNS:       DRETURN;
+           Z←NOT Z, GOTO FNS1 IF CARRY;
+FNS1:      Z←Z+1, RETURN;
+           ALL;
+           ALL;
+           SETBA, CALL 1776B;   *ILLEGAL MICROINSTRUCTION
+
+*
+           END;

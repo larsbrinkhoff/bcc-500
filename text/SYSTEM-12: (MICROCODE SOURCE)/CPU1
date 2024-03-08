@@ -1,0 +1,389 @@
+*
+*
+           ORG  0;
+*
+*
+*  START OF THE CPU MICROCODE..
+           GOTO RSET1, E1;              *  RESET INSTRUCTION
+           P←Z←0, GOTO NX2;             *  DEBUGGING AID
+*
+*
+*
+*  THE FOLLOWING ACTIONS IMPLEMENT REL (TAG=7)
+*    ADDRESSING MODE.  TABLE BASEREL IS INDEXED
+*    EITHER WITH W[10,11] OR IAW[6,8].  TABLE
+*    BASEREL1 IS INDEXED WITH W[10,12] OR IAW[7,9].
+*    NOTE THAT BBASEREL = ABASEREL LCY1
+*    Z CONTAINS A MASK FOR THE CONSTANT DISPLACEMENT
+XIANREL:   Z←R0, R0←Z;
+           Z←IR, DGOTO Z;
+           Z←Q+Z, Q←R0, DGOTO ENDA1;
+XIIANREL:  Z←R0, R0←Z;
+           Z←IR, DGOTO Z;
+           Z←Q+Z, Q←R0, DGOTO IA;
+ABASEREL:  Z←LR, Q←Z, DGOTO ENDA1;           *  LR
+           Z←S, Q←Z, DGOTO ENDA1;            *  SR
+           Z←S, Q←Z, DGOTO IA;               *  ISR
+           Q←NOT M MRG 77774000B, Z←IR, SETA, DGOTO ENDA IF NM[13];*IM
+           Q←LR, GOTO XIANREL;               *  LR+IR
+           Q←S, GOTO XIANREL;                *  SR+IR
+           Q←S, GOTO XIIANREL;               *  I(SR+IR)
+           Q←NOT M MRG 77774000B, Z←IR, SETA, DGOTO ENDA IF NM[13];*IM
+BBASEREL:  R0←M AND Q+Z, M←R6, RETURN IF C;  *  LR
+           S←R0←M AND Q+Z, GOTO IA;          *  ILR
+           R0←M AND Q+Z, M←R6, RETURN IF C;  *  SR POSITIVE
+           R0←M OR NOT Q+Z,M←R6,RETURN IF C; *  SR NEGATIVE
+           S←R0←M AND Q+Z;                   *  ISR POSITIVE
+           S←R0←M OR NOT Q+Z;                *  ISR NEGATIVE
+           Q←R0← NOT Q+Z, Z←77774B3, GOTO IMX1 IF M[13];           *IMX
+           Q←R0← NOT Q, Z←77774000B, DGOTO ENDA IF M[13];          *IM
+IMX1:      R0←Q+Z, GOTO ENDA;                *  IMX NEG
+*
+*  START OF THE MAIN INSTRUCTION LOOP:
+*    SOME INSTRUCTIONS INCLUDE NX1 AND RETURN TO NX2. JUMPS
+*    RETURN TO NX3, LOADS RETURNS TO NX3.
+NX4:       R0←P+1, GOTO T940 IF INTRPT2;
+NX6:       Q←7B7, MAP, DGOTO NX3;
+           R0←E1, TAKE, GOTO PAGEF IF Y<0;
+NX1:       Z←P←P+1, GOTO NY2 IF M940;
+NX2:       R6←M←NI, Q←7B7, SABCDE0, GOTO NX4 IF INTRPT, .TSPY←0;
+NX3:       IR←XR, DGOTO M AND Q LCY 4 MRG BASEAD;
+           Q←ILIM←37777B, S←P, GOTO POP IF M[9];
+*  DISPATCH ON TAG
+*    M CONTAINS W, S CONTAINS THE SOURCE OF W. Q=37777B, ILIM=0
+*
+BASEAD:    Z←GR, DGOTO ENDA1;                          *  D
+           R0←M AND Q+Z, RETURN IF C;
+           Z←GR, DGOTO IA;                             *  I
+           S←R0←M AND Q+Z;
+           Z←IR, DGOTO ENDA1;                          *  X
+           R0←M AND Q+Z, RETURN IF C;
+           M←M LCY 16, Q←77B, DGOTO BX1;               *  BX
+           Z←M AND Q, Q←37B, GOTO BXIR IF LB=0;
+           Q←377B, DGOTO PD1;                          *  PD
+           Z←M AND Q, Q←177B, GOTO PDIR IF LB=0;
+           Q←377B, SETA, DGOTO PD1;                    *  IPD
+           Z←M AND Q, Q←177B, GOTO PDIR IF LB=0;
+           Q←377B, DGOTO BXD1;                         *  BXD
+           Z←M AND Q, Q←177B, GOTO BXDIR IF LB=0;
+           DGOTO Q←M AND Q LCY 12 MRG ABASEREL;        *  REL
+           DGOTO Q LCY 1, Z←3777B;
+*
+*  THE FOLLOWING TABLE IS INDEXED WITH THE TAG FIELD OF
+*  AN IAW.  (IAW[2,4])
+*  R0 AND Z ARE INITIALIZED FOR THE REL (7) ACTION.
+*  ROIAD IS USED BY TRAP ROIA
+IAN:       Q←77B6, DGOTO ENDA1;                        *  D
+           R0←M AND NOT Q, RETURN IF C, M←R6;
+           Q←77B6, DGOTO IA;                           *  I
+           S←R0←M AND NOT Q;
+           Z←IR, Q←77B6, DGOTO ENDA1;                  *  X
+           R0←M AND NOT Q+Z, RETURN IF C, M←R6;
+           M←M LCY 16, Q←77B, DGOTO BX1;               *  BX
+           Z←M AND Q, Q←37B, GOTO BXIR IF LB=0;
+           Q←77B6, SETD, DGOTO ENDA1;                  *  ROD
+           ROIAD←R0←M AND NOT Q, M←R6, RETURN IF C;
+           Z←IR, Q←77B6, SETD, DGOTO ENDA1;            *  ROX
+           ROIAD←R0←M AND NOT Q+Z, M←R6, RETURN IF C;
+           Q←377B, DGOTO BXD1;                         *  BXD
+           Z←M AND Q, Q←177B, GOTO BXDIR IF LB=0;
+           M←M LCY 8, Q←60000003B;                     *  REL
+           DGOTO M←M AND Q LCY 1 MRG ABASEREL;
+           M←R0, DGOTO R0←M AND Q LCY 1 MRG BBASEREL;
+*
+*  START OF THE PROCEDURE IA().
+*    THE PROCEDURE CAN BE CALLED BY THE MICRO INSTRUCTION:
+*      SETC, CALL IASUB, ILIM←0
+*    M HAS TO CONTAIN THE IAW. S=SOURCE OF IAW
+*
+IA:        MAPSS,.VCY, R0←E1, GOTO PAGEF IF Y<0;
+IA1:       FETCH;
+IASUB:     Z←ILIM, Q←2B6;
+           Z←ILIM←X←Z+Q, Q←6B7;
+           DGOTO M AND Q LCY 3 MRG *+3 IF Z>=0;
+           Q←NOT M LCY 2 MRG 7777777B;
+           IR←X←11, Q←S, GOTO FIXTRP;                  *  ILIM TRAP
+*
+*  TABLE FOR THE 4 INDIRECT ADDRESSING TYPES FOLLOWS:
+*
+BASEIA:    DGOTO NOT Q LCY4 MRG IAN;                   *  NORMAL
+           R0←M, Z←37777B, GOTO IATRAP IF M[5];
+           Z←IR, Q←3777B, DGOTO IAF1;                  *  FIELD
+           Q←M AND Q, DGOTO IAF1 IF M[13];
+           S←R0←M, Q←74B6, DGOTO IAS1;                 *  STRING
+           M←M LCY 2;
+           R0←M, Q←774B5, DGOTO IAA3 IF M[4];          *  ARRAY
+           Q←M AND NOT Q, Z←IR, GOTO IAA0 IF Y<0, .VCY;
+*  THE LARGE ELEMENT BIT (LEB) IS 0.
+           IR←R0, M←M LCY 4, DGOTO IAA1 IF NR0[2];     *  IR IS USED AS
+           R0←Q-Z, Q←3B7;                              *   A TEMPORARY
+IAA0:      R0←Z←Z-1, DGOTO ABE IF R0<0;
+IAA1:      S←R0←S+1, Q←NOT M AND Q LCY 3 MRG *+65, GOTO ABE IF R0<0;
+           MAPSS, .VCY, R0←E1, DGOTO Q;
+           Q←Z, FETCH, GOTO PAGEF IF R0<0;
+*  BXD ADDRESSING.  THE LAST INSTRUCTION IS A DUMMY
+BXD1:      Q←Q AND Z, Z←LR, DGOTO BXD2 IF NZ[16];
+BXD2:      R0←Z+Q, Z←GR;
+           MFETCH, Q←M, .VCY, R0←E1, GOTO PAGEF IF Y<0;
+BXD3:      Z←37400B;
+           Q←Q AND Z;
+           Z←Q LCY 16;
+           S←R0←IR, Z← NOT Z, DGOTO BXD4 IF Z[18];
+BXD4:      M←IR←M+ NOT Z, Z←77B, DGOTO IA IF Z[18];
+           R0←R0;
+           CALL 1776B;         *NOT SUPPOSED TO EXECUTE THIS
+*  MASK TABLE:
+*    EXECUTING THE N-TH INSTRUCTION IN THIS TABLE
+*    WILL PUT 2↑N-1 INTO Q
+*
+*  THE MICROSTORE ADDRESS IS 140B NOW
+*                                              WIDTH IN BITS
+           Q←0;                                        *  0
+           Q←1B;                                       *  1
+           Q←3B;                                       *  2
+           Q←7B;                                       *  3
+           Q←17B;                                      *  4
+           Q←37B;                                      *  5
+           Q←77B;                                      *  6
+           Q←177B;                                     *  7
+           Q←377B;                                     *  8
+           Q←777B;                                     *  9
+           Q←1777B;                                    * 10
+           Q←3777B;                                    * 11
+           Q←Y←7777B;                                  * 12
+           Q←Y←17777B;                                 * 13
+           Q←Y←37777B;                                 * 14
+           Q←Y←77777B;                                 * 15
+           Q←Y←177777B;                                * 16
+           Q←Y←377777B;                                * 17
+           Q←Y←777777B;                                * 18
+           Q←Y←1777777B;                               * 19
+           Q←Y←3777777B;                               * 20
+           Q←Y←7777777B;                               * 21
+           Q←Y←17777777B;                              * 22
+           Q←Y←37777777B;                              * 23
+           Q←-1;                                       * 24
+*
+*
+*  ARRAY INDIRECT ADDRESSING WITH LEB=1
+*    ( SEE ALSO ENDA-2 )
+*
+IAA5:      R0←Q-Z,Q←16B4;
+           R0←Z←Z-1,GOTO ABE IF R0<0;
+IAA4:      M←NOT M AND Q LCY 3, R0←S, GOTO ABE IF R0<0;
+           MAPSS;
+           DGOTO M LCY 8 MRG *+3, R0←E1;
+           U←Q←Z, FETCH, GOTO PAGEF IF R0<0;
+*
+*  PART OF BXD CODE
+BXDIR:     Q←M, M←0, GOTO BXD3;
+*
+*
+*  ARRAY MULTIPLIER TABLE 1.  THE TABLE IS ENTERED
+*    AT BASE + NOT IAW[8,10] IF LEB=1. Z IS IR-LB
+*
+AM1BASE:   Q←Z+Q;
+           Q←Z+Q;
+           Q←Z+Q;
+           Q←Z+Q;
+           Q←Z+Q;
+           Q←Z+Q;
+           Q←Z+Q;
+           Q←IR MRG 76177777B, R0←Q;
+*  DISPATCH TO MULTIPLY BY IAW[5,7]
+           DGOTO NOT Q LCY 8 MRG *+8, Q←U;
+           Q←R0, Z←Q LCY 3;
+*
+*  PART OF FIELD INDIRECTION CODE
+*
+IAF6:      M←IR, R0←Z, RETURN;
+*
+*  STRING INDIRECT ADDRESSING.  NOTE HOW CHECKING
+*    FOR MAPPING ERRORS OCCURS AT IASTR.  THE PROPER
+*    FIELD DESCRIPTORS ARE UNPACKED FROM A TABLE
+*    INDEXED BY IAW[2,5].  (CSIZE CONCAT CPOS)
+*
+IAS4:      FETCH, DGOTO IAS2 IF R0>=0;
+IAS2:      SHIFT←Q, Z←7617400B;
+           Q←Q AND Z;
+           DGOTO Q LCY 8 MRG BASEMSK;
+           Z←Q LCY 16, DGOTO IAS3;
+*
+*  ARRAY MULTIPLIER TABLE 2.  THE TABLE IS ENTERED
+*    AT BASE + NOT IAW[5,7] IF LEB=1 OTHERWISE
+*    AT BASE + NOT IAW[5,6] +4. Z IS IR-LB
+*
+AM2BASE:   Q←Z+Q;
+           Q←Z+Q;
+           Q←Z+Q;
+           Q←Z+Q;
+AM3BASE:   Q←Z+Q;
+           Q←Z+Q;
+           Q←Z+Q;
+           Z←IR,IR←Q;
+           Q←NOT M LCY 2 MRG 4000177B, R0←R6, DGOTO BASEIA;
+           GOTO IATRP IF Z[3]#R0=LAX;
+*
+*  CONCLUSION OF STRING INDIRECT ADDRESSING.
+*
+IAS3:      M←M LCL Z;
+           M←WORD←M LCH Z, DGOTO IAF3;
+           IR←M AND Q, M←R6;
+IASTR:     GOTO PAGEF IF R0<0;
+           GOTO TI;
+*  PART OF PD CODE
+*
+PDIR:      Q←M, M←IR, GOTO PD3;
+*
+*  TABLE TO DESCRIBE STRING CHARACTERS.  THE TABLE
+*    CONSISTS OF 16 ENTRIES EACH WITH 3, 8 BITS WIDE FIELDS.
+*                             CSIZE,CPOS    SIZE/POS/SHIFT
+BASECHAR:  Q←1403022B;   *        0,0          6/  6/18
+           Q←1406014B;   *        0,1          6/ 12/12
+           Q←1411006B;   *        0,2          6/ 18/ 6
+           Q←1400000B;   *        0,3          6/  0/ 0
+           Q←2004020B;   *        1,0          8/  8/16
+           Q←2010010B;   *        1,1          8/ 16/ 8
+           Q←2000000B;   *        1,2          8/  0/ 0
+           GOTO IASTR;   *        1,3            TRAP
+           Q←3006014B;   *        2,0         12/ 12/12
+           Q←3000000B;   *        2,1         12/  0/ 0
+           GOTO IASTR;   *        2,2            TRAP
+           GOTO IASTR;   *        2,3            TRAP
+           Q←6000000B;   *        3,0         24/  0/ 0
+           GOTO IASTR;   *        3,1            TRAP
+           GOTO IASTR;   *        3,2            TRAP
+           GOTO IASTR;   *        3,3            TRAP
+*
+*  STRING INDIRECT ADDRESSING (SEE ALSO IAS4)
+*
+IAS1:      MAP, DGOTO IAS4;
+           R0←E1, DGOTO M AND Q LCY 4 MRG BASECHAR;
+*
+*  FIELD INDIRECT ADDRESSING
+*    Z=IR, M=IAW, Q=DISP
+*
+IAF1:      Q←S←R0←Z+Q, Z←77774000B;               *  EXTEND SIGN
+           MFETCH, Q←M, .VCY, R0←E1, GOTO PAGEF IF Y<0;
+           U←Q←Q LCY 8, Z←37B;                   *  U←SE (BIT 18)
+           IR←Z←Q AND Z;                         *  IR←SIZE
+           Q←Q LCY 4;
+           Q←NOT Q LCY 1 MRG 77777740B;
+           Z←NOT Q+Z, Q←24;                      *  Z←FB+SIZE
+           SHIFT←IR←Q-Z, Q←IR;                   *  SHIFT←24-Z
+           IR, GOTO TI IF Y<0;
+           DGOTO Q MRG BASEMSK;
+           M←M LCL Z, DGOTO IAF2, IR←U;
+IAF2:      WORD←M←M LCH Z, Z←IR;
+           IR←M AND Q, M←R6, DGOTO IAF5 IF Z[18];
+IAF3:      MASK←Q, Z←S, SETB;                    *  THE FIELD IS IN IR
+*  THE FOLLOWING IS A COPY OF THE ENDA CODE
+IAF4:      M←M LCY 8, Q←40000037B, GOTO IAF6 IF C;
+           DGOTO K←Q AND M LCY 2 MRG BASEINST, M←IR;
+           Q←AR, R6←Z;
+*  SE=1
+IAF5:      M←IR;
+           M←M LCY 1;
+           M←NOT Q AND M, DGOTO IAF4 IF LB=0;
+           M←R6, M, DGOTO IAF4 IF LB#0;
+           IR←NOT Q, IR, .TYW;                 *  (NOT Q MRG IR)
+*
+*  PD OR PDI ADDRESSING MODE (A IS SET IF PDI)
+*    NOTE THE TRICK AT PD4.  BIT 18 IS 0 IN -64.
+PD1:       Q←Z AND Q, Z←LR, DGOTO PD2 IF NZ[16];
+PD2:       R0←Z+Q,Z←GR;
+           MFETCH, Q←M, .VCY, R0←E1, GOTO PAGEF IF Y<0;
+PD3:       Z←37400B;
+           Q←Q AND Z;
+           Z←Q LCY 16;
+           Z← NOT Z, DGOTO PD4 IF Z[18];
+PD4:       M←S←R0←M+ NOT Z, Z←77B, DGOTO ENDA IF Z[18];
+           CLEARA, GOTO IA IF A;
+*
+*  BX ADDRESSING MODE (TAG=3)
+*
+BX1:       Q←Q AND Z, Z←LR, DGOTO BX2 IF NZ[18];
+BX2:       R0←Q+Z, Z←GR;
+           Q←M LCY 8;
+           MFETCH, .VCY, R0←E1, GOTO PAGEF IF Y<0;
+BX3:       Z←377B;
+           Z←Q AND Z, Q←177B;
+           GOTO BXIR1 IF Z=0;
+           Q←Q AND Z,Z←LR, DGOTO BX4 IF NZ[16];
+BX4:       S←R0←Q+Z, Z←GR;
+           IR←M, DGOTO IA1;
+           MAPSS, .VCY, R0←E1, GOTO PAGEF IF Y<0;
+BXIR:      M←IR, Q←M LCY 8, GOTO BX3;
+BXIR1:     S←R0←IR, GOTO BX4+1;
+*
+*
+*  DISPATCH ON THE INSTRUCTION CODE
+*    INSTRUCTIONS RECEIVE THE FOLLOWING INFORMATION
+*    IN THE REGISTERS:
+*      M=OPERAND, UNLESS THE INSTRUCTION IS A STORE
+*      R6=Q=Z, UNLESS THE ADDRESS IS IMMEDIATE
+*      Q=A REGISTER, R0[2]=PMRO OR NOT DB
+*    BIT A IS SET IF THE ADDRESS IS IMMEDIATE, BIT B IF
+*    IT CONTAINS A FIELD AND BIT D IF THE ADDRESS
+*    IS READ ONLY. (SEE ALSO IAF4)
+*    THE SETTINGS OF A AND B ARE ALSO REFLECTED IN
+*    K[0] AND K[1]. P IS SAVED IN S IF A IS SET. (SEE BRU1)
+*
+ENDA:      M←R6, RETURN IF C;
+ENDA1:     Z←R6←R0, Q←77B5, MAP, GOTO ENDA3 IF STINST;
+           R0←E1, Q←M AND Q, FETCH, GOTO PAGEF IF Y<0;
+           Q←Q LCY 8;
+           GOTO K←Q LCY 2 MRG BASEINST+4B7, Q←AR;
+ENDA3:     Q←M AND Q LCY 8, R0←E1;
+           DGOTO K←Q LCY 2 MRG BASEINST+2B7, Q←AR;
+           M←Z, S←P;
+*
+*  ARRAY INDIRECT ADDRESSING WITH LEB=1
+*
+IAA3:      Q←7776B4, IR←R0, DGOTO IAA5;
+           Q←NOT Q AND M, S←R0←S+1, DGOTO IAA4 IF NR0[2];
+*
+*
+*  ENTRY TO THE MAIN INSTRUCTION LOOP AT AN ARBITRARY ADDRESS
+*  ADDRESS IS IN R0,P AND Z; TO, SP AND 940 MODE ARE CHECKED
+*  NOTE THAT THE FLAGS ARE PRESUMED TO BE CLEARED
+*
+NX5:       MFETCH, R0←E1, .VCY, GOTO PAGEF IF Y<0;
+           R0+1, TAKE, DGOTO NX3;
+           R6←M, Q←7B7, SSOURCE, GOTO NX4 IF INTRPT;
+*
+*  POP-S EXECUTE AS A BLL $:G[0] WITH THE OPCODE IN IR.
+*  THE EFFECTIVE ADDRESS WILL BE CALCULATED IN THEBLL CODE.
+*  (SPEC=1, MCAL=0)
+*
+POP:       POPW←M, Q←77B5, SETC;
+           M←M AND Q LCY 8, S←R0←GR;
+           IR←M LCY 1, CALL IA;
+           R6←R0, Z←0, GOTO TI IF A;
+           MFETCH, .VCY, R0←E1, GOTO PAGEF IF Y<0;
+           SETBB, Q←GR, DGOTO BLL1;
+           NEWG←Q, Q←77B6;
+*
+*  IF THERE IS ANYTHING FISHY ABOUT A STORE (PRECISELY
+*    IF R0[2]=1 OR A=1 OR B=1 OR D=1), THE FOLLOWING
+*    CODE IS ENTERED:
+*
+STRFLD:    Q←MASK, GOTO TI IF A;
+           M←WORD, Z←M AND Q;
+           Z←SHIFT, M←M AND NOT Q ! Z, GOTO ROIA IF D;
+           M←M LCL Z, R0, GOTO CSTORE IF STERR, .VCY;
+           M←M LCH Z, DGOTO NX2;
+           STORE, Z←P←P+1;
+*
+*  VARIOUS TRAPS IN THE ADDRESSING MECHANISM.
+*    IR←TRAP NUMBER, Q←PARAMETER FOR THE TRAP.
+*
+IATRAP:    IR←X←5, Q←S, GOTO RDTRAP;             *  IATRAP
+IATRP:     IR←X←5, Q←S, GOTO ABE1;               *  IATRP
+ROIA:      IR←X←4, DGOTO RDTRAP;                 *  ROIA
+           Q←ROIAD;
+ABE:       IR←X←1, Q←S;                          *  ABE
+ABE1:      Q←Q-1, GOTO RDTRAP;
+           ALL;
+           CALL 1776B;         *NOT SUPPOSED TO EXECUTE EITHER OF THESE
+           END;

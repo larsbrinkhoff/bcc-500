@@ -1,0 +1,137 @@
+**RUNOFF 
+         8080 CROSS-ASSEMBLER                                  Page  1         ____ _______________
+
+
+              The cross-assembler implemented on the BCC is a  subset
+         of the INTEL 8080 cross-assembler and is directly compatible
+         with the IMSAI self contained  operating  system  assembler.
+         Major differences between INTEL  and BCC are as follows:
+
+
+                     1)  Macro capability is not provided.
+
+                     2)  The following pseudo ops are not  suppor-
+                         ted:
+                              a) SET
+                              b) IF
+                              c) ENDIF
+                              d) MACRO
+                              e) ENDM
+                              f) TITLE
+
+
+                     3)  Only simple expressions involving the op-
+                         erators  '+'  and  '-'  are allowed.   No
+                         parenthesis are permitted.
+
+                     4)  A comment statement may be  signalled  by
+                         placing  a  '*'  as a first character in-
+                         stead of a ';'.
+
+                     5)  "DB" and  "DW"  instructions  can  define
+                         only  single  byte or single word quanti-
+                         ties respectively.
+
+              An added feature of the BCC implementation is the  gen-
+         eration  of a cross-reference table which follows the assem-
+         bly listing and pseudo comments to control  the  listing  of
+         the source program.
+
+         IMPLEMENTATION_DEFINED_LIMITS         ______________ _______ ______
+
+
+                     1)  The symbol table can accomodate 1000 sym-
+                         bols.
+
+                     2)  Cross-reference capacity depends  on  how
+                         many  symbols  there  are  in  the symbol
+                         table.  For example  if  there  are  1000
+                         defined symbols the cross-reference table
+                         can accomodate a a maximum of 3000 refer-
+                         ences.   Similarly, if there are 250 sym-
+                         bols, (4000 - 250 = 3750) references  are
+                         allowed.
+         8080 CROSS-ASSEMBLER                                  Page  2         ____ _______________
+
+
+         Use_Of_The_Cross-Assembler         ___ __ ___ _______________
+
+              Enter the  cross-assembler  from  the  exec  by  typing
+         "ASSM" followed by a carriage return.  The program will then
+         ask you for a source, object, file and list.
+
+              Usual file naming conveniences apply  here.   Terminate
+         all  names  with  a carriage return.  Control characters may
+         be used to correct your entry in the usual manner.  If a bad
+         file  name  is  entered,  the  request  for a name is simply
+         repeated.  The listing file and table file may be suppressed
+         by entering only a carriage return.
+
+              The format of the object file is described by the IMSAI
+         manual which follows.
+
+
+         Pseudo_Comments         ______ ________
+
+              Pseudo comments are comments which  are  recognized  by
+         the  assembler.   These special commands enclosed in comment
+         statements control the listing of the program  being  assem-
+         bled.  For example, the statement:
+
+         * %NOPRINT
+
+         Will suppress the listing of any  statements  following  the
+         "NOPRINT"  pseudo  comment.  Other commands to control list-
+         ings are as follows:
+
+
+                         PRINT   - Restores listing of statements.
+                         PAGE    - Causes a page effect.
+                         TITLE   - The first 28 characters following
+                                 - this  text  will  be  used as the
+                                 - title.
+
+
+         Hence the format of pseudo comments is:
+
+
+                   *  %<COMMAND> <Optional Operand>
+                   ↑
+                   start at col 1.
+
+
+
+              The reason for  implementing  these  commands  in  this
+         somewhat  awkward manner is to retain compatibility with the
+         IMSAI  and  INTEL  assemblers.   Note  that  a  ';'  may  be
+         substituted for an '*'.
+         8080 CROSS-ASSEMBLER                                  Page  3         ____ _______________
+
+
+         OBTAINING_OUTPUT         _________ ______
+
+              The list file may be printed out by either the  TTY  or
+         line  printer.   When listing on the TTY, one should use the
+         "TYPE" command.  To use the line printer, the  "PRINT"  rou-
+         tine   is  used along with the "ABSOLUTE option".  Hence, to
+         submit the list file "TLIST" for printing on the line print-
+         er, one enters at the exec level
+
+
+                        @PRINT TLIST,A
+
+              To obtain  the  object  code  one  must  translate  the
+         M1-ASCII  to regular  ASCII before punching the tape.  To do
+         this, use the subsystem "TRANS" which asks for the input M-1
+         file  and  output ASCII file.  To punch the translated tape,
+         use the "PUNCH" command.  Note that this  command  is  valid
+         only on a KDF terminal.  After entering the punch subsystem,
+         turn on the punch, then enter:
+
+                        PU <Full file name> Cr
+
+
+              Note that the fully qualified file  name  must  be  en-
+         tered.  E.g., @GUEST:OBJECT:SYM.
+
+              Return to the exec by typing "FIN".

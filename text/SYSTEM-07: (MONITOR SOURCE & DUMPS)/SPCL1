@@ -1,0 +1,267 @@
+          PROGRAM PR'PARAMS;
+          INCLUDE PROFILE;
+          DECLARE NPARS ← 13, CODE, I, PAR;
+          DECLARE CHARACTER ARRAY CODES[NPARS] ←
+          ('EPR', 'LPR', 'VNO', 'UNO', 'DKA', 'ANO', 'GNO',
+          'TNO', 'PRT', 'ATT', 'PFC', 'IKY', 'SOM');
+          DECLARE POINTER ARRAY PARS[NPARS] ←
+          (0, 0, @CBVERS, @PRUNO, @MIBDKA, @PRANO, @PRGRNO,
+          @UTTY, @PRTI, @ATTY, @PAGE'FAULTS, 1, MIB0DKA);
+
+          ENTRY RD'PR'PARAMS(CODE), FRETURN, MONITOR ← 211;
+          GOTO RPRP10 IF (0<=CODE AND CODE<=NPARS-1);
+          FOR I ← 0 TO NPARS-1 DO;
+              (CODE ← I & GOTO RPRP10) IF CODES[I]=CODE;
+          ENDFOR;
+          FRETURN('ARG', 999);
+RPRP10:   IF CODE>10 DO;
+              PAR ← PARS[CODE];
+          ELSEIF CODE>1 DO;
+              PAR ← $PARS[CODE];
+          ELSEIF CODE=1 DO;
+              PAR ← PROC'NATURE$LPR;
+          ELSE DO;
+              PAR ← PROC'NATURE$EPR;
+          ENDIF;
+          RETURN PAR;
+
+
+          ENTRY SET'PR'PARAMS(CODE,PAR), FRETURN, MONITOR←212;
+          GOTO SPRP10 IF (0<=CODE AND CODE<=1);
+          FOR I ← 0 TO 1 DO;
+              (CODE ← I & GOTO SPRP10) IF CODES[I]=CODE;
+          ENDFOR;
+          FRETURN ('ARG', 999);
+SPRP10:   IF CODE=1 DO;
+              PROC'NATURE$LPR ← PAR;
+          ELSE DO;
+              PROC'NATURE$EPR ← PAR;
+          ENDIF;
+          RETURN;
+
+          END;
+
+          PROGRAM CATASTROPHE;
+          INCLUDE RESMON;
+          FIXED;
+          DECLARE LONGLONG PART1 ← (0, 30, 'MON', 'ITO'),
+          PART2 ← ('R E', 'RRO', 'R A', 'T 0'),
+          PART3 ← ('000', '000', '0 -', 0);
+          DECLARE HELP ← 6'HELP';
+          ENTRY PUNT(CODE), POP ← 4;
+          GOTO PNT10;
+          ENTRY CATASTROPHE(CODE);
+PNT10:    .LDX RESM+3230B;
+          .SRS 41B, LDD PART1, STD X'[0], SRS 41B, LDD PART2, STD X'[4];
+          .SRS 41B, LDD PART3, STD X'[10B];
+          .ZOA, LDB L'[0], ASHD 3, ADM X'[7];
+          .ZOA, ASHD 3, ASHA 5, ASHD 3, ASHA 5, ASHD 3, ADM X'[10B];
+          .ZOA, ASHD 3, ASHA 5, ASHD 3, ASHA 5, ASHD 3, ADM X'[11B];
+          .ZOA, ASHD 3, ASHA 20B, ADM X'[12B];
+          .LDA CODE, STA X'[13B], LDA HELP, STA X'[0];
+          .BRU R'[0];
+
+          END;
+
+          PROGRAM SETPRMB;
+          INCLUDE PARD, GLOBAL;
+          DECLARE BYTE, ADR, PMB, PMTX;
+          DECLARE FIXED FIELD EF(0:0,0);
+          DECLARE PRMAP'PTR ← @PRMAP[0]+50B6;
+          DECLARE MASK ← 1@PRMRO V' (-1)@PRMPMT;
+          ENTRY SETPRMB(BYTENO, NEWBYTE);
+          PMTX ← NEWBYTE$PRMPMT;
+          PUNT('PRM') UNLESS (PMTX=0 OR (1<=PMTX AND PMTX<=NPMTE));
+          PUNT('PRM') UNLESS (0<=BYTENO AND BYTENO<=127);
+          $INCDES(PRMAP'PTR, BYTENO) ← NEWBYTE A' MASK;
+          ADR ← PAGESA(BYTENO);
+          .LDX ADR, .AAX, .STX PMB;
+          RETURN IF PMB$EF;
+          CLEAR'MAP;
+          RETURN;
+
+          ENTRY RDPRMB(BYTENO);
+          PUNT('PRM') UNLESS (0<=BYTENO AND BYTENO<=127);
+          BYTE ← $INCDES(PRMAP'PTR, BYTENO);
+          RETURN(0 IF BYTE$PRMPMT=0 ELSE BYTE);
+
+*       END;
+
+          PROGRAM SCT;
+          INCLUDE GLOBAL;
+          DECLARE FIXED FIELD FD, FD0(0:0,1);
+          DECLARE CHAR;
+*
+          FUNCTION SCT(PTR, CHARI, CHARJ, TYPE);
+          FD ← FD0;
+          FOR CHAR ← CHARI TO CHARJ DO;
+              FD$FDDISP ← CHAR/8;
+              FD$FDFB ← 2*(CHAR MOD 8);
+              PTR.FD ← TYPE;
+          ENDFOR;
+          RETURN;
+
+          END;
+
+          PROGRAM REALT;
+*
+*   READ REAL TIME CLOCK
+*
+          INCLUDE RESMON;
+          DECLARE LONG XREAL;
+          DECLARE LONG FIXED FIELD WD0(0),WD1(1);
+          DECLARE FLAG,I=XREAL$WD0,J=XREAL$WD1;
+          FUNCTION REALT();
+CAL1:  I←$RTC; J←$(RTC+1);
+          GOTO CAL1 IF I A' 4B7 # J A' 4B7;
+          I←I A' (4B7-1);
+          RETURN (I,J);
+
+          END;
+
+          PROGRAM REALTL;
+*
+*   READ REAL TIME CLOCK
+*
+          INCLUDE RESMON;
+          DECLARE LONG XREAL;
+          DECLARE FIXED LONG FIELD WD0(0),WD1(1);
+          DECLARE FLAG,I=XREAL$WD0,J=XREAL$WD1;
+          LONG FUNCTION REALTL();
+CAL1:  I←$RTC; J←$(RTC+1);
+          GOTO CAL1 IF I A' 4B7 # J A' 4B7;
+          I←I A' (4B7-1);
+          RETURN XREAL;
+          END;
+
+          PROGRAM GETPLG;
+*
+*  FIND USER ENVIRONMENT IN ,MONITOR
+*
+*  ERROR:0= NO USER P COUNTER.
+
+          INCLUDE PROFILE;
+          DECLARE FIXED FIELD PAD(0:6,23), LAD(1:6,23), GAD(3:6,23),
+          BLLI(0:5,8),WD0(0),WD1(1),WD2(2),WD3(3);
+          DECLARE LONGLONG LW;
+          DECLARE MADD←600000B, A1=LW$WD0,A2=LW$WD1,A3=LW$WD2,A4=LW$WD3,I,FLAG;
+          FUNCTION GETPLG(),FRETURN;
+          FLAG←1;
+CAL1:     .CLA, .STA A4;
+          FOR I←1 TO 100 DO;
+              IF A4.PAD<MADD DO;
+                  A2←A4.PAD;
+                  A3←A4.LAD;
+                  A4←SAVEG;
+                  A1←A2-1; GOTO CAL2 IF FLAG=1;
+CAL3:             (A1←0 & GOTO CAL2) IF A1<0 OR A1>=MADD;
+                  GOTO CAL2 IF A1.BLLI=17B;
+                  A1←A1-1; GOTO CAL3;
+CAL2:             RETURN LW;
+              ENDIF;
+              A4←A4.LAD;
+              FRETURN  IF A4<MADD;
+          ENDFOR;
+          FRETURN ;
+          ENTRY GETPPLG();
+          FLAG←0; GOTO CAL1;
+
+          END;
+
+          PROGRAM RDCHT;
+*
+*  READ CHT ENTRY
+*
+          INCLUDE ERRD,CHTD,RESMON;
+          DECLARE ARRAY WA;
+          DECLARE LONG UN;
+          DECLARE I,J,UN1=UN$WD0,UN2=UN$WD1;
+          DECLARE FIXED FIELD F1(0:0,7),F2(0:8,15),F3(0:16,23),AD(0:6,23);
+          FUNCTION RDCHT(UN,WA),FRETURN;
+          I←UN1 E' UN2;
+          J←I$F1 E' I$F2 E' I$F3 E' 264B;
+          PROTECT(PRO2);
+             FOR I←CHT[J],I.CCPTR WHILE I#1B6-1 DO;
+                I←I+RESM;
+                IF I.CUN1=UN1 AND I.CUN2=UN2 DO;
+                   WA[J]←$(I+J) FOR J←0 TO 5;
+                   GOTO CAL1;
+                ENDIF;
+             ENDFOR;
+          UNPROTECT(PRO2); FRETURN;
+CAL1:     UNPROTECT(PRO2);
+          RETURN;
+
+          END;
+
+          PROGRAM RMQUEU;
+*
+*  GET ENTRY FROM QUEU (PRT QUEUS)
+*
+          INCLUDE RESMON,GLOBAL;
+          DECLARE TPTR;
+          FUNCTION RMQUEU(PTR,FIELD FDIS),FRETURN;
+          FRETURN IF (TPTR←PTR.MADF)=1B6-1;* NO MORE ENTRIES
+          TPTR←TPTR+RESM;
+          PTR.MADF←TPTR.FDIS;
+          PTR.MADF1←PTR-RESM-FDIS$FDDISP IF PTR.MADF=1B6-1;
+          TPTR.FDIS←0;
+          RETURN TPTR;
+
+          END;
+
+          PROGRAM PUTQUEU;
+*
+*  PUT ENTRY ON PRT QUEUS
+*
+          INCLUDE RESMON,GLOBAL;
+          FUNCTION PUTQUEU(PTR,QUEU,BE,FIELD FDIS);
+          GOTO CAL1 IF BE=0;* PUT ON BEGINNING
+          PTR.FDIS←(QUEU.MADF1)[RESM]$FDIS;
+          (QUEU.MADF1)[RESM]$FDIS←PTR-RESM;
+          QUEU.MADF1←PTR-RESM;
+          RETURN;
+CAL1:     PTR.FDIS←QUEU.MADF;
+          QUEU.MADF←PTR-RESM;
+          QUEU.MADF1←PTR-RESM IF PTR.FDIS=1B6-1;
+          RETURN;
+*
+
+          END;
+
+          PROGRAM MSTART;
+       INCLUDE SPCSD,GLOBAL,CHIOD;
+*
+*  MONITOR STARTUP FUNCTION
+*  GETS CALLED WITH POP0
+          FUNCTION MSTART(NUTS),POP←0;
+          .SLOK;
+          AMC'INIT();
+          DK'DUMP();
+          CHIO'INIT();
+          START'USER();
+          PUNT('FUF');
+*
+*  START UP NEW PROCESS
+*
+          FUNCTION START'PROCESS(NUTS),POP←1;
+          .SLOK;
+*** KLUDGE TO GIVE 360/30 LINE TO PROCESS 2
+       MTA[FL24DL/2+M30'LDVN]$PROC ← 2;* PROCESS 2 NOW OWNS IT
+***
+          START'USER();
+          PUNT('FUF');
+
+          END;
+
+          PROGRAM PROTECT;
+*
+*  PROTECT AND CHECK.  COMPLAIN IF IT TAKES TOO LONG.
+*
+          INCLUDE GLOBAL;
+          FUNCTION PROTECT(PR);
+          .LDA PR, .LDX -1000, .PRO, .BLT R'[3],
+             .BRX R'[-2], .POP4 'PIS';
+          RETURN;
+
+          END;

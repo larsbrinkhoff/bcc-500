@@ -1,0 +1,140 @@
+
+PFS         USER           TSS
+NO.          NAME          NO.
+
+
+  1   SYSTEM-01              1
+  2   SYSTEM-02            
+  3   SYSTEM-03            
+  4   SYSTEM-04            
+  5   SYSTEM-05            
+  6   SYSTEM-06            
+  7   SYSTEM-07            
+  8   SYSTEM-08            
+  9   SYSTEM-09            
+ 10   SYSTEM-10            
+ 11   ACCOUNTS             
+
+
+ 14   WWL                    5
+
+
+ 17   MX                   
+ 18   MICRO                
+ 19   FORTRAN-4            
+
+ 21   BCC                  
+
+
+ 24   LOAD                 
+
+ 26   OKANO                 35
+ 27   MOODY                 23
+ 28   CROSBY                22
+ 29   IFA                   20
+ 30   EURO-LANG             16
+ 31   LSI                   15
+ 32   LANG-LAB              12
+ 33   RICH                  11
+ 34   STOUTE                10
+ 35   GUEST                 31
+ 36   RADIO-SCI              8
+ 37   CASEY                  7
+ 38   WWL-A                  6
+ 39   XBLA                 
+ 40   XBLB                 
+ 41   PEL                    9
+ 42   EE                    13
+ 43   WRRC                  14
+ 44   UHCC                  17
+ 45   UHHCC                 18
+ 46   HCZDB                 19
+ 47   KAGAN                 21
+ 48   BURGESS               24
+ 49   HUGHES                25
+ 50   UH-IEEE               26
+ 51   CSA                   27
+ 52   MIS                   28
+ 53   JEC                   29
+ 54   EC                    30
+ 55   CHAR                  32
+ 56   YOSHINO               33
+ 57   CHARLI                34
+ 58   KANEDA                36
+ 59   ANDREW                37
+ 60   ADACHI                38
+ 61   KAMEMOTO              39
+ 62   DALLOS                40
+ 63   EE-462                41
+ 64   CCF                   93
+ 65   KUMA                  94
+ 66   DEEPAK                95
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 85   ARUCAN                42
+ 86   BASCON                43
+ 87   BUNNELL               44
+ 88   CHOW                  45
+ 89   CHUNG                 46
+ 90   COOPER                47
+ 91   DUGAY                 48
+ 92   DUNG                  49
+ 93   FONG                  50
+ 94   GARCIA-LUNA           51
+ 95   GUERIN                52
+ 96   HALL                  53
+ 97   HENRY                 54
+ 98   HIRABARA              55
+ 99   HO-KY                 56
+100   HO-T                  57
+101   HONDA                 58
+102   HOPE                  59
+103   IWASAKE               60
+104   KAMI                  61
+105   KIKUCHI               62
+106   KITAMURA              63
+107   LEUNG                 64
+108   LIU                   65
+109   LUK                   66
+110   MAK                   67
+111   MAN                   68
+112   MANNION               69
+113   MORITA                70
+114   NAKAMURA              71
+115   NIIYAMA               72
+116   NONAKA                73
+117   SAKA                  74
+118   SATO                  75
+119   SHIGETA               76
+120   SHIRAISHI             77
+121   SMITH                 78
+122   SOUTAVONG             79
+123   SURYA                 80
+124   TAM                   81
+125   TANDA                 82
+126   TONG                  83
+127   TSUHAKO               84
+128   UNMUSS                85
+129   VELLA                 86
+130   WON                   87
+131   YANAMURA              88
+132   YEE                   89
+133   YOSHIYAMA             90
+134   YUEN                  91
+135   ZENIGAMI              92

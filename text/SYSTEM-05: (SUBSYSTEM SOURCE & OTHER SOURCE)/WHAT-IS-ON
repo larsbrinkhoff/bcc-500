@@ -1,0 +1,103 @@
+       COMMON ENTRY'DEFS;
+       DECLARE PARAMETER SIZE ← 200B;
+       DECLARE ARRAY STACK[SIZE];
+       DECLARE PARAMETER SP = G'[2], SL = G'[3];
+       DECLARE PARAMETER INIT'SP ← @STACK[0], INIT'SL ← @STACK[SIZE-1];
+       END;
+       PROGRAM ENTRIES;
+       INCLUDE ENTRY'DEFS;
+       FUNCTION SP'TRAP'ENTRY(), SP'ENTRY ← 0;
+       .HLT 0;
+
+       FUNCTION INTERRUPT'ENTRY(), SP'ENTRY ← 1;
+       .HLT 0;
+
+       FUNCTION INITIAL'ENTRY(), SP'ENTRY ← 2;
+       SP ← INIT'SP;
+       SL ← INIT'SL;
+       WHAT'IS'ON();
+
+       FUNCTION CONTINUE'ENTRY(), SP'ENTRY ← 3;
+       .HLT 0;
+
+       END;
+     PROGRAM WHAT'IS'ON;
+* SYSTEM CALLS USED BY THIS PROGRAM
+       UNKNOWN MONITOR READ'MIBOB'INDEX ← 0;
+       UNKNOWN MONITOR SP'RETURN ← 116;
+       UNKNOWN UTILITY PRINT'STRING ← 45;
+       STRING  UTILITY READ'UP'ITEM ← 60;
+* LOCAL STORAGE AND CONSTANTS
+       DECLARE INTEGER
+           USER'NUMBER, OBJECT'INDEX, FIRST'ONE, TYPE, NUMBER;
+       DECLARE PARAMETER
+           SMALL'FILE ← 0, LARGE'FILE ← 1, PROCESS ← 2;
+       DECLARE POINTER OBJECT;
+       DECLARE CHARACTER
+           C, CODE;
+       DECLARE FIELD
+           WORD'0(0), WORD'1(1), OBJECT'TYPE(0:1,4);
+       DECLARE LONG USER;
+       DECLARE OCTAL ARRAY OBJECT'ARRAY[7];
+       DECLARE STRING 
+           MAIN'NAME, EXTENSION, OBJECT'NAME(30), USER'NAME(60);
+
+     ENTRY WHAT'IS'ON();
+       OBJECT ← @OBJECT'ARRAY[0];
+       FOR USER'NUMBER ← 3 TO 100 DO;
+           USER$WORD'0 ← USER'NUMBER;
+           USER$WORD'1 ← 0;
+           FIRST'ONE ← 1;
+           FOR OBJECT'INDEX ← 0 TO 127 DO;
+               READ'MIBOB'INDEX(USER,5,OBJECT'ARRAY,OBJECT'INDEX,
+                   0//OBJECT'ERROR: CODE, NUMBER);
+               TYPE ← OBJECT.OBJECT'TYPE;
+               IF TYPE=SMALL'FILE OR TYPE=LARGE'FILE OR TYPE=PROCESS DO;
+                   IF FIRST'ONE DO;
+                       SETS(USER'NAME);
+                       WCI('&/', USER'NAME);
+                       WCI('@', USER'NAME);
+                       USER'NAME ← READ'UP'ITEM('UP',-1,USER'NUMBER,"",
+                           "N",USER'NAME,-1//READ'UP'ERROR: CODE,NUMBER);
+                       WCI(':', USER'NAME);
+                       WCI('&/', USER'NAME);
+                       PRINT'STRING(-1,USER'NAME,0//PRINT'ERROR:
+                           USER'NAME, CODE, NUMBER);
+                       FIRST'ONE ← 0;
+                   ENDIF;
+                   SETUP(MAIN'NAME, 16, @OBJECT'ARRAY[2], 6);
+                   SETW(MAIN'NAME, 16);
+                   SETUP(EXTENSION, 4, @OBJECT'ARRAY[6], 6);
+                   SETW(EXTENSION, 4);
+                   SETS(OBJECT'NAME);
+                   WCI(C, OBJECT'NAME) WHILE
+                       (C ← GCI(MAIN'NAME//END'MAIN)) # 0;
+END'MAIN:
+                   WCI(':', OBJECT'NAME);
+                   WCI(C, OBJECT'NAME) WHILE
+                       (C ← GCI(EXTENSION//END'EXTENSION)) # 0;
+END'EXTENSION:
+                   WCI('&/', OBJECT'NAME);
+                   PRINT'STRING(-1, OBJECT'NAME, 0//PRINT'ERROR:
+                       OBJECT'NAME, CODE, NUMBER);
+               ENDIF;
+NEXT'OBJECT:
+           ENDFOR;
+NEXT'USER:
+       ENDFOR;
+       SP'RETURN(//EXIT'FAILED: CODE, NUMBER);
+OBJECT'ERROR:
+       IF CODE = 'ONE' DO;
+           GOTO NEXT'OBJECT;
+       ELSEIF CODE = 'UNO' DO;
+           GOTO NEXT'USER;
+       ELSE DO;
+           SP'RETURN(//EXIT'FAILED: CODE, NUMBER);
+       ENDIF;
+READ'UP'ERROR:
+       SP'RETURN(//EXIT'FAILED: CODE, NUMBER);
+PRINT'ERROR:
+       SP'RETURN(//EXIT'FAILED: CODE, NUMBER);
+EXIT'FAILED:
+       .HLT 0;
+     END;

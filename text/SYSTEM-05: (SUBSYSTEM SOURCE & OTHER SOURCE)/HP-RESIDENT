@@ -1,0 +1,2089 @@
+       ASMB,A,B,L
+       HED     HP RESIDENT VERSION 4.01 (29 FEB 77)
+*        HP MEMORY MAP
+*        (AS OF 4/1/75)
+*
+*
+*
+*        HP RESIDENT                   0B -  3044B
+*        TAPE BUFFER                4000B - 11777B
+*        PRINTER BUFFER            12000B - 17777B
+*          (NOT CURRENTLY USED)
+*        HP DDT                    16000B - 17136B
+*        MAG TAPE LOADER           17200B - 17356B
+*        BASIC BINARY LOADER       17700B - 17776B
+*
+*
+*
+*
+*        HP - M1 INTERFACE PROGRAM
+*
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+*
+*        WRENWICK LEE
+*        JUNE, 1972
+*
+*        REVISED APRIL, 1975
+*        VERSION 2.6
+*        SOURCE - WKKL.SOURCE.HPRES.MOD10
+*
+*        REVISED - FALL 74 FOR HYTYPER BY D. Y. YONAMINE
+*
+*        REVISED 20 OCT 75
+*        DDT BREAK-POINT POINTER MOVED TO LOC 3
+*        IO ADDRESSES MODIFIED
+*
+*        REVISED JULY 76 TO ADD HYTYPER PAUSE FEATURE
+*
+*        FIXED RACE IN INIT TO RESTORE IPL/INIT COMPATABILITY
+*
+*        REVISED - FEB 77 FOR HYTYPER PLOT CAPABILITY
+*        SOURCE - @BISSONNETTE:HP-RESIDENT
+*
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+*
+       ORG     177B            VERSION NUMBER STORAGE LOC
+*
+       OCT     4               MAKE THIS ONE VERSON 4
+*
+*
+       ORG     3               INTERFACE WITH DDT
+       BSS     1               DDT BREAKPOINT CELL
+       SKP
+*
+*INTERRUPT CONTROL AND TRANSFER WORDS
+*THESE LOCATIONS ARE REWRITTEN BY ENTRY INTO INIT  ROUTINE
+*
+       ORG     4
+       JSB     PWRIT,I         POWER FAIL INTERRUPT
+       JSB     PARIT,I         PARITY ERROR INTERRUPT
+       CLC     DMAD            LOC 6 DMA IO RETURN (IGNORE)
+       CLC     DMAD2
+       HLT     10B             LOC 10 DACONICS DATA CHANNEL
+       JSB     TPIN,I          LOC 11 DACONICS CONTROL CHANNEL
+       JSB     RSTIN,I         LOC 12 RESTART INTERRUPT
+       JSB     CMDIN,I         LOC 13 COMMAND INTERRUPT
+       JSB     PRIN,I          LOC 14 IOMEC PRINTER INTERRUPT
+       JSB     HYINT,I         LOC 15 HYTYPE INTERRUPT
+       CLC     TTY1            IGNORE TTY INTERRUPTS
+       SKP
+       ORG     17B
+*
+*
+       REP     100B-17B        SET LOC 17 TO 77 TO HALT SAFETY FIRST
+       HLT     0
+       SKP
+*LOCATIONS 100 THRU 107 ARE RESERVED FOR HP SIO ROUTINE LINKAGES
+*
+       ORG     110B
+*
+*        THE FOLLOWING ARE ADDRESSES FOR INTERRUPT JUMPS
+*        TAPE AND PRINT BUFFER LOCATIONS
+*
+TPBUF  OCT     4000            (30)
+PRBUF  OCT     12000           (31)
+TPIN   DEF     TPINX           (32) ADR OF TAPE COMPL ROUTINE
+RSTIN  DEF     XRST            (33) ADR OF RESTART ROUTINE
+CMDIN  DEF     COMND           (34) ADR OF M1 COMNDS ROUTINE
+TTYIN  OCT     7               (35) ADR OF TTY#1 ROUTINE   (HALT)
+TTIN2  OCT     7               (36) ADR OF TTY#2 ROUTINE    (HALT)
+PRIN   DEF     PRNXT
+HYINT  DEF     HINT            HYTYPER INTERRUPT ROUTINE
+READC  DEF     XREAD           WILL CONTAIN ADR OF XREAD ROUTINE
+WRITE  DEF     XWRIT           ADR OF WRITE TO TAPE ROUTINE
+CNTRL  DEF     XCNTR           ADR OF XCNTR ROUTINE
+SETMD  DEF     XSETM           ETC...
+PRINT  DEF     XPRNT
+HTYPE  DEF     XHTYP
+PLOT   DEF     XPLOT
+SKPIT  DEF     SKPT
+HDRSR  DEF     XHDRS
+       SKP
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+*        ADDRESSES OF VARIOUS UTILITY ROUTINES
+*
+RDSX   DEF     FRDSX           READ SIX BITS (FROM M1)
+RDTW   DEF     FRDTW           READ TWELVE BITS FROM M1
+SNDDA  DEF     FSNDA           SEND BYTES TO M1
+SNDM1  DEF     FSNM1
+REDY   DEF     FREDY           CHECK IF TAPE UNIT READY FOR ACTION
+RCM1   DEF     FRCM1           RECEIVE DATA FROM M1 ROUTINE
+TPSTT  DEF     FTPST           GET STATUS FROM DAC COMMAND CHNL
+OUTC   DEF     FOUTC           OUTPUT A COMMAND TO DACONICS CMND CH
+OUTF   DEF     FOUTF           SEND A CONTROL FUNCTION TO DAC CHNL
+EXIT   DEF     FEXIT           SET UP FOR TAPE IO AND RETURN
+WRING  DEF     FRING           CHECK FOR WRITE RING
+EOT    DEF     FEOT            CHECK FOR END OF TAPE
+DMAIO  DEF     FDMAI           DO DMA INPUT/OUTPUT
+RDTU   DEF     FRDTU           READ TAPE UNIT ADDRESS FROM M1
+XDVER  DEF     FDVER           DEVICE ERROR ROUTINE
+PWRIT  DEF     PWRFL           POWER FAILURE INTERRUPT POINTER
+PARIT  DEF     PARER           PARITY ERROR INTERRUPT POINTER
+* LABEL VARIABLES
+GFAIL  OCT     0               FAILURE RETURN ADDRESS FOR GCHR
+LABEL  DEF     FORCE
+XGNC   DEF     GNCHR           GET NEXT CHARACTER
+XCHAR  DEF     CHAR            PRINT OUT CHAR
+XVERT  DEF     VERT            VERTICAL COMMAND
+XHOR   DEF     HORIZ           HORIZONTAL COMMAND
+XSHYT  DEF     SHYTY           SEND TO HYTYPE
+XHZAP  DEF     HINIT           INITIALIZE HYTYPE
+       SKP
+       ORG     200B
+*
+ENTER  JMP     START
+       SPC     2
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+*
+*        OPERAND TABLE - FOR COMMANDS FROM M1
+*
+OPTAB  OCT     210
+       DEF     READC,I         READ
+       OCT     202
+       DEF     WRITE,I         WRITE TAPE
+       OCT     213
+       DEF     CNTRL,I         TAPE CONTROL
+       OCT     204
+       DEF     SETMD,I         SET MODES FOR TAPE
+       OCT     205
+       DEF     HTYPE,I         HYTYPE IT OUT
+       OCT     216
+       DEF     PLOT,I          PLOT ON HYTYPE
+       OCT     207
+       DEF     PRINT,I         PRINT
+       OCT     264
+       DEF     SKPIT,I         SKIP IT
+       OCT     102
+OPEND  DEF     HDRSR,I         HEADER SEARCH
+*
+AOPTB  DEF     OPTAB
+OPMAX  DEF     OPEND+1
+       SKP
+*
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+*        DACONICS COMMANDS FOR TAPE UNIT
+REWDC  OCT     11              REWIND AND STANDBY (0)
+RWSDC  OCT     31              REWIND AND DESELECT (1)
+GAPDC  OCT     121             WRITE 3" BLANK TAPE (2)
+WFMDC  OCT     141             WRITE FILE MARK (3)
+BSRDC  OCT     5               BACKSPACE 1 RECORD (4)
+BSFDC  OCT     45              BACKSPACE 1 FILE (5)
+FSRDC  OCT     3               FORWARD SPACE 1 RECORD (6)
+FSFDC  OCT     43              FORWARD SPACE 1 FILE (7)
+*        NON-CONTROL COMMANDS
+RCCDC  OCT     203             READ 1 RECORD
+WCCDC  OCT     301             WRITE 1 RECORD
+SELDC  OCT     1400            SELECT UNIT #1
+CLRDC  OCT     110             CLEAR CONTROLLER
+CMDTB  EQU     REWDC
+ACMTB  DEF     REWDC           BEGINNING OF DAC COMMAND TABLE
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+*        RETURN FLAGS FIELDS
+RFLAG  OCT     0
+UNXCF  OCT     40              13 UNIT EXCEPTION FLAG
+BDCMF  OCT     20              23 BAD COMMUNICATIONS FLAG
+UNERF  OCT     10              33 UNIT ERROR FLAG
+BDCPF  OCT     4               43 BAD COMPARE FLAG.
+NTNUF  OCT     2               53 NOT ENOUGH FLAG
+ILF    OCT     20              63 INCORRECT LENGTH FLAG
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+*        HP => M1 RESPONSE CODES
+COMER  OCT     270             X'B8' COMMUNICATIONS ERROR
+DEVER  OCT     261             X'B1' DEVICE ERROR
+DEVNR  OCT     273             X'BB' DEVICE NOT READY
+WOKUE  OCT     264             X'B4' WRITE OK, UNIT EXCEPTION
+PFIN   OCT     275             X'BD' PRINT FINISHED
+ROK    OCT     276             X'BE' READ OK
+WOK    OCT     267             X'B7' WRITE OK
+*** NOT USED ***DNBOT  OCT     277             X'BF' DISK NOT BOOTSTRAPPED
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+*        I/O CHANNEL DECLARATIONS (TAPE, AND M1)
+A      EQU     0
+B      EQU     1
+SR     EQU     1               SWITCH REGISTER
+M1IO   EQU     13B
+CMND   EQU     11B             START OFF WITH 9TRK (BUT CHANGES)
+DC9DC  EQU     10B
+DC9CC  EQU     11B
+DC7CC  EQU     11B             FOR FUTURE USE (NOW 9TRK DEFAULT)
+RSTRT  EQU     12B
+PR1CC  EQU     14B
+HYTCC  EQU     15B             HYTYPE CONTROL CHANNEL
+TTY1   EQU     16B             TELETYPE ADDRESS
+       SKP
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+*        OTHER GLOBALS FOR ALL ROUTINES
+*
+FLAGS  OCT     0               STATE OF COMMAND VECTOR
+CPROC  OCT     77777           TURN OFF COMMAND ACTIVE BIT
+CPROS  OCT     100000          TURN ON COMMAND ACTIVE BIT
+PNTRX  OCT     0               (POINTER) ADDRESS FOR READ SIX INTO
+S1     BSS     1               FIRST OF TWO WORDS FOR SNDDA
+SEND   BSS     1               SECOND OF TWO WORDS FOR SNDDA
+PSNDA  DEF     S1              ADDRESS OF TWO WORD SNDDA BUFFER
+NUMDA  OCT     0               NUMBER OF WORDS TO SEND TO M1
+DASAV  BSS     1               SAVE CONTENTS OF A REGISTER
+TUNIT  OCT     0               TAPE UNIT ADDRESS
+ATUNT  DEF     TUNIT           ADDRESS POINTER
+RETRY  OCT     0               RETRY COUNTER IF TAPE GIVES HARD TIM
+BYTCN  OCT     0               NUMBER OF BYTES FOR READ OR WRITE
+ABYTC  DEF     BYTCN           ADR OF BYTCNT
+*        (8-BIT BYTES)
+PBUFF  OCT     0               ADDRESS OF PRINT OR TAPE BUFFER
+*
+*        PARAMETERS FOR DMA I/O
+*
+WCAD   EQU     2B
+DMAD   EQU     6B
+DMAD2  EQU     7B
+DMAC1  OCT     020010          FIRST DMA WORD
+DX118  EQU     DMAC1
+DMAC2  OCT     4000            2ND DMA CNTL WRD (TAPEBUFF EP)
+*
+* PRINTER DMA STUFF
+*
+PWCNT  BSS     1
+DMAP1  ABS     PR1CC
+DMAP2  BSS     1
+WCADP  EQU     3B
+PRTLM  BSS     1               PRINTER BYTE LIMIT
+PBI    BSS     1               PRINTER BYTE INDEX
+XPBUF  BSS     1               TO ALLOW USE OF EITHER TAPE OR
+*                                  PRINTER BUFFER
+NSLEW  OCT     200
+WPTR   BSS     1
+NULLE  OCT     17400           NULL CHARACTER=ASCII 37B
+NULLF  BSS     1
+*
+*        CONSTANTS
+*
+B77    OCT     77
+ZERO   OCT     0
+B10    OCT     10
+K10    DEC     10              DECIMAL TEN
+ODD    BSS     1
+       SKP
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+*        PART  I - - -  UTILITIES - - -
+*
+CMNDS  DEF     CX05            READY
+       DEF     CX10            REDY
+       DEF     CX90            OUTC
+       DEF     CX92            OUTC
+       DEF     CX93            OUTC
+       DEF     CX99            EXIT
+       DEF     CX100           EXIT
+       DEF     CX110           TPIN
+       DEF     CX115           TPSTT
+       DEF     CX200           EOT
+       DEF     CX210           WRING
+       DEF     DX118           DMAC1
+CHNL9  DEF     DC9CC           9 TRACK COMMAND CHANNEL
+CHNL7  DEF     DC7CC           NOTHING HERE
+CHNL   BSS     1
+CMLST  DEF     CMNDS
+INCR   BSS     1
+KNT    OCT     0
+CBUFF  OCT     0               CHARACTER BUFFER
+ACBUF  DEF     CBUFF           RDTW SAVE AREA
+PTXSV  OCT     0               SAVE POINTER
+MSK1   OCT     406             BUSY OR REWIND MASK
+TRHRD  OCT     0               WAITING FOR DEVICE READY COUNTER
+SAVC   OCT     0               SAVE TAPE FUNCTION COMMAND
+KBGNG  OCT     100002
+B17    OCT     17
+MSK4   OCT     177700
+K2     OCT     2
+K100   OCT     64
+KM1    OCT     177777          MINUS 1
+KM10   OCT     177766          MINUS TEN
+NRFLG  BSS     1
+KM11   DEC     -11
+       SKP
+* * * * * * * * * * * * * * * X R S T * * * * * * * * * * * * * * * * *
+*XRST - RESTART INTERRUPTED ENTRY POINT.
+*
+XRST   NOP                     RESTART INTERRUPTED ENTRY POINT.
+*                              FALL THROUGH TO REGULAR START
+*        PROGRAM START ENTRY POINT
+*
+START  CLF     0               TURN OFF INTERRUPTS
+       CLA,CLE                 RESET START COUNTER
+       STA     FLAGS           RESET FLAGS
+CLEAN  INA                     INCREMENT COUNTER
+       OTA     SR              DISPLAY COUNT
+       SEZ                     FINISHED ON OVERFLOW
+       JMP     INIT            GIVE UP TRYING
+       SFS     M1IO            TRY TO CLEAR OUT CHARACTERS FROM M1
+       JMP     CLEAN           FOR ABOUT .5 SEC
+       LIB     M1IO
+       CPB     CNULL           UNTIL WE GET A 277 FROM KDF CLEANUP
+       JMP     CLN1
+       JMP     CLEAN
+
+CLN1   STB     SVCMD           SAVE THE CLEAN UP PSUEDO-COMMAND
+*                              AND FALL THRU TO INIT
+       SKP
+*        INITIALIZE INTERRUPT SYSTEM
+*        MOST LOCATIONS INITIALIZED AT ASSEMBLE TIME
+*
+INIT   CLF     0               DISABLE INTERRUPT SYSTEM
+       LDA     LEN
+       STA     LIMIT
+       LDA     AINIT
+       STA     NUMDA           BEGINNING OF INTERRUPT COMNDS
+       LDB     K4              BEGINNING OF INTERRUPT LOCATIONS
+       LDA     NUMDA,I         GET INSTRUCTION
+       STA     B,I             STORE IT IN LOCATION
+       INB                     GET NEXT INTERRUPT LOCATION
+       ISZ     NUMDA           GET NEXT INSTRUCTION
+       ISZ     LIMIT           ARE WE THROUGH?
+       JMP     *-5             NOPE
+*        CLEAR TAPE CONTROLLER(S) AND OTHER DEVICES
+       LDA     CLRDC
+       OTA     DC9CC
+       SFS     DC9CC
+       JMP     *-1
+*        CLEAR DMAIO           ABORT, IF WAS DOING ANYTHING
+       CLC     DMAD            DMA SET TO INACTIVE STATE
+       CLC     DMAD2           DMA SET TO INACTIVE STATE
+*        FOLLOW SUIT FOR ALL OTHER DEVICES
+       CLC     DC9CC
+       CLC     DC9DC
+       CLC     TTY1
+       JSB     XHZAP,I         INITIALIZE THE HYTYPE
+*
+*        ALL INITIALIZED EXCEPT FOR M1IO AND RESTART
+*        WHICH WE WANT CONTROL TO BE ALWAYS SET
+       STC     RSTRT,C
+       STC     M1IO            DON'T CLEAR FLAG - IPL/INIT RACE
+*        OK:  WAIT
+       STF     0
+       JSB     LOOP-1
+LEN    ABS     INITX-TAIL
+LIMIT  BSS     1
+AINIT  DEF     INITX
+INITX  JSB     PWRIT,I         POWER FAIL INTERRUPT
+       JSB     PARIT,I         PARITY ERROR INTERRUPT
+       CLC     DMAD            LOC 6 DMAIO RETURN (IGNORE)
+       CLC     DMAD2
+       HLT     10B             LOC 10 DACONICS DATA CHANNEL
+       JSB     TPIN,I          LOC 11 DACONICS CONTROL CHANNEL
+       JSB     RSTIN,I         LOC 12 RESTART INTERRUPT
+       JSB     CMDIN,I         LOC 13 COMMAND INTERRUPT
+       JSB     PRIN,I          LOC 14 PRINTER CHNL 1 INTERRUPT
+       JSB     HYINT,I         LOC 15 HYTYPE INTERRUPT
+       CLC     TTY1            IGNORE TTY INTERRUPTS
+TAIL   EQU     *
+       SKP
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+*                                                                     *
+*        DISPLAY COMMUNICATIONS WITH THE M1 IN WAIT LOOP              *
+*                                                                     *
+*    BITS(S)   SIGNIFICANCE                                           *
+*                                                                     *
+*     0-6      LAST COMMAND FROM M1                                   *
+*      7       M1 HAS OUTPUT CHARACTER READY                          *
+*     8-14     LAST RESPONSE FROM HP                                  *
+*      15      HP HAS OUTPUT A CHARACTER                              *
+*                                                                     *
+*        HP RESPONSE FIELD                                            *
+*                                                                     *
+*        61    DEVICE ERROR                                           *
+*        64    WRITE OK, BUT UNIT EXCEPTION                           *
+*        67    WRITE OK                                               *
+*        70    COMMUNICATIONS ERROR                                   *
+*        75    PRINT FINISHED                                         *
+*        76    READ OK                                                *
+*                                                                     *
+*                                                                     *
+*        500 COMMAND FIELD                                            *
+*                                                                     *
+*         2    WRITE TAPE                                             *
+*         4    SET TAPE MODE                                          *
+*         5    HYTYPE                                                 *
+*         7    PRINT                                                  *
+*        10    READ                                                   *
+*        13    TAPE CONTROL                                           *
+*        16    PLOT                                                   *
+*        64    SKIP IT                                                *
+*        77    CLEAN UP                                               *
+*       102    HEADER SEARCH                                          *
+*                                                                     *
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+*
+ENTRY  NOP                     SAVE THE CALLING ADDRESS TO SEE HOW
+*                                  WE ENDED UP AT THE DO-NOTHING LOOP.
+LOOP   LDA     ASAVE           READY THE HP
+       AND     K177            RESPONSE FIELD
+       ALF,ALF
+       SFS     M1IO            IS A FLAG SET?
+       RSS                     NO.
+       IOR     K200            YES. ADD BIT 7
+       SFC     M1IO            IS B FLAG SET?
+       IOR     BIT15           YES.  ADD BIT 15
+       STA     B               TEMPORARY STORAGE
+       LDA     SVCMD           MASK LAST COMMAND TO 7 BITS.
+       AND     K177
+       IOR     B               MERGES
+       OTA     SR              DISPLAY IN SWITCH REGISTER
+       JMP     LOOP            AND WAIT SOME MORE
+       SKP
+* * * * * * * * * * * * * * * C O M N D * * * * * * * * * * * * * * * *
+*        ENTRY POINT FOR RECEIVING M1 COMMANDS
+COMND  NOP                     0                   COMMAND ENTRY ROUTINE
+       CLF     0               DISABLE INTERRUPTS
+       STA     TC1
+       STB     TC2             SAVE REGISTERS
+       LDA     FLAGS           CHECK THAT NO COMMAND ALREADY IN PRO
+       SSA                     UNACCEPTABLE
+       JMP     UNXCC
+       LIA     M1IO,C          GET COMMAND
+MEG    STA     SVCMD           SAVE COMMAND
+       CPA     CNULL           IS IT A CLEAN UP/RESTART
+       JMP     INIT            YES
+       LDB     AOPTB           NO. SET A AS A POINTER TO OP TABLE
+CHOCH  CPA     B,I             TRY TO MATCH COMMAND NAME
+       JMP     MATCH           OK
+       ADB     K2              NO. TRY NEXT ENTRY
+       CPB     OPMAX           HAVE WE GONE TOO FAR?
+       JMP     BDCOM           YES.  GIVE UP TRYING
+       JMP     CHOCH           NO.  TRY AGAIN
+*
+MATCH  INB                     BUMP A TO SUBROUTINE ERROR
+       LDB     B,I             GET ADDRESS INTO B
+       LDA     FLAGS           SET COMMAND IN PROGRESS FLAGS
+       IOR     CPROS
+       STA     FLAGS
+* SAVE STATE
+       LDA     COMND
+       STA     CMDSV
+       LDA     TC1
+       STA     TC3
+       LDA     TC2
+       STA     TC4
+       STF     0               ENABLE INTERRUPTS
+       JSB     B,I
+       SKP
+RETRN  LDA     FLAGS           GET COMMAND MASK
+       AND     CPROC           READY TO OBTAIN NEW COMMAND
+       STA     FLAGS
+       LDA     TC3
+       LDB     TC4
+       JMP     CMDSV,I
+UNXCC  LDB     UNXCF           UNIT EXCEPTION
+       JMP     BADD
+BDDAT  HLT     27B
+       JMP     BDDAT           TRAP THE ERROR.
+BDCOM  LDB     BDCMF           BAD COMMUNICATIONS
+       JMP     BADD
+UNERR  LDB     UNERF           UNIT ERROR
+       JMP     BADD
+BDCOP  LDB     BDCPF           BAD TAPE CONTROL OPERATOR
+       JMP     BADD
+NTENU  LDB     NTNUF           NOT ENOUGH
+BADD   CLF     0               DISABLE INTERRUPT SYSTEM
+       LDA     COMER           COMMUNICATION ERROR
+       STA     ASAVE           SAVE HP RESPONSE TO M1 COMMANDS
+       JSB     SNDM1,I
+       LDA     B               ERROR TYPE
+       JSB     SNDM1,I
+*
+GRACE  LDA     FLAGS           CLEAR COMMAND IN PROGRESS FLAG
+       AND     CPROC
+       STA     FLAGS
+       STF     0               ENABLE INTERRUPTS
+SANDY  SFS     M1IO
+       JMP     *-1
+       LIB     M1IO,C
+       CPB     CNULL
+       JMP     INIT
+       JMP     SANDY
+BADD1  CLF     0               DISABLE INTERRUPTS
+       LDA     CMDSV
+       STA     COMND
+       STF     0
+       JMP     MEG
+       SKP
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+*        PART 3 LOCAL VARIABLES
+SAVC2  OCT     0               FOR SAVING READ OR WRITE COMMAND
+EOFLG  BSS     1               END OF FILE FLAG
+ILFLG  BSS     1               INCORRECT LENGTH FLAG
+SHPSV  BSS     1               BUFFER FOR PUT ROUTINE
+RDWRT  BSS     1               READ OR WRITE TAPE FLAG
+SVKNT  BSS     1
+B120   OCT     120
+B3     OCT     3
+B6     OCT     6
+DMAIN  OCT     100000          DMA INPUT FLAG
+DMAOT  OCT     77777           OUTPUT FLAG SET
+K6     DEC     6
+KM6    DEC     -6
+APASS  DEF     BYPAS
+ABRET  DEF     BRET
+       SKP
+* * * * * * * * * * * * * * * F R D S X * * * * * * * * * * * * * * * *
+*
+FRDSX  NOP                     0
+*        READ SIX BIT DATA
+*        CALL WITH ADDRESS FOR VALUE IN PNTRX
+       SFS     M1IO
+       JMP     *-1
+       LIB     M1IO            GET 6-BIT DATA (11XXXXXX)
+       BLF,BLF
+       RBL                     GET ONE BIT INTO SIGN, OTHER BIT
+       SSB,SLB,RSS                INTO LOW ORDER, CHECK FOR TWO BITS S
+       JMP     BDDAT           NO, IN ERROR
+       BRS,BLR                 THIS CLEARS THE TWO BITS
+       RBL,BLF
+       RBL,RBL                 PUTS INTO LOW ORDER PART OF WORD
+       STB     PNTRX,I
+       JMP     FRDSX,I
+*
+* * * * * * * * * * * * * * * F R D T W * * * * * * * * * * * * * * * *
+*        READ TWELVE BIT DATA
+*        CALL WITH ADDRESS FOR VALUE IN PNTRX
+FRDTW  NOP                     0
+       CLA
+       LDB     PNTRX           SAVE POINTER
+       STB     PTXSV
+       LDB     ACBUF           CHARACTER BUFFER ADDRESS
+       STB     PNTRX
+       JSB     RDSX,I          GET FIRST SIX
+       LDA     PNTRX,I
+       AND     B17             GET BOTTOM FOUR BITS
+       ALF                     A
+       RAL,RAL
+       JSB     RDSX,I
+       IOR     PNTRX,I         GET NEXT SIX
+       ALF
+       RAL,RAL
+       JSB     RDSX,I
+       IOR     PNTRX,I         GET FINAL SIX
+       STA     PTXSV,I         STORE AWAY
+       JMP     FRDTW,I
+       SKP
+* * * * * * * * * * * * * * * F S N D A * * * * * * * * * * * * * * * *
+*        SEND N 6 BIT (N=6) WORDS TO M1
+*        IN NUMDA
+*        VALUE IN S1, SEND         TWO CONSECUTIVE LOCATIONS
+FSNDA  NOP                     0
+       LDA     NUMDA
+       CPA     ZERO
+       JMP     FSNDA,I
+       CMA,INA
+       STA     NUMDA           GET NEGATIVE NUMBER OF WORDS
+       LDB     S1              GET CONTENTS INTO B
+       STA     GT1
+       LDA     SEND            GET SECOND HALF INTO A
+DARRQ  ISZ     GT1
+       JMP     DARRR
+       JMP     DARPT
+GT1    OCT     0               TEMPORARY STORAGE.
+DARRR  RRR     6
+       JMP     DARRQ
+DARPT  STA     DASAV
+       AND     B77             GET SIX BITS
+       JSB     SNDM1,I
+       ISZ     NUMDA
+       JMP     *+2
+       JMP     FSNDA,I         FINISH
+       LDA     DASAV           CONTINUE
+       RRL     6               GET NEXT SIX BITS
+       JMP     DARPT
+*
+* * * * * * * * * * * * * * * F S N M 1 * * * * * * * * * * * * * * * *
+*        ROUTINE TO CHECK IF M1 READY TO RECEIVE
+*        AND SENDS A 6-BIT WORD WHEN IT IS * * * * *
+FSNM1  NOP                     0
+       SFC     M1IO
+       JMP     *-1
+       OTA     M1IO
+       JMP     FSNM1,I
+       SKP
+* * * * * * * * * * * * * * * F R E D Y * * * * * * * * * * * * * * * *
+*        CHECK TO SEE IF THE TAPE DEVICE IS READY
+FREDY  NOP                     0
+* ERROR RETURN (FREDY), GOOD RETURN (FREDY)+1
+       LDA     SELDC           SELECT COMMAND
+       CLB
+       STB     EOFLG
+CX05   OTA     CMND            SELECT COMMAND
+       CLB
+       STB     NRFLG           NOT READY FLAG
+       LDB     K10
+       STB     RETRY           10 RETRIES
+       LDB     K100
+       STB     TRHRD           FOR REPEATED ATTEMPTS AT DEVICE SELE
+CX10   LIA     CMND            GET STATUS
+       ALF,ALF
+       SLA,RSS                 TAPE OFF LINE
+       JMP     *+7
+NONO   LDA     TUNIT           YES NOTIFY VIA DEVICE ERROR
+       STA     SEND            SEND TAPE UNIT ADDRESS
+       LDA     K2              (TWO BYTES)
+       STA     NUMDA
+       JSB     XDVER,I         GO AND TATTLE
+       JMP     FREDY,I         WANT TO ERROR RETURN
+       AND     MSK1            BUSY OR REWIND?
+       SZA,RSS
+       JMP     OKNOW           ITS OK NOW
+       ISZ     TRHRD
+       JMP     CX10
+       LDA     NRFLG           CHECK ON NOT READY FLAG.
+       SZA
+       JMP     GRIND           DEVNR ALREADY SENT, THEY KNOW.
+       INA
+       STA     NRFLG
+       LDA     DEVNR
+       JSB     SNDM1,I
+       LDA     TUNIT
+       STA     SEND
+       LDA     K2
+       STA     NUMDA
+       JSB     SNDDA,I
+GRIND  LDB     KBGNG
+       STB     TRHRD
+       JMP     CX10
+OKNOW  ISZ     FREDY
+       JMP     FREDY,I         GOTO NORMAL RETURN POINT
+       SKP
+* * * * * * * * * * * * * * * F R C M 1 * * * * * * * * * * * * * * * *
+*
+FRCM1  NOP                     0
+       SFS     M1IO
+       JMP     *-1
+       LIA     M1IO
+       JMP     FRCM1,I
+*
+* * * * * * * * * * * * * * * F T P S T * * * * * * * * * * * * * * * *
+*        GET TAPE STATUS (POSITION, WRITE RING, ETC)
+FTPST  NOP                     0
+CX115  LIA     CMND
+       JMP     FTPST,I
+*
+* * * * * * * * * * * * * * * F O U T C * * * * * * * * * * * * * * * *
+*        ROUTINE TO OUTPUT A COMMAND TO DACONICS CMND CHNNEL
+FOUTC  NOP                     0
+       STA     SAVC            SAVE DAC COMMAND (FROM REG A)
+CX90   OTA     CMND            OUTPUT COMMAND
+CX92   LIA     CMND            GET TAPE STATUS
+       AND     B10
+       SZA,RSS                 COMMAND REJECTED?
+       JMP     FOUTC,I         NO
+       LDB     CLRDC           YES
+CX93   OTB     CMND            CLEAR THE CONTROLLER
+       CLA,INA
+       JSB     EXIT,I
+       LDA     SAVC            DO COMMAND AGAIN
+       JMP     CX90
+*        RETRY COUNTER TO BE INSERTED HERE IF INFINITE LOOPS
+*        ARE A HAZARD
+*
+* * * * * * * * * * * * * * * F O U T F * * * * * * * * * * * * * * * *
+*        OUTPUT A FUNCTION
+FOUTF  NOP                     0
+       JSB     OUTC,I
+       CLA,INA
+       JSB     EXIT,I
+       JMP     FOUTF,I
+* RETURN POINT FROM TAPEIO VIA INTERRUPT CONTROL MECHANISM
+TPINX  NOP                     0
+       CLF     0               TURN OFF INTERRUPT SYSTEM
+CX110  CLC     CMND            CLEAR COMMAND CHANNEL CONTROL
+       STF     0               TURN ON INTERRUPTS SYSTEM
+       JMP     FEXIT,I         EXIT TO CORRECT ROUTINE
+       SKP
+* * * * * * * * * * * * * * * F E X I T * * * * * * * * * * * * * * * *
+*        SET UP FOR RETURN VIA INTERRUPT PROCESS
+FEXIT  NOP                     0
+       CLF     0               DISABLE INTERRUPT SYSTEM
+       SLA,RSS                 SET COMMAND CONTROL F/F
+       JMP     *+1             ALWAYS DO IT
+       ARS,SLA                 SET DMA CONTROL F/F?
+       STC     DMAD,C          SET DMA INTERRUPT CONTROL
+CX99   CLF     CMND
+CX100  STC     CMND            SET CMND CHNL INT. CONTROL
+       STF     0               ENABLE INTERRUPT SYSTEM
+       JSB     LOOP-1          I/O WAIT
+FRING  NOP                     0
+       STB     FREDY           RETURN POINT FOR ERROR
+CX210  LIA     CMND
+       ALF,ALF
+       SSA                     WRITE PROTECTED?
+       JMP     NONO            YES, FLAG VIA DEVICE ERROR
+       JMP     FRING,I         ITS OK
+*
+* * * * * * * * * * * * * * * F E O T * * * * * * * * * * * * * * * * *
+*        CHECK IF END OF TAPE ENCOUNTERED
+FEOT   NOP                     0
+       STB     FREDY           RETURN POINT FOR ERROR
+CX200  LIA     CMND
+       ALF,ALF
+       ALF,SLA                 EOT?
+       JMP     NONO            YES
+       JMP     FEOT,I          ITS OK
+       SKP
+* * * * * * * * * * * * * * * F R D T U * * * * * * * * * * * * * * * *
+*        READS TAPE UNIT ADDRESS AND PUTS IN TUNIT
+*        ALSO PUTS 7 TRK OR 9 TRK CONTROLLER ADDRESS
+*        IN CHANNEL PART OF TAPE COMMANDS
+FRDTU  NOP                     0
+       LDA     ATUNT
+       STA     PNTRX
+       JSB     RDSX,I
+       CLA,INA                 A=1 MEANS 9 TRACK
+       JMP     *+3             KLUDGE TO ACCEPT BOTH.
+       JMP     *+2
+       JMP     UNERR           WRONG TAPE UNIT NUMBER
+       LDA     CHNL9           NOW ONLY 9 TRACK, EASY TO MODIFY
+       STA     CHNL            TO DECIDE FOR 7 TRACK
+       LDB     CMLST           LIST OF CHANNEL COMMAND ADDRESSES
+       STB     INCR
+       LDB     INCR,I          B=ADDR OF FIRST OF COMMANDS
+       LDA     B,I             A=COMMAND
+       AND     B77             CHECK IF SAME CONTROLLER
+       CPA     CHNL
+       JMP     FRDTU,I         YES
+       LDA     KM11            (PARAMETER) COMMANDS PRESENT IS ELEV
+       STA     KNT
+MORE   LDA     B,I             LOOP, AND PUT IN CHANNEL NUMBER
+       AND     MSK4
+       IOR     CHNL
+       STA     B,I
+       ISZ     KNT             ALL COMMANDS FINISHED?
+       JMP     JM624           NO
+       JMP     *+4             YES
+JM624  ISZ     INCR
+       LDB     INCR,I          GET NEXT ADDRESS
+       JMP     MORE
+       ISZ     INCR
+       LDB     INCR,I
+       LDA     CHNL
+       ADA     KM1
+       STA     CHNL
+       LDA     B,I
+       AND     MSK4
+       IOR     CHNL
+       STA     B,I
+       JMP     FRDTU,I
+*        A HAS COMMAND, B HAS ADDRESS
+*      SKP
+* * * * * * * * * * * * * * * F D V E R * * * * * * * * * * * * * * * *
+*        RETURN POINT FOR DEVICE (IE TAPE OR PRINT)
+*        FOR THE CONDITION WHERE
+*        UNRECOVERABLE ERROR (EG RETRIES EXHAUSTED, UNABLE TO SELECT,
+*        OR TAPE UNIT OFF-LINE)
+*        INSERT CODE FOR POSSIBLE BRANCH TO RESTART HERE
+*        UPON ENTRY (TAPE) UNIT ADDRESS IN SEND
+*        COUNT IN NUMDA
+FDVER  NOP                     0
+       CLF     0               DISABLE INTERRUPT SYSTEM
+       LDA     DEVER
+       STA     ASAVE           SAVE HP RESPONSE TO M1 COMMANDS
+       JSB     SNDM1,I         TELL M1 DEVERR
+       JSB     SNDDA,I
+       LDA     FLAGS
+       AND     CPROC           FREE FOR A NEW COMMAND
+       STA     FLAGS
+       LDA     K10
+       STA     RETRY           RESET RETRY COUNTER
+       STF     0               ENABLE INTERRUPT SYSTEM
+       JSB     LOOP-1          GO TO LOOP UNTIL ACKNOWLEDGEMENT
+*        SKIPIT OR REPEAT
+SKPT   NOP                     0
+*        MAKE AS IF IO WAS DONE PROPERLY
+       JMP     FDVER,I
+       SKP
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+*        PART 2 -- LOCAL CONSTANTS
+TBITS  OCT     177770
+K177   OCT     177             7 BIT MASK
+K200   OCT     200
+BIT15  OCT     100000
+K4     DEC     4
+KM4    DEC     -4
+* XCNTR  VARIABLES:
+DUM    OCT     0
+CTRSV  OCT     0               SAVE CONTROL COMMAND
+CNTOP  OCT     0               CONTROL COMMAND FOR TAPE UNIT
+ADUM   DEF     DUM             ADDRESS FOR DUM
+ACNTP  DEF     CNTOP
+*
+* * * * * * * * * * * * * * * M1 COMMAND DECLARATIONS * * * * * * * * *
+*
+CNULL  OCT     277             SPECIAL CODE FROM M1 (KDF CLEANUP)
+ABD1   DEF     BADD1           ADDRESS OF BADD1
+HIHAF  OCT     177400
+TC1    OCT     0               SAVE REGISTER
+TC2    OCT     0               SAVE REGISTER
+TC3    OCT     0               SAVE REGISTER
+TC4    OCT     0               SAVE REGISTER
+SVCMD  OCT     0               SAVE COMMAND CODE
+CMDSV  OCT     0               SAVE M1 COMMAND
+ASAVE  OCT     0               SAVE HP RESPONSE
+       SKP
+* * * * * * * * * * * * * * * X C N T R * * * * * * * * * * * * * * * *
+XCNTR  NOP                     0
+*        TAPE MOTION CONTROL IS HANDLED HERE
+*
+       JSB     RDTU,I          GET TAPE UNIT # AND INITIALIZE
+*        FOR COMMANDS IF NECESSARY
+*        PUT COMMAND (TAPE CONTROL) IN CNTOP, COUNT IN DUM
+       LDA     ADUM            COUNT ADDRESS
+       STA     PNTRX           GET COUNT
+       JSB     RDSX,I          GET NUMBER OF OPERATIONS
+       LDA     ACNTP           COMMAND OPERATOR ADDRESS
+       STA     PNTRX
+       JSB     RDSX,I          GET COMMAND
+       LDA     TBITS           COMMAND MASK
+       AND     CNTOP           IF .NE. 0, THEN CONTOP TOO LARGE.
+       SZA                     A
+       JMP     BDCOP
+       JSB     REDY,I
+*        CHECK TO SEE IF DEVICE IS READY, FOR EXAMPLE
+*        THE TAPE MIGHT BE OFF LINE, BUSY OR UNAVAILABLE
+*        FOR SOME REASON OR ANOTHER
+*        FIRST LOCATION AFTER IS AN ERROR RETURN
+       JMP     XCNTF           WELL, TOO BAD.
+ONWRD  LDA     CNTOP           CONTROL OPCODE
+       SZA,RSS
+       JMP     REWC            =0 GO TO REWIND COMMAND
+       CMA,INA                 NEGATE CONTROL OPCODE
+       INA,SZA,RSS
+       JMP     REWS            =1 REWIND AND DESELECT
+       INA,SZA,RSS
+       JMP     GAPC            =2 GAP
+       INA,SZA,RSS
+       JMP     WFMC            =3 WRITE FILE MARK
+       JMP     POSIT           >3 MUST BE POSITION COMMAND
+REWC   LDA     REWDC           REWIND
+       JMP     REW             GO
+REWS   LDA     RWSDC           REWIND AND DESELCT
+       JMP     REW
+GAPC   LDB     AXCNT
+       JSB     WRING,I
+       JSB     EOT,I           CHECK ON END OF TAPE
+       LDA     GAPDC           GAP IT
+       JSB     OUTF,I
+       JMP     XCNTF
+WFMC   LDB     AXCNT
+       JSB     WRING,I         CHECK IF WRITE PROTECTED
+       JSB     EOT,I           END OF TAPE?
+       LDA     WFMDC           WRITE FILE MARK
+       JSB     OUTF,I          GO
+       JMP     XCNTF
+       SKP
+*        CONTROL OPERATIONS TO PERFORM
+POSIT  LDB     DUM             NEGATE COUNT FOR NUMBER OF
+       CMB,INB
+       STB     DUM
+       SSB,RSS                 BAD COUNT
+       JMP     XCNTF           SO IGNORE IT.
+       LDA     ACMTB           BEGINNING OF DAC COMMAND TABLE
+       ADA     CNTOP
+       LDA     A,I
+       STA     CTRSV
+LP1    JSB     TPSTT,I
+       STA     B
+       LDA     CTRSV
+       RAR,SLA                 CHECK IF FORWARD OR BACKWARD
+       JMP     *+5
+       BLF,BLF                 BACKWARDS
+       BLF,RBR                 POSITION 4 => POSITION 0
+       SLB
+       JMP     XCNTF           BOT? YES, FINISH.
+       JMP     SENDC
+       BLF,BLF                 FORWARD
+       BLF                     POSITION 3 => POSITION 0
+       JMP     XCNTF
+SENDC  RAL                     RESTORE COMMAND (MOVE BITS BACK)
+       JSB     OUTF,I          ORDER IT DONE
+       ISZ     DUM             ENOUGH TIMES, FINSHED?
+       JMP     *+2
+       JMP     XCNTF           YES
+       LDA     CTRSV           NO,DO MORE
+       JMP     LP1
+AXCNT  DEF     XCNTF
+REW    STA     KEEP
+       JSB     TPSTT,I
+       AND     BOT             ALREADY AT BOT?
+       SZA
+       JMP     XCNTF           YES
+       LDA     KEEP            NO
+       JSB     OUTF,I          REWIND
+XCNTF  LDA     XCNTR           FIXUP FOR RETURN THRU WRITE ROUTINE
+       STA     WRITE,I
+       CLA
+       STA     EOFLG
+       JMP     BYPAS
+KEEP   BSS     1
+BOT    OCT     40              BOTTOM OF TAPE CODE.
+       SKP
+* * * * * * * * * * * * * * * F D M A I * * * * * * * * * * * * * * * *
+*        THIS DOES DMA IO FOR READ AND WRITE AND HDRSRCH
+*        GOOD RETURN (FDMAI) +1
+*        ERROR RETURN (FDMAI)
+FDMAI  NOP
+       STA     SAVC2
+       LDB     BYTCN
+       BRS
+       CLA,INA
+       AND     BYTCN
+       STA     ODD
+       ADB     A
+       STB     BYTCN
+       JMP     BRET+3
+DMAEN  LDB     DMAC1           FIRST DMA WORD
+       OTB     DMAD            ASSIGNS IO CHANNEL
+       LDB     DMAC2
+       CLC     WCAD            SECOND DMA WORD
+       OTB     WCAD            BUFFER ADDRESS
+       LDB     BYTCN
+       CMB,INB
+       STC     WCAD            THIRD DMA WORD
+       OTB     WCAD            BUFFER LENGTH
+       JSB     OUTC,I
+       LDA     B3              SET UP FOR RETURN VIA INTERRUPT
+       JSB     EXIT,I
+       JSB     TPSTT,I         GET TAPE STATUS (E.G. EOF)
+       AND     B120
+       SZA                     EOF OR EOT?
+       JMP     EOFL            YES
+       STA     EOFLG           NO EOFLG=0
+       JSB     TPSTT,I         CHECK FOR P.E., TIMING ERROR
+       AND     K4              ACTUAL LONGER THAN REQUESTED?
+       SZA,RSS
+       JMP     BACK            IT'S OK.
+       LDA     DMAC2
+       SSA,RSS
+       JMP     BACK
+       LDA     BYTCN
+       CLB
+       JMP     UGH
+BACK   JSB     TPSTT,I
+       AND     B6
+       SZA,RSS
+       JMP     CLNUP           NO
+       ISZ     RETRY           YES, RETRY AT LEAST 10 TIMES
+       JMP     *+5
+       LDA     ABRET           'NO WAY'
+       STA     FREDY
+       JMP     NONO
+       SKP
+BRET   JMP     CONVB           ERROR RETURN
+       LDA     BSRDC           BACKSPACE OVER BAD RECORD
+       JSB     OUTF,I
+       LDA     SAVC2
+       JMP     DMAEN
+EOFL   CLA,INA                 WAS EOF,EOT SO SET EOFLG=1
+       STA     EOFLG
+CLNUP  STC     WCAD
+       LIA     WCAD
+       CLB
+       ADA     BYTCN           GET ACTUAL
+       CPA     BYTCN           SAME AS REQUESTED?
+       JMP     *+2             YES
+UGH    INB                     NO
+       STB     ILFLG           ILFLG=0, CORRECT LENGTH
+       STA     BYTCN           ILFLG=1, INCORRECT LENGTH
+       ISZ     FDMAI
+CONVB  LDB     BYTCN
+       BLS
+       LDA     ODD
+       SLA
+       ADB     KM1
+       STB     BYTCN
+       JMP     FDMAI,I
+*
+* * * * * * * * * * * * * * * SHPIT UTILITIES * * * * * * * * * * * * *
+*
+GET    NOP                     0
+       JSB     RCM1,I
+       AND     B77
+       JMP     GET,I
+PUT    NOP                     0                   WSHP IN SHIPIT
+       RRL     6
+       STA     SHPSV
+       AND     B77
+       JSB     SNDM1,I
+       LDA     SHPSV
+       JMP     PUT,I
+       SKP
+* * * * * * * * * * * * * * * X R E A D * * * * * * * * * * * * * * * *
+*        READ FROM TAPE ROUTINE
+XREAD  NOP                     0
+       JSB     RDTU,I          GET UNIT #, INITIALIZE IF NECESSARY
+       LDA     ABYTC           GET WORD COUNT
+       STA     PNTRX
+       JSB     RDTW,I
+*        NOW READ TAPE BUT FIRST CHECK IF READ
+       JSB     REDY,I
+       JMP     PASS            ERROR RETURN
+*        AT THIS POINT THE DEVICE IS READY
+       LDA     DMAC2           SET UP FOR INPUT
+       IOR     DMAIN           INPUT FLAG SET
+       STA     DMAC2
+       LDA     RCCDC
+       JSB     DMAIO,I
+       JMP     PASS            ERROR RETURN
+*        SEND BACK TO M1
+HDREP  LDA     TPBUF
+       STA     PBUFF           TAPE BUFFER
+       CLA
+       STA     RDWRT           A=0 READ TAPE=> HP => M1
+       STA     PSNDA,I         CLEAR OUT BUFFER
+       JSB     SHPIT
+PASS   LDA     ROK
+       STA     ASAVE           SAVE HP RESPONSE TO M1 COMMANDS
+       JSB     SNDM1,I
+       LDA     B3
+       STA     NUMDA
+       LDB     BYTCN
+       STB     SEND            SEND BACK BYTE COUNT
+       JSB     SNDDA,I
+* NOW SEND BACK FLAGS
+       CLA
+       CLB,INB
+       CPB     EOFLG           SET?
+       IOR     UNXCF           YES
+HFLEP  CPB     ILFLG           SET?
+       IOR     ILF             YES
+       STA     SEND
+       CLA,INA
+       STA     NUMDA
+       JSB     SNDDA,I
+       JMP     XREAD,I
+       SKP
+* * * * * * * * * * * * * * * X W R I T * * * * * * * * * * * * * * * *
+*        THIS IS THE WRITE TO TAPE ROUTINE
+XWRIT  NOP                     0
+       JSB     RDTU,I          GET UNIT # INITIALIZE IF NECESSARY
+       LDA     ABYTC
+       STA     PNTRX
+       JSB     RDTW,I          GET WORD COUNT
+       LDA     TPBUF
+       STA     PBUFF           TAPEBUFF ADDR
+       CLA,INA                 A=1 WRITE M1=> HP => TAPE
+       STA     RDWRT
+       JSB     SHPIT
+*        NOW DO DMA IO BUT FIRST
+*        MAKE SURE TAPE UNIT IS READY
+       JSB     REDY,I
+       JMP     BYPAS           ERROR RETURN
+*        NOW ITS READY
+       LDA     DMAC2
+       AND     DMAOT           SET UP FOR OUTPUT TO DMA
+       STA     DMAC2           OUTPUT FLAG NOW SET
+       LDB     APASS           B HAS ERROR RETURN FOR WRING
+       JSB     WRING,I         CHECK FOR WRITE RING
+       LDA     WCCDC
+       JSB     DMAIO,I
+       NOP                     0                   ERROR RETURN
+BYPAS  LDA     WOK             SEND WRITE OK
+       LDB     EOFLG
+       SZB                     WOKUE?
+       LDA     WOKUE           YES
+       STA     ASAVE           SAVE HP RESPONSE TO M1 COMMANDS
+       JSB     SNDM1,I
+       JMP     XWRIT,I
+       SPC     5
+* * * * * * * * * * * * * * * S H P I T * * * * * * * * * * * * * * * *
+*        THIS IS THE MAIN TRANSFER ROUTINE BETWEEN
+*        THE HP AND THE M1
+*        BYTE COUNT IN BYTCN
+*        READ=0, WRITE=1 IN RDWRT
+*        PBUFF POINTER TO BUFFER
+*        'X' SGINIFIES A BIT TO CARE ABOUT
+*        'N' SIGNIFIES BIT NOT TO WORRY ABOUT
+SHPIT  NOP                     0
+       LDA     BYTCN
+       STA     SVKNT
+       CLA                     A,B=0
+       CLB
+       CPA     RDWRT
+       JMP     WSHP            HP => M1
+       SKP
+*        THE FOLLOWING IS M1 => HP
+RDSHP  JSB     GET             1 /XXXXXXNNNNNNNNNN/
+       ALF,ALF
+       RAL,RAL
+       STA     PBUFF,I
+       JSB     GET
+       ALF                     2 /NNNNNNXXXXXXNNNN/
+       IOR     PBUFF,I
+       STA     PBUFF,I
+       JSB     GET
+       RRR     2               ROTATE B,A RIGHT 2 PLACES
+       IOR     PBUFF,I         3 /NNNNNNNNNNNNXXXX/
+       STA     PBUFF,I
+       ISZ     PBUFF
+       STB     PBUFF,I         3 /XXNNNNNNNNNNNNNN/
+       JSB     GET
+       ALF,ALF
+       IOR     PBUFF,I         4 /NNXXXXXXNNNNNNNN/
+       STA     PBUFF,I
+       JSB     GET
+       RAL,RAL                 5 /NNNNNNNNXXXXXXNN/
+       IOR     PBUFF,I
+       STA     PBUFF,I
+       JSB     GET             6 /NNNNNNNNNNNNNNXX/
+       CLB
+       RRR     4
+       IOR     PBUFF,I
+       STA     PBUFF,I
+       ISZ     PBUFF           6 /XXXXNNNNNNNNNNNN/
+       STB     PBUFF,I
+       JSB     GET
+       ALF                     7 /NNNNXXXXXXNNNNNN/
+       RAL,RAL                 7 /NNNNXXXXXXNNNNNN/
+       IOR     PBUFF,I
+       STA     PBUFF,I
+       JSB     GET
+       IOR     PBUFF,I         8 /NNNNNNNNNNXXXXXX/
+       STA     PBUFF,I
+       ISZ     PBUFF
+       LDA     SVKNT           SIX 8-BIT BYTES LESS TO GO
+       ADA     KM6
+       SSA
+       JMP     SHPIT,I
+       SZA,RSS
+       JMP     SHPIT,I         PAU IF ZERO
+       STA     SVKNT
+       CLB
+       JMP     RDSHP
+       SKP
+* * * * * * * * * * * * * * * W S H P * * * * * * * * * * * * * * * * *
+*        MUST BE MORE CAREFUL WITH BYTE COUNT FOR WRITE
+*        DON'T OVERRUN
+WSHP   LDA     BYTCN
+       SZA,RSS                 BYTCNT ZERO?
+       JMP     SHPIT,I         RETURN IF ZERO.
+*        GO TO APPROPRIATE PLACE
+WRON   ADA     KM6             IF NEG, SEND LAST BYTES
+       STA     SVKNT
+       SSA
+       JMP     LFOVR
+       LDB     PBUFF,I
+       ISZ     PBUFF           GET FIRST TWO WORDS
+       LDA     PBUFF,I
+       JSB     PUT
+       JSB     PUT
+       JSB     PUT
+       JSB     PUT
+       JSB     PUT
+*        30 BITS NOW SENT
+       RBL,RBL                 TWO BITS INTO LOW-ORDER OF B
+       ISZ     PBUFF
+       LDA     PBUFF,I
+       RRL     14              OK, LETS GO
+       JSB     PUT
+       JSB     PUT             48 BITS SENT
+       JSB     PUT
+       LDA     SVKNT
+       SZA,RSS
+       JMP     SHPIT,I         PAU
+       ISZ     PBUFF
+       JMP     WRON            GO DO MORE
+       SKP
+LFOVR  ADA     K6
+       CMA,INA
+       STA     SVKNT           GET NEGATIVE OF BYTES LEFT (<6)
+       LDB     PBUFF,I
+       ISZ     PBUFF
+       LDA     PBUFF,I         LOAD UP REGISTERS.
+OVR2   JSB     PUT
+       JSB     PUT
+       ISZ     SVKNT
+       JSB     LSTLG
+       JMP     SHPIT,I         1 OR 4 BYTES FINISHED
+       ISZ     SVKNT
+       JSB     LSTLG
+       JMP     SHPIT,I
+       ISZ     SVKNT
+       JMP     *+2
+       JMP     SHPIT,I         3 BYTES FINISHED
+       BLF,BLF                 ALIGN B
+       ISZ     PBUFF
+       LDA     PBUFF,I         1 => 2 PUTS
+       RRL     8               2 => 3 PUTS
+       JMP     OVR2            3 => 4, 4 => 6, 5 => 7 PUTS
+       SPC     5
+* * * * * * * * * * * * * * * L S T L G * * * * * * * * * * * * * * * *
+*
+LSTLG  NOP
+       JSB     PUT
+       ISZ     LSTLG
+       JMP     LSTLG,I
+       SKP
+       ORG     2000B           FORCE NEW PAGE NOW
+       SPC     2
+* * * * * * * * * * * * * * * X S E T M * * * * * * * * * * * * * * * *
+*XSETM  -  SET MODES.
+*
+XSETM  NOP
+       LDA     ATUNT
+       STA     PNTRX
+       JSB     RDSX,I          GET UNIT #
+       JSB     RDSX,I          GET MODE BITS.
+       LDA     WOK             BOT - IGNORE
+       STA     ASAVE           SAVE HP RESPONSE TO M1 COMMANDS
+       JSB     SNDM1,I         FINISHED
+       JMP     XSETM,I
+       SPC     2
+* * * * * * * * * * * * * * * X H D R S * * * * * * * * * * * * * * * *
+*XHDRS-HEADER SEARCH
+XHDRS  NOP
+       LDA     XHDRS           EXIT VIA
+       STA     READC,I         READ ROUTINE
+       JSB     RDTU,I          TAPE UNIT NO.
+       LDA     ABYTC
+       STA     PNTRX
+       JSB     RDTW,I          GET WORD COUNT
+       LDA     ACMSV           COMPARE COUNT
+       STA     PNTRX
+       JSB     RDSX,I
+       LDA     BYTCN           SAVE BYTE COUNT
+       STA     SAV1
+       LDA     CMPSV
+       STA     BYTCN
+       LDA     PRBUF           GET COMPARE
+       STA     PBUFF           FIELD FROM M1
+       CLA,INA
+       STA     RDWRT
+       JSB     SHPIT
+       LDA     SAV1            RESTORE BYTE COUNT.
+       CLB                     ODD NUMBER OF BYTES?
+       SLA                     NO    B=0
+       INB                     YES   B=1
+       ADA     B
+       STB     ODDC            IF ODD, ODDC=1
+       STA     BYTCN           BYTCN ALWAYS EVEN.
+       JSB     REDY,I          TAPE UNIT READY.
+       JMP     FAILS
+       LDA     DMAC2           SET-UP DMA.
+       IOR     DMAIN
+       STA     DMAC2
+       SKP
+HDRLP  LDA     RCCDC
+       JSB     DMAIO,I
+       JMP     FAILS
+       CLB,INB
+       CPB     EOFLG           EOF?
+       JMP     FAILS           YES
+       LDA     CMPSV           NO
+       CMA,INA                 NEGATE COMPARE COUNT
+       STA     COMPR           WORKING VERSION OF COMPARE COUNT
+       LDA     TPBUF
+       STA     TPPNT           TAPE BUFFER POINT
+       LDA     PRBUF
+       STA     PRPNT           PRINT BUFFER POINTER
+CMPLP  LDA     TPPNT,I
+       LDB     KM1             ODD NUMBER OF BYTES.
+       CPB     COMPR           KLUDGE SO DON'T COMPARE.
+       AND     HIHAF           WHOLE WORD.
+       CPA     PRPNT,I         COMPARE WORDS.
+       JMP     *+2
+       JMP     HDRLP           NO MATCH
+       ISZ     TPPNT           MATCH, BUMP POINTERS.
+       ISZ     PRPNT
+       ISZ     COMPR           FINIS?
+       JMP     *+2             NO - CHECK 2ND BYTE.
+       JMP     HDOUT           FINISHED?
+       ISZ     COMPR           FINIS?
+       JMP     CMPLP           NO, GET MORE.
+HDOUT  LDA     ODDC            WHETHER TO SUBTRACT
+       SLA,RSS
+       JMP     HDREP           ONE BYTE
+       CMA,INA                 OR NOT
+       ADA     BYTCN           IF ODDC SET TO 1.
+       STA     BYTCN           SUBTRACT ELSE.
+       JMP     HDREP           DON'T
+       SKP
+FAILS  LDA     ROK
+       STA     ASAVE           SAVE HP RESPONSE TO M1 COMMANDS
+       JSB     SNDM1,I
+       LDA     B3
+       STA     NUMDA
+       CLB
+       STB     SEND
+       JSB     SNDDA,I
+       CLA
+       IOR     BDCPF
+       IOR     UNERF
+       CLB,INB
+       JMP     HFLEP
+*
+ACMSV  DEF     CMPSV
+CMPSV  BSS     1
+COMPR  BSS     1
+TPPNT  BSS     1
+PRPNT  BSS     1
+ODDC   BSS     1
+SAV1   BSS     1
+       SKP
+*
+PGET   NOP                     0                   USED BY IOMEC AND HYTYPE ROUTINES
+       LDA     ABYTC           GET THE NUMBER OF BYTES
+       STA     PNTRX           TO BE PRINTED IN THIS BLOCK
+       JSB     RDTW,I
+       LDA     TPBUF           USE TAPE BUFFER NOW,
+       STA     PBUFF           LATER USE PRINTER BUFFER
+       STA     XPBUF
+       CLA,INA                 PRINTING IS LIKE A WRITE
+       STA     RDWRT           M1=>HP=>PRINTER
+       JSB     SHPIT
+       LDA     WOK
+       STA     ASAVE           SAVE HP RESPONSE TO M1 COMMANDS
+       JSB     SNDM1,I
+       JMP     PGET,I
+*
+* * * * * * * * * * * * * * * X P R N T * * * * * * * * * * * * * * * *
+*
+XPRNT  NOP                     0
+       JSB     PGET
+*
+* NOW THE DATA IS IN THE BUFFER.  UNPACK IT AND SEND IT TO PRINTER 
+*
+       LDA     BYTCN
+       CMA
+       STA     PRTLM           PRINTER BYTE LIMIT, WHEN PBI REACHES
+*
+       LDA     BYTCN           THIS, WE ARE FINISHED
+*
+       CLB
+       STB     PBI             PRINTER BYTE INDEX(PBI) IS ZERO
+*
+* STORE A NULL SLEW IN THE BYTE AFTER THE LAST LINE
+*
+       LDB     NSLEW           NULL SLEW
+       SLA                     IS BYTCN ODD?
+       JMP     *+2
+       BLF,BLF                 SLEW GOES ON EVEN BOUNDARY
+       ARS                     MAKE BYTE INTO WORD INDEX
+       ADA     XPBUF
+       STA     WPTR
+       LDA     A,I             GET CONTENTS
+       SSB
+       JMP     *+3
+       AND     HIHAF           ODD BOUNDARY
+       JMP     *+2
+       CLA                     EVEN BOUNDARY
+       IOR     B               GET NSLEW IN
+       STA     WPTR,I          AND GET IT INTO MEMORY
+       SKP
+* NOW SEND FIRST SLEW
+* FIRST CHECK STATUS
+*
+       LIA     PR1CC           PRINTER 1 COMMAND CHANNEL
+       SLA
+       JMP     *+6
+PNA    LDA     K2              PRINTER NOT AVAILABLE
+       STA     NUMDA
+       LDA     K2              PRINTER DEVICE NUMBER IS NOW #2
+       STA     SEND            BY DECREE OF LEE
+       JSB     XDVER,I
+FSLEW  LDA     XPBUF,I         PRINTER IS READY, SEND FIRST SLEW
+       AND     HIHAF
+       CLF     0
+       OTA     PR1CC
+       STC     PR1CC,C
+       SFS     PR1CC           WAIT FOR RESPONSE
+       JMP     *-1
+       CLC     PR1CC
+       STF     0
+       LIA     PR1CC
+       SSA
+       JMP     PNA             SHOULD MODIFY THIS TO TRY TEN TIMES
+       ISZ     PBI             PARITY ERROR NOW GIVES PTR NOT AVAIL
+LLOOP  LDA     PBI             CHECK IF BYTE COUNT BEGINS ON
+*                                  EVEN/ODD BOUNDARY
+       CLB
+       STB     NULLF
+       SLA
+       JMP     *+7
+       ARS                     EVEN, SIMPLE
+       ADA     XPBUF
+       LDB     A,I
+       STA     WPTR
+       ISZ     WPTR
+       JMP     SAME
+       ARS                     ODD, MUST PACK TWO HALVES
+       ADA     XPBUF
+       STA     WPTR            POINTS TO FIRST
+       LDA     WPTR,I
+       ISZ     WPTR
+       LDB     WPTR,I          POINTS TO SECOND
+       RRR     8               TEXT COUNT IS ALL IN B
+       AND     HIHAF           TAKE CARE OF DATA BYTE FOLLOWING
+*                                    TEXT COUNT
+       ALF,ALF                 GET FIRST PART OF REMAINDER
+       IOR     NULLE           GET INTO LOW ORDER
+       ISZ     NULLF           FLAG FOR NULL CHARACTER
+       STA     WPTR,I          PUT IN NULL C
+       SKP
+SAME   LDA     PBI
+       ADA     B               ADD TEST COUNT
+       ADA     B3              ADD 2 BYTES FOR TEXT COUNT HEADER
+*                                  ONE FOR BYTE SLEW,
+       STA     PBI             PBI=BYTE INDEX OF NEXT TEXT COUNT
+*                                  HEADER
+       STB     TEMP            SAVE TEXT COUNT
+       LDA     WPTR
+       STA     OFSET           SAVE FOR DMA
+       SZB,RSS                 DO WE ADD LF MARGIN BLANKS?
+       JMP     PRNZ            NO
+       ADA     KM3             MOVE WPTR BACK 3 WORDS
+       STA     OFSET           AND POST IT FOR DMA
+       LDB     BLNKS           GET ASCII PACKED SPACES
+       STB     A,I             OVERWRITE AT HEAD OF TEXT LINE
+       INA
+       STB     A,I             AGAIN
+       INA
+       STB     A,I             AGAIN
+       LDB     TEMP            RESTORE B
+       ADB     K6              ADD 6 BYTES OF SPACES TO TEXT COUNT
+* NOW SET UP FOR DMA
+*
+PRNZ   ADB     NULLF           ADD 1 FOR NULL CHARACTER
+       INB                     ADD 1 FOR SLEW
+       SLB                     ADD 1 IF COUNT IS NOW ODD
+       INB
+       BRS                     B HAS WORD COUNT
+       STB     PWCNT           PRINTER WORD COUNT
+       CMB,INB
+       STC     WCADP           THIRD DMA WORD
+       OTB     WCADP           BUFFER LENGTH
+       CLC     WCADP
+       LDB     OFSET
+       OTB     WCADP           BUFFER ADDRESS
+       LDB     DMAP1           FIRST DMA WORD
+       OTB     DMAD2           ASSIGN I/O CHANNEL
+       CLF     0               DISABLE INTERRUPTS
+       STC     DMAD2,C         SEND IT
+       STC     PR1CC,C
+       STF     0               ENABLE INTERRUPTS
+       JSB     LOOP-1          NOW WAIT FOR FINISH
+       HLT     33B             SHOULDN'T COME HERE
+       SKP
+* * * * * * * * * * * * * * * P R N X T * * * * * * * * * * * * * * * *
+*
+PRNXT  NOP                     0                   COMES HERE WHEN FINISHED PRINTING
+*                                  LINE
+       CLF     0
+       CLC     PR1CC           DISABLE STREAM OF PRINTER INTERRUPTS
+       LIA     PR1CC,C         READ STATUS WORD
+       SSA                     SKIP IF NO PARITY TROUBLE
+       JMP     PNA             PARITY ERROR, LATER TO BE FIXED FOR
+*                                  CLEANER
+*
+*
+*                                  HARDWARE RETRIES DONE OK, CHECK FOR 
+*                                  END OF LINE, ELSE GO TO NEXT LINE.
+*                                  IF RUN IN PARALLEL WITH TAPE UNIT,
+*                                  THEN MUST CONTROL INTERRUPTS MORE
+*                                  CAREFULLY
+       LDA     PBI
+       ADA     PRTLM           WHEN GOES POSITIVE, THROUGH
+       SSA
+       JMP     LLOOP
+       LDA     PFIN
+       STA     ASAVE           SAVE HP RESPONSE TO M1 COMMANDS
+       JSB     SNDM1,I
+       STF     0
+       JMP     XPRNT,I
+       SPC     2
+* LOCAL STORAGE
+*
+KM3    OCT     -3
+BLNKS  OCT     20040
+TEMP   BSS     1
+OFSET  BSS     1
+       SKP
+*
+* PRINT OUT ON HYTYPE
+*
+XHTYP  NOP
+       LDA     HPTR            GET RETURN FOR INTERRUPT ROUTINE
+       STA     HEND            AND STORE IT
+       JSB     HON             IF OFF WAIT TIL ON AND INTIALIZE
+
+*
+P1     JSB     PGET            GET PRINT BUFFER
+       LDA     XPBUF           ADDRESS OF BUFFER
+       ALS                     MAKE INTO A BYTE ADDRESS
+       STA     RP
+       ADA     BYTCN           PLUS NUMBER OF CHARACTERS
+       STA     WP              GIVES THE FIRST LOCATION OUT OF BUFF
+       LDA     LABEL           SET UP FRETURN
+       STA     GFAIL
+       CLB                     INITIALIZE VARIABLES
+       STB     HNFT
+       STB     BLKCT
+       STB     CTYPE
+*
+* MAIN LOOP TO PICK OFF THE NEXT CHARACTER FROM THE BUFFER
+*
+NCHR   JSB     XGNC,I
+       STA     CCHAR
+CHKLB  CPA     DROP            CONTROL-D FOR DROPPING?
+       JMP     *+2
+       JMP     CHKRB
+       LDA     VCMD            VERTICAL COMMAND
+       STA     CTYPE
+       LDA     HLUP
+       JSB     XSHYT,I         MOVE HALF LINE UP
+       ISZ     BLKCT           PUT IN A SPACE INSTEAD
+       JMP     NCHR            AND GET THE NEXT CHARACTER
+*
+CHKRB  CPA     RAISE           CONTROL-R FOR RAISING?
+       JMP     *+2
+       JMP     NCHR1           LOOK FOR OTHER THINGS
+       LDA     VCMD            VERTICAL COMMAND
+       STA     CTYPE
+       LDA     HLDWN           YES, SKIP DOWN HALF A LINE
+       JSB     XSHYT,I
+       ISZ     BLKCT           AND PRINT A SPACE INSTEAD
+       JMP     NCHR
+       SKP
+       SPC     2
+*
+NCHR1  ADA     CM41            WANT SOMETHING > 40B
+       SSA
+       JMP     CHKSC           CHECK FOR SPECIAL CHARACTERS
+       CPA     C77             IS IT AN UNDERSCORE?
+       JMP     PRCUS           WELL THEN, PROCESS IT
+       ADA     CM100           AND = 140B
+       SSA
+       JMP     APC             FOUND A PRINTABLE CHAR
+       ADA     CM37            OR WANT SOMETHING > 140B AND = 200B
+       SSA                     SKIP IF > 200B
+       JMP     APC             FOUND A PRINTABLE CHAR
+       ADA     CM100           IS IT = 300B?
+       SSA
+       JMP     PTRCC           FOUND A PRINTER CONTROL CHARACTER
+* START LOOKING FOR SPECIAL CHARACTERS
+CHKSC  LDA     CCHAR
+       CPA     BLANK
+       JMP     *+2             FOUND ONE
+       JMP     CHKLF           NO.  TRY SOMETHING ELSE
+       ISZ     BLKCT           INCREMENT BLANK COUNT
+       JMP     NCHR            AND GET ANOTHER CHARACTER
+CHKLF  CPA     LF              NEXT LINE?
+       JMP     *+2
+       JMP     CHKCR
+       CLA,INA
+       JSB     XVERT,I         ADVANCE ONE LINE
+       JMP     NCHR
+CHKCR  CPA     CR              BACK TO THE BEGINNING?
+       JMP     *+2
+       JMP     CHKEJ
+       LDA     LLEN            THIS COMMAND DOESN'T AFFECT WHERE
+       CMA,INA                 WE ARE ON A PAGE
+       JSB     XHOR,I
+       CLA
+       STA     BLKCT           RESET COUNTER FOR MULTIPLE BLANKS
+       JMP     NCHR
+CHKEJ  CPA     EJECT           TOP OF FORM?
+       JMP     *+2
+       JMP     GARBG           NO, GARBAGE
+       LDA     LCNT            DETERMINE THE AMOUNT TO SPACE DOWN
+       CMA,INA
+       ADA     C102            TO THE NEXT PAGE
+       JSB     XVERT,I
+       JMP     NCHR
+*
+* COMES HERE IF WE FOUND SOMETHING WE CAN PRINT
+*
+APC    JSB     XCHAR,I         PRINT THE CHAR
+       JMP     NCHR            GET NEXT CHAR.
+* PROCESS CHARACTER UNDERSCORE
+PRCUS  LDA     VCMD            SET UP FOR VERTICAL COMMAND
+       STA     CTYPE
+       LDA     HLDWN           WHICH SKIPS DOWN HALF A LINE
+       JSB     XSHYT,I
+       LDA     DASH            THEN PRINT A DASH
+       STA     CCHAR
+       JSB     XCHAR,I
+       LDA     VCMD            AND THEN GIVE IT ANOTHER COMMAND TO
+       STA     CTYPE           SKIP UP HALF A LINE TO GET BACK TO
+       LDA     HLUP            THE CORRECT POSITION
+       JSB     XSHYT,I
+       JMP     NCHR            HOPE IT ISN'T ANOTHER ONE
+       SPC     2
+*
+* SHOULD NEVER GET HERE--WE HAVE GARBAGE
+GARBG  LDA     CENT
+       STA     CCHAR
+       JSB     XCHAR,I
+       JMP     NCHR
+       SKP
+* COMES HERE IF IT FOUND A PRINTER CONTROL CHARACTER.
+* 200B V' X - SKIP X LINES (X CAN BE UP TO 7)
+* 210B V' X - SKIP TO CHANNEL X.
+PTRCC  AND     C77             ONLY CONCERNED WITH BITS 0-5
+       STA     CCHAR
+       JSB     XGNC,I
+       JSB     XGNC,I          MAY USE THIS TO PRINT BACKWARDS
+       LDA     LLEN            THIS IS WHERE WE ARE
+       CMA,INA
+       JSB     XHOR,I          MOVE BACK THAT FAR
+       CLA
+       STA     BLKCT           RESET MB COUNT FOR NEXT LINE
+       LDA     CCHAR
+       SZA
+       JMP     SCCHR           CHECK IF VALID SKIP CONTROL CHARACTE
+       JMP     NCHR
+* SKIP COMMAND CHARACTER
+SCCHR  ADA     CM10            IS IT LESS THAN 10B
+       SSA,RSS                 SKIP IF NEGATIVE
+       JMP     CCCHR           ELSE IT IS A SKIP TO CHAN COMMAND
+       ADA     C10             RESTORE THE NUMBER
+       JSB     XVERT,I         SKIP THE APPROPRIATE NUMBER OF LINES
+       JMP     NCHR
+* CHANNEL COMMAND CHARACTER
+* ONLY CHAN1 AND CHAN2 ARE RECOGNIZED
+CCCHR  SLA,RSS                 SKIP IF ODD
+       JMP     CHAN2
+       LDA     LCNT
+       CMA,INA
+       ADA     C102
+       JSB     XVERT,I         SPACE DOWN TO NEXT PAGE
+       JMP     NCHR
+CHAN2  LDA     LCNT            WHAT LINE ARE WE ON?
+       CMA,INA
+       ADA     C74             SKIP DOWN TO LINE 61
+       SSA                     ALREADY TOO FAR?
+       ADA     C102            YES, GO TO NEXT PAGE
+       JSB     XVERT,I
+       JMP     NCHR
+       SKP
+*
+* FUNCTION TO OUTPUT A CHAR TO THE HYTYPE
+* THE CONTENTS OF THE REGISTERS ARE MEANINGLESS.
+* THIS FUNCTION SPACES OVER BEFORE PRINTING THE CHAR AND THEN RESETS THE
+* BLANK COUNT
+*
+CHAR   NOP
+       LDA     BLKCT
+       INA
+       JSB     XHOR,I          SPACE OVER
+       LDA     CCMD
+       STA     CTYPE           CHAR STROBE
+       CLB
+       STB     BLKCT           RESET COUNTER
+       ASL     STROB           MOVE TO STOBE POSITION
+       IOR     CCHAR           PUT IN CURRENT CHARACTER
+       JSB     XSHYT,I         OUTPUT THE CHAR
+       JMP     CHAR,I
+       SPC     2
+*
+* FUNCTION TO GIVE THE HYTYPE A HORIZONTAL MOVEMENT COMMAND
+* A CONTAINS THE 2'S COMPLEMENT OF THE NUMBER OF CHARACTER WIDTHS TO BE
+* MOVED (NOT INCREMENTS OF 1/60" OR SIGNED MAGNITUDE). IF AN ATTEMPT IS
+* MADE TO MOVE OUTSIDE THE INTERVAL [MINLP, MAXLP], THE COMMAND WILL BE
+* IGNORED AND A CHARACTER WILL PROBABLY BE OVERPRINTED.  EXTEND BIT E IS
+* USED TO DETERMINE THE DIRECTION.
+*
+HORIZ  NOP
+       LDB     A               COPY A TO B
+       ADB     LLEN
+       ADB     CMXLP           ADD -MAXLP
+       SSB,RSS                 SKIP IF MAXLP NOT EXCEEDED
+       JMP     HORIZ,I         IGNORE COMMAND
+       ADB     COMP            CHECK LEFT MARGIN (MAXLP-MINLP)
+       SSB                     SKIP IF MINLP EXCEEDED
+       JMP     HORIZ,I         IGNORE COMMAND
+       ADB     MINLP           COMPENSATE FOR CHECKING
+       STB     LLEN            CMD OK, UPDATE COUNT
+       CLE,SSA                 CLEAR E, CHECK SIGN OF A
+       CMA,CME,INA                COMPLEMENT E, A
+       ALS                     MULTIPLY BY 6
+       STA     TEMP
+       ALS
+       ADA     TEMP
+       SEZ                     CHECK ON THE DIRECTION
+       IOR     BIT10           FOR LEFT MOVES
+       STA     TEMP
+       LDA     HCMD
+       STA     CTYPE
+       CLB
+       ASL     STROB           MOVE TO STROBE POSITION
+       IOR     TEMP            PUT IN INCREMENTS
+       JSB     XSHYT,I         OUTPUT THE COMMAND
+       JMP     HORIZ,I
+*      SKP
+*
+* FUNCTION TO GIVE THE HYTYPE A VERTICAL COMMAND
+* A CONTAINS NUMBER OF LINES TO SPACE (NOT INCREMENTS OF 1/48")
+*
+VERT   NOP
+       LDB     A               COPY A TO B
+       ADB     LCNT
+       ADB     CM102           SUBTRACT 102B
+       SSB,RSS                 AS LONG AS B IS POSITIVE
+       JMP     *-2
+       ADB     C102            ADD 102B BACK (0 <= B <= 65)
+       STB     LCNT            UPDATE LINE COUNT
+       CLB
+       SSA,RSS                 IF NEGATIVE
+       JMP     *+3
+       CMA,INA                 MAKE IT POSITIVE
+       INB                     AND SET THE FLAG
+       ALS,ALS
+       ALS                     MULT BY 8 TO CALCULATE VERT INCR.
+       SLB                     IF ARGUMENT WAS NEGATIVE
+       IOR     BIT10           MAKE IT MOVE THE PAPER DOWN
+       STA     TEMP
+       LDA     VCMD            VERT COMMAND
+       STA     CTYPE
+       ASL     STROB           SET STOBE
+       IOR     TEMP            PUT BACK INCREMENTS
+       JSB     XSHYT,I         OUTPUT THE COMMAND
+       JMP     VERT,I
+       SKP
+*
+* SHYTY(SEND TO HYTYPE) THIS IS THE ACTUAL FUNCTION WHICH OUTPUTS A
+* COMMAND TO THE HYTYPE.  IT MUST TAKE CARE OF ENABLING THE INTER-
+* RUPTS FOR THE NEXT INSTRUCTION.  THUS, EACH TIME IT IS CALLED, IT 
+* OUTPUTS THE DATA FROM THE PREVIOUS CALL.  THIS IS INVISIBLE, SO
+
+* WHEN THIS FUNCTION IS CALLED, "A" CONTAINS THE DATA TO BE OUTPUT
+* THE NEXT TIME WITH THE CORRESPONDING STROBE SELECT BIT SET.
+*
+SHYTY  NOP
+       RRR     16              EXCHANGE REGISTERS
+       LDA     CTYPE           GET NEXT INSTRUCTION TYPE AND SET UP
+       INA                     (BECAUSE INT-ENABLE=STROBE SEL.+1)
+       RAR,RAR                 THE INTERRUPT-ENABLE FOR IT
+*                                    (BY LEFT SHIFTING A 14 PLACES)
+       IOR     ODATA           ADD IN THE OLD DATA
+       ISZ     HNFT            TEST FOR FIRST TIME THRU
+       IOR     RUP             YES, OLD DATA IS JUNK, FORCE A NOP
+       STB     ODATA           AND SAVE THE DATA FOR THE NEXT TIME
+       CCB
+       STB     HNFT            A MINUS ONE TO YOU)
+       STA     LAST            SAVE A COPY FOR PARITY ERROR RECOVERY
+       OTA     HYTCC,C         SEND OLD DATA TO BUFFER
+       JSB     LOOP-1          PUT US IN LITES
+       SPC     2
+
+* HYTYPE INTERRUPT SERVICE ROUTINE
+* ENTERS ON COMPLETION INTERRUPT FROM HYTYPE
+* EXITS EITHER TO PLOT OR ASCII CALLING ROUTINE, SET BY A RETURN SWITCH
+HINT   NOP
+       LIA     HYTCC,C         GET STATUS WORD
+       SSA,RSS                 CHECK FOR ERROR CONDITION
+
+HEND   NOP                     VARIABLE RETURN OPERATION
+*
+*                       ANALYSE ERROR
+*
+*      : PAUSE : PARITY ERROR : CHECK CONDITION : ALL READY :
+*      :   7   :      6       :       5         :    4      :
+*
+       LSR     4               ROTATE BITS 7-4 DOWN TO 4-0
+       ERA,SLA                 HYTYPE CHECK AND READY
+       JMP     CKER            CHECK ON
+       SEZ,RSS
+       JMP     HRDY            READY OFF - GO WAIT FOR IT
+       RRR     2               POSITION FOR PARITY, PAUSE TESTS
+       SSB                     IS PARITY ON?
+       JMP     PAR             YES.
+       SLA
+       JMP     PAUSE           PAUSE REQUEST
+       HLT     44              UNIDENTIFABLE ERROR, PUNT
+       JMP     HEND            FOR CONVENIENCE
+       SKP
+*
+* ERROR RECOVERY ROUTINES
+*
+CKER   LDA     K3              HYTYPE IN CHECK CONDITION
+       STA     NUMDA           HYTYPE CHECK CODE
+       STA     SEND            HYTYPE DEVICE # IS 3 SAYS ME
+       JSB     XDVER,I         REPORT TO M1
+*
+       JSB     HINIT           ZAP HYTYPE IFF M1 SAYS PROCEED INSPITE OF ERROR
+       JMP     HEND
+K3     OCT     3
+*
+HRDY   JSB     HON             GO WAIT FOR HYTYPE TO BE RESTORED (BY MAGIC)
+       JMP     HEND            OK PROCEED
+*
+
+*      PARITY RETRY LOGIC PROBABLY WILL NOT WORK RELIABLY BECAUSE
+*      THE HARDWARE DOESN'T DELIVER A BAD COMMAND TO THE HYTYPER,
+*      AND THUS THE HYTYPER WON'T SEND A COMPLETION INTERRUPT BACK TO THE
+*      HP.  ON PARITY ERROR HAVE TO CHANGE TO RUN PROGRAM ON FLAGS ONLY,
+*      OR CHANGE HARDWARE TO MAKE PARITY ERROR CAUSE AN INTERRUPT,
+*      BUT SINCE WE HAVE NEVER SEEN SUCH ERROR, IT IS NOT WORTH WORRYING
+*      ABOUT FOR NOW.  BUT CAVEAT LECTOR.
+
+
+PAR    LDA     LAST            GET THE LAST WORD SENT TO HYTYPE
+       OTA     HYTCC,C         AND TRY AGAIN
+       ISZ     ERCNT           BUMP CNT OF PARITY ERRORS
+       JMP     HEND            HOPE FOR THE BEST
+       HLT     45              TOO MANY PARITY ERRORS, HARD FAILURE
+*
+LAST   BSS     1               COPY OF LAST COMMAND OUT
+ERCNT  OCT     0               COUNT OF PARITY ERRORS
+*
+PAUSE  CLF     0               DISABLE INTERRUPTS SINCE THEY
+*                              TEND TO COME IN BURSTS FROM THE HYTYPE
+       JSB     DELAY           WAIT TIL CONTACT BOUNCE IS GONE
+       LIA     HYTCC           NOW WAIT TIL SWITCH IS BACK TO "RUN" STATE
+       ALF,ALF
+       SSA
+       JMP     *-3             NOT YET
+       JSB     DELAY           OK, WAIT A LITTLE MORE, SAFETY FIRST
+       STF     0               INTERRUPTS ARMED
+       JMP     HEND            KEEP ON TRUCKING
+*
+DELAY  NOP
+       CLA                     SET A TO A CANONICAL ZERO
+       INA                     INCREMENT ONCE EACH TIME AROUND
+       SSA,RSS                 ENOUGH?
+       JMP     *-2             NO.
+       JMP     DELAY,I         YES.
+       SKP
+*
+HPTR   JMP     SHYTY,I         RETURN FOR ASCII MODE USE
+PLOTM  JMP     HOUT,I          RETURN FOR PLOT MODE USE
+*
+*
+* CODE TO MAKE SURE THE HYTYPER IS TURNED ON AND READY TO RUN
+*
+HON    NOP
+       LIA     HYTCC           IS HYTYPE TURNED ON?
+       CPA     HOFF
+       RSS                     NO, WOA
+       JMP     HON,I           YES, CONTINUE
+       LIA     HYTCC           WAIT TIL SOMEBODY TURNS IT ON
+       CPA     HOFF
+       JMP     *-2
+       JSB     XHZAP,I         GET IT INITIALIZED
+       JMP     HON,I           READY TO GO!
+*
+* CODE TO INITIALIZE THE HYTYPER
+*
+HINIT  NOP
+       LIA     HYTCC           CHECK HYTYPE STATUS
+       CPA     HOFF            IS IT TURNED ON?
+       JMP     HINIT,I         NO, GIVE UP FOR NOW.
+       CLB
+       STB     LCNT            RESET PAGE LINE COUNT TO ZERO
+       STB     LLEN            RESET LINE POSITION
+       LDB     RUP             RAISE THE RIBBON, REALLY A NOP
+       OTB     HYTCC,C         TO GET THE INTERRUPTS TURNED OFF
+       STC     HYTCC,C         INITIALIZE (RESET) THE HYTYPE
+       OTB     HYTCC,C         RAISE THE RIBBON FOR REAL
+       LIB     HYTCC,C         READY FOR HORIZONTAL?
+       RBR
+       SLB,RSS
+       JMP     *-3             NOT YET.
+       LDB     MARGN           SKIP OVER THE HOLES
+       OTB     HYTCC,C
+       JMP     HINIT,I
+       SKP
+*
+* FUNCTION GNCHR, GETS THE NEXT CHARACTER THE HYTYPE IS SUPPOSED TO
+* PRINT.  THE CONTENTS OF THE REGISTERS WHEN CALLED ARE MEANINGLESS.
+* HOWEVER, THIS FUNCTION RETURNS THE NEXT CHARACTER TO BE HYTYPED IN A.
+* IF ALL THE CHARACTERS OF THE BUFFER HAVE BEEN READ, THIS FUNCTION
+* FAILS BY BRANCHING TO THE ADDRESS SPECIFIED IN THE LABEL VARIABLE
+* GFAIL INSTEAD OF RETURNING.
+* THIS FUNCTION SHOULD BE CHANGED LATER TO ALLOW LINES TO BE HYTYPED
+* BACKWARDS.
+*
+GNCHR  NOP
+       LDB     RP              POINTS TO NEXT CHARACTER TO READ
+       CPB     WP
+       JMP     GFAIL,I         FINISHED READING
+       LDA     RP
+       ARS                     DETERMINE WORD ADDRESS
+       LDA     A,I             AND PICK UP THE WORD
+       SLB,RSS                 IF WE'RE TRYING TO REF THE LEFT BYTE
+       ALF,ALF                 SWAP BYTES
+       ISZ     RP              FOR NEXT CHAR
+       AND     BYTE0           GIVES US ONE CHAR
+       JMP     GNCHR,I
+*
+*
+*
+       SPC     2
+* FORCE  LAST COMMAND TO BE SENT TO HYTYPE
+*
+FORCE  LDA     ODATA           OUTPUT LAST BYTE
+       OTA     HYTCC,C         AND TURN OFF INTERRUPTS.
+       LDA     PFIN            PRINT FINISHED
+       STA     ASAVE
+       JSB     SNDM1,I         SEND TO M1
+       JMP     XHTYP,I         WAIT FOR SOMETHING
+       SKP
+* PARAMETERS
+CCMD   OCT     0               CHARACTER COMMAND
+HCMD   OCT     1               HORIZONTAL COMMAND
+VCMD   OCT     2               VERTICAL COMMAND
+RUP    OCT     34000           RIBBON LIFT COMMAND
+RIBUP  OCT     1               RIBBON UP INDICATION
+RIBDN  OCT     0               RIBBON DOWN INDICATION
+STROB  EQU     11              STROBE FIELD FROM RIGHTMOST BIT
+* FIXED HYTYPE COMMANDS TO PROCESS UNDERSCORE
+HLDWN  OCT     10004           HALF LINE DOWN
+HLUP   OCT     12004           HALF LINE UP
+* CONSTANTS
+CM102  OCT     -102
+CM100  OCT     -100
+CM41   OCT     -41
+CM40   OCT     -40
+CM37   OCT     -37
+CM10   OCT     -10
+C6     OCT     6
+C7     OCT     7
+C10    OCT     10
+C74    OCT     74
+C77    OCT     77
+C102   OCT     102
+HOFF   OCT     100240          HYTYPE "OFF" STATUS WORD
+MARGN  OCT     4036            SPACE 5 RIGHT
+MXLPV  EQU     127             MAXIMUM LINE POSITION-5
+MNLPV  EQU     0               MINIMUM LINE POSITION
+MINLP  ABS     MNLPV
+MAXLP  ABS     MXLPV
+CMNLP  ABS     -MNLPV
+CMXLP  ABS     -MXLPV
+COMP   ABS     MXLPV-MNLPV
+BYTE0  OCT     377             MASK FOR LOW ORDER BYTE
+BIT10  OCT     2000            CONTROLS DIRECTION OF MOVEMENT
+LF     OCT     12              CHAR. LINE FEED
+EJECT  OCT     14              PAGE EJECT
+CR     OCT     15              CHAR. CARRIAGE RETURN
+BLANK  OCT     40              CHAR. BLANK
+CENT   OCT     40              CHAR. CENT SIGN
+DROP   OCT     4               ASCII CONTROL-D
+RAISE  OCT     22              ASCII CONTROL-R
+UNDER  OCT     140             CHAR. UNDERSCORE
+DASH   OCT     140             CHAR. DASH
+* VARIABLES
+BLKCT  OCT     0               COUNT OF SUCCESSIVE BLANKS IN LINE
+CCHAR  OCT     0               CURRENT CHARACTER
+CTYPE  OCT     0               COMMAND TYPE
+HNFT   OCT     0               HYTYPE NOT FIRST TIME (FROM BUFFER)
+LCNT   OCT     0               LINE COUNT (LAST LINE PRINTED)
+LLEN   OCT     0               LENGTH OF CURRENT LINE (POSITION OF
+*                                    LAST CHARACTER PRINTED)
+ODATA  OCT     0               OLD DATA
+RP     OCT     0               READ POINTER OF BUFFER
+WP     OCT     0               WRITE POINTER OF BUFFER
+       SKP
+* * * * * * * * * * * * HYTYPE PLOT * * * * * * * * * * * * * * * * * *
+XPLOT  NOP
+       LDA     PLOTM           GET RETURN CODE FOR THE INTERRUPT ROUTINE
+       STA     HEND            AND TUCK IT AWAY
+       JSB     HON             IF OFF WAIT TIL ON AND INITIALIZE
+       JSB     PGET            GET THE PLOT BUFFER SHIPPED OVER
+       LDA     XPBUF           GET THE ADDRESS OF THE BUFFER
+       STA     RP              AND STORE AS THE READ POINTER
+       LDB     BYTCN           GET THE BYTE COUNT
+       SLB                     CHECK THAT IT IS A WORD COUNT
+       JMP     PANIC           NO - PUNT HARD
+       BRS                     DIVIDE BYTES BY 2
+       CMB,INB                 MAKE INTO AN INVERTED COUNTER
+       STB     CNT
+*
+XP1    LDA     RP,I            GET PLOT WORD
+       SZA,RSS
+       JMP     XP3             GOT A CLEAR INDICATION FROM TSS
+       JSB     HOUT            AND REQUEST IT TO BE SENT OUT
+XP2    ISZ     RP              BUMP THE READ POINTER
+       ISZ     CNT             ARE WE DONE?
+       JMP     XP1             NOT YET
+*
+       LDA     PFIN            YES, GIVE AN ACK CODE
+       STA     ASAVE           SAVE FOR PRETTY  LITES
+       JSB     SNDM1,I         SEND TO M1
+       JMP     XPLOT,I         AND GET BACK INTO OTHER ACTION
+*
+XP3    JSB     XHZAP,I         RESET THE HYTYPER
+       JMP     XP2             AND CONTINUE AS YOU WERE
+*
+HOUT   NOP
+       STA     LAST            SAVE COPY FOR PARITY ERROR RETRY
+       OTA     HYTCC,C         OUTPUT THE WORD
+       JSB     LOOP-1          WAIT FOR INTERRUPT TO SIGNAL COMPLETION
+*
+PANIC  LDB     ILF             ILLEGAL LENGTH FLAG - BUFFER LENGTH BAD
+       JMP     XBAD,I          REPORT AND QUIT
+*
+CNT    BSS     1               COUNTER FOR PLOT BUFFER LENGTH
+XBAD   DEF     BADD
+       SKP
+* * * * * * * * * * * * * * * P W R F L * * * * * * * * * * * * * * * *
+*        POWER FAIL INTERRUPT SAVE/RESTORE ROUTINE
+*
+PWRFL  NOP                     NORMAL ENTRY
+       SFC     4               SKIP ON POWER FAIL INTERRUPT
+       JMP     UP
+DOWN   STA     SAVEA           SAVE A REGISTER
+       CCA
+       STA     SAVER           SET 'RUN' SWITCH
+       STB     SAVEB           SAVE B
+       SFS     0               ARE INTERRUPTS ARMED?
+       CLA                     NO
+       ERA,ALS                 MOVE EXTEND BIT INTO A
+       SOC                     IS OVERFLOW SET?
+       INA                     YES
+       STA     SAVEO           SAVE E AND O AND IO STATUS.
+       LDA     PWRFL           SAVE P-COUNTER
+       STA     SAVEP
+       LIA     SR
+       STA     SAVSW           SAVE SWITCH REGISTER
+       CLC     4               SET FOR RESTART ROUTINE
+       HLT     50B             ALL HALT
+*
+UP     LDA     SAVER           WAS COMPUTER RUNNING WHEN POWER
+*                                    DROPPED
+       SZA,RSS
+       JMP     HALT            NO
+       CLA                     YES.  RESET RUN SWITCH
+       STA     SAVER
+       LDA     CLRDC           CLEAR TAPE DECK/CONTROLLER
+       OTA     CMND
+       LDA     BIT15           OUTPUT A NOP
+       OTA     PR1CC           TO THE PRINTER
+       LDA     SAVEO           RESTORE E AND O
+       CLO                     CLEAR OVERFLOW
+       SLA,ELA                 WAS OVERFLOW ON BEFORE
+       STF     1               YES.  RESET IT.
+       STC     RSTRT           REARM LINK FOR INTERRUPTS
+       STC     M1IO
+       SSA                     WERE INTERRUPTS ENABLED
+       STF     0               YES
+       LDA     SAVSW           RESTORE SWITCH REGISTER
+       OTA     SR
+       LDA     SAVEA           RESTORE A
+       LDB     SAVEB           RESTORE B
+       STC     4               RESET POWERFAIL LOGIC
+       JMP     SAVEP,I         NORMAL EXIT
+       SKP
+HALT   HLT     0
+*
+SAVEA  OCT     0
+SAVEB  OCT     0
+SAVEO  OCT     0
+SAVEP  OCT     0
+SAVER  OCT     0
+SAVSW  OCT     0
+*
+* * * * * * * * * * * * * * * P A R E R * * * * * * * * * * * * * * * *
+*
+*        PARITY ERROR HALT ROUTINE
+*
+PARER  NOP                     NORMAL ENTRY-ADDRESS OF THE INSTR.
+       LIA     5               GET ADDRESS OF FAILED LOCATION
+       HLT     60B             DIE WITH ADR OF BAD LOC IN A REG
+*
+*
+       END

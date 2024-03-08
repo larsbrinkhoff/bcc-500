@@ -1,0 +1,5701 @@
+RES
+DDT
+;TB1.
+24000;TB6.
+20000;TB2.
+;TB3.
+;F<PATCH:
+23002425,30B6;R
+24000;TB4.
+;TB5.
+PATCH;F
+23003132,30242500;R
+%F
+DUMP
+"BASIC-DUMP"
+1BAS     IDENT   73-01-17  SCRATCH PAGE.  FILE /S1B/
+
+
+*****************************************************
+*                MUST BE LOADED AT  240B.           *
+*                ----                               *
+*****************************************************
+
+*   USER SUPPLIED STORAGE
+* 
+$SICA1 BSS     1
+$SICA2 BSS     1
+$SICA3 BSS     1
+
+$ESCFLG  BSS     1         <0 MEANS ESCAPE DURING EXECUTE          5.10
+$RUNFLG  BSS     1         5.10
+
+$ADJFAC ZRO
+$COUNT  ZRO
+$DFLG   ZRO
+$ERNUM ZRO
+$EXPFLG ZRO
+$EXPONT ZRO
+$SCTMP BSS  1
+$ARRTOP  BSS     1         HIGHEST LOC. USED BY ARRAYS.      HB 72-03-04
+$LLIMIT  BSS     1         LITERAL LIMIT                     HB 72/03/09
+$IOLINK ZRO
+$PAULNK BSS  1
+$IOD    ZRO
+$IOW    ZRO
+$OVFL   ZRO
+$FORTAL  DATA    0                                           [HB 16.06.71]
+$FRESWT  DATA    0
+$IOFMT   DATA    0                                           [HB 16.06.71]
+$OVDGTS ZRO
+$RLIO2  ZRO
+$RLIO4  ZRO
+$RLIO6  ZRO
+$RLIO7  ZRO
+$SIGNFL ZRO
+$SPTR1  ZRO
+$SPTR2  ZRO
+$SPTR3  ZRO
+$SPTR4  ZRO
+$SPTR5  ZRO
+$TEMP1  ZRO 
+$TEMP2  ZRO 
+$TEMP3  ZRO 
+$TFOUR  ZRO
+$TIOD   ZRO
+* 
+*   SCAN TABLE.  TEMPORARY STORAGE.
+* 
+$PLUS   ZRO
+$MINUS  ZRO
+$PERIOD ZRO
+$DDD    ZRO
+$AT     ZRO
+$EEE    ZRO
+$EEEP1  EQU     *
+* 
+*  RETURNS FOR SUBS USING BRM INSTEAD OF SBRM
+* 
+$RLI82  ZRO
+$RLI82A ZRO
+$RLI73   0       0
+$RLI73A  0       0                                           [HB 16.06.71]
+*
+*   EQUALS
+* 
+$DGTCNT EQU     OVDGTS
+$SPACES EQU     RLIO4
+$DEXP   EQU     DFLG
+$IODEXP EQU     SPTR3
+$NCONV  EQU     SPTR5
+$RLIO5  EQU     RLIO6
+$RNDFLG EQU     EXPFLG
+$SIGN2 EQU     SPTR4
+$XMK   BSS     1
+
+*        FOR SUBROUTINES USING BRM* INSTEAD OF SBRM.
+$BRMS    BSS     0         HEB,4.3
+$MODE1   BSS     2
+$RINSL   BSS     2         FOR INSERT LITERAL.                     5.10
+$RTN0    BSS     2
+$RTN1    BSS     2
+$RTN2    BSS     2
+$RTN3    BSS     2
+$RTN4    BSS     2
+$RTN5    BSS     2
+$PTRR    BSS     2         RETURN FOR POINTER HANDLING       HB 71.12.21
+$GCR1    BSS     2         GC RETURN 1.
+$GCR2    BSS     2         GC RETURN 2.                      HB 71.12.21
+$BRME    EQU     *-1
+$BRMA    EQU     *
+$BRML    EQU     BRMS-BRME HEB,4.3
+
+$TEMPX BSS     1
+$CTMP1 BSS     1
+$CTMP2 BSS     1
+$CTMP3 BSS     1
+$CTMP4 BSS     1
+$CTMP5 BSS     1
+
+*                          FOR FORMATS, NEW I/O.
+$FMTSW   BSS     1         <0 MEANS FORMATTING IN EFFECT.
+$CURFOR  BSS     1         CURRENT FORMAT WORD.
+$IOPTR   BSS     1         FORMAT LIST POINTER.
+$IOPTR1  BSS     1         AUXILLIARY FORMAT LIST POINTER.
+$SPCCNT  BSS     1         SPACES PENDING ON CURRENT FILE.
+
+
+*                          TABLES FOR MANY FILES.
+$NFILES  EQU     8         <5.10
+$OFNO    BSS     1         CURRENT OUTPUT FILE NUMBER.
+$IFNO    BSS     1         CURRENT INPUT  FILE NUMBER.
+$HTN     EQU     *-2       TABLE OF FILE HASH VALUES
+$HTND    BES     NFILES    -1 MEANS NOT OPEN,
+*                          OTHERWISE LOCATION IN HASH TABLE.
+$MINFIL  EQU     0
+$MAXFIL  EQU     MINFIL+NFILES+1
+$FILET   BSS     NFILES+2
+$FILTND  BSS     0
+$LPOST   BSS     NFILES+2
+$LPOST1  EQU     LPOST+1
+$SPCCT   BSS     NFILES+2
+$SPCCT1  EQU     SPCCT+1
+$MNFILE  EQU     -NFILES
+$RETFLG  BSS     1         <0 MEANS HAVE GOTTEN (RET)
+$QUESSW  BSS     1         <0 PUT OUT ? AT ACCEPT.                 5.10
+$INPSPC  BSS     1         HOLDS SPACE COUNT ON INPUT             >5.10
+
+$PNTFLG  BSS     1         FLAG FOR CHECKING LISTS (WITH DELIMITERS).
+$PTMP1 BSS     1
+$PTMP2 BSS     1
+$CPYP1   EQU     *
+$STMP  BSS     1
+$CPYP11  EQU     *
+$STMP1 BSS     1
+$CPYP2   EQU     *
+$STMP2 BSS     1
+$CPYP22  EQU     *
+$STMP3 BSS     1
+$STMP4 BSS     1
+
+*        GARBAGE COLLECTOR STORAGE.                          HB 71.12.21
+
+$GCCNT   BSS     1         COUNTER FOR LOOPS.
+$GCT1    BSS     1         TEMP
+$GCT2    BSS     1         TEMP
+$GCFREE  BSS     1         NUMBER OF WORDS FREE AFTER COLLECT.
+$GCREQ   BSS     1         NUMBER OF WORDS REQUIRED BEFORE COLLECT.
+$GCTOP   BSS     1         TOP OF STORE.
+$GCBOT   BSS     1         BOTTOM OF STORE.
+$GCPTRA  BSS     1         POINTER USED FOR LIST TRACING.
+$GCPROC  BSS     1         ADDRESS OF PROCEDURE FOR TRACING.
+$GCRTN   BSS     1         RETURN ADDRESS FOR TRACING FUNCTIONS.
+
+$DEAD    BSS     1         <0 MEANS STORAGE OKAY, =0 MEANS DEAD.
+$BKLEN   BSS     1         TEMP IN BLOCK ALLOCATION.         HB 71.12.21
+$FBFPTR BSS    2
+$NFNBUF BSS    30
+
+$TEMF1 EQU     *+1
+$TEMF2 EQU     *+2
+$TEMF3 EQU     *+3
+$TEMF4 EQU     *+4
+$TEMF5 EQU     *+5
+$TEMFIL EQU    *
+$BUF   BSS     73
+$FNBUF BSS     30
+$TEMEND EQU    *-2
+$TEMPTR BSS    1
+$INFILE        ZRO
+$OUTFILE       ZRO
+$LITTOP BSS    1
+$XCOUNT  ZRO
+$SCOUNT        ZRO
+$GNIUS BSS     1
+$POPCDE BSS    1
+$RELCDE BSS    1
+$ALPCNT BSS    1
+$MM    DATA    0
+$MM1   DATA    0
+$SBASE ZRO
+$NUMB  ZRO
+$DTACTR BSS    1
+$LNHDR BSS     1
+$WTING BSS     1
+$LNSET BSS     1
+$EOLFX BSS     1
+$DTAFLN BSS    1
+$DTMP  BSS     1
+$EOFL  BSS     1
+$THRD  BSS     1
+$GSCAN BSS     1
+$IFFOR BSS     1
+$RECDE BSS     1
+$LETTMP BSS    1
+$MATFLG BSS    1               TBG-2/8/68
+$INPTMP BSS    1
+$KO    BSS     1
+$GMS   BSS     1
+$CCS   BSS     1
+$SSTPTR BSS    1
+$TPTR  BSS     1
+$SETX  BSS     1
+$SST   BSS     20
+$CTRHDR EQU    SST
+$CTR   BSS     1
+$SCBASE BSS    1
+$LLINE BSS     1
+$GTMP  BSS     1
+$GFLN  BSS     1
+$POLPTR BSS    1
+$STKPTR  BSS  1
+$TXT   BSS     1
+$WAIT  BSS     1
+$OWC   BSS     1
+$POLISH EQU    *
+$TEXT  BSS     103
+$CC    EQU     *
+$STACK BSS     50
+$TSTK  EQU     *-2
+$ETXT  BSS     1
+$FLINE BSS     1
+$LPAREN BSS    1
+$RPAREN  BSS   1
+$FNA   BSS     2
+$FNB   BSS     2
+$FNC   BSS     2
+$FND   BSS     2
+$FNE   BSS     2
+$FNF   BSS     2
+$FNG   BSS     2
+$FNH   BSS     2
+$FNI   BSS     2
+$FNJ   BSS     2
+$FNK   BSS     2
+$FNL   BSS     2
+$FNM   BSS     2
+$FNN   BSS     2
+$FNO   BSS     2
+$FNP   BSS     2
+$FNQ   BSS     2
+$FNR   BSS     2
+$FNS   BSS     2
+$FNT   BSS     2
+$FNU   BSS     2
+$FNV   BSS     2
+$FNW   BSS     2
+$FNX   BSS     2
+$FNY   BSS     2
+$FNZ   BSS     2
+$FILNAM BSS    2
+$RPAG  BSS     1
+$BRSL  BSS     1
+$BRSX  BSS     1
+$BRSGN BSS     1
+ARTARR   EQU     4         LENGTH OF NUMERIC ARRAY.          HEB,4.3
+STRARR   EQU     4         LENGTH OF STRING ARRAY
+
+$AST     BSS     STRARR*25
+$ZST     BSS     STRARR
+$ASTINC  EQU     AST-'   A'*4      HEB,4.3
+$AS      BSS     ARTARR*25 RESERVE SPACE FOR MOST
+$ZS      BSS     ARTARR
+$ASINC   EQU     AS-'   A'*4
+$PI  BSS 2
+LONG     EQU     0             FOR SHORT ASSEMBLY.
+         IF      LONG=0
+NLET     EQU     26        NUMBER OF LETTERS
+NSUF     EQU     11        NUMBER OF SUFFIXES.
+$A       BSS     NLET*NSUF*2       TWO WORDS/ENTRY.
+$Z       EQU     *-NSUF*2
+         FRGT    NLET,NSUF,LONG
+         ELSE
+$A   BSS 2
+$A0  BSS 2
+$A1  BSS 2
+$A2  BSS 2
+$A3  BSS 2
+$A4  BSS 2
+$A5  BSS 2
+$A6  BSS 2
+$A7  BSS 2
+$A8  BSS 2
+$A9  BSS 2
+$B   BSS 2
+$B0  BSS 2
+$B1  BSS 2
+$B2  BSS 2
+$B3  BSS 2
+$B4  BSS 2
+$B5  BSS 2
+$B6  BSS 2
+$B7  BSS 2
+$B8  BSS 2
+$B9  BSS 2
+$C   BSS 2
+$C0  BSS 2
+$C1  BSS 2
+$C2  BSS 2
+$C3  BSS 2
+$C4  BSS 2
+$C5  BSS 2
+$C6  BSS 2
+$C7  BSS 2
+$C8  BSS 2
+$C9  BSS 2
+$D   BSS 2
+$D0  BSS 2
+$D1  BSS 2
+$D2  BSS 2
+$D3  BSS 2
+$D4  BSS 2
+$D5  BSS 2
+$D6  BSS 2
+$D7  BSS 2
+$D8  BSS 2
+$D9  BSS 2
+$E   BSS 2
+$E0  BSS 2
+$E1  BSS 2
+$E2  BSS 2
+$E3  BSS 2
+$E4  BSS 2
+$E5  BSS 2
+$E6  BSS 2
+$E7  BSS 2
+$E8  BSS 2
+$E9  BSS 2
+$F   BSS 2
+$F0  BSS 2
+$F1  BSS 2
+$F2  BSS 2
+$F3  BSS 2
+$F4  BSS 2
+$F5  BSS 2
+$F6  BSS 2
+$F7  BSS 2
+$F8  BSS 2
+$F9  BSS 2
+$G   BSS 2
+$G0  BSS 2
+$G1  BSS 2
+$G2  BSS 2
+$G3  BSS 2
+$G4  BSS 2
+$G5  BSS 2
+$G6  BSS 2
+$G7  BSS 2
+$G8  BSS 2
+$G9  BSS 2
+$H   BSS 2
+$H0  BSS 2
+$H1  BSS 2
+$H2  BSS 2
+$H3  BSS 2
+$H4  BSS 2
+$H5  BSS 2
+$H6  BSS 2
+$H7  BSS 2
+$H8  BSS 2
+$H9  BSS 2
+$I   BSS 2
+$I0 BSS 2
+$I1  BSS 2
+$I2  BSS 2
+$I3  BSS 2
+$I4  BSS 2
+$I5  BSS 2
+$I6  BSS 2
+$I7  BSS 2
+$I8  BSS 2
+$I9  BSS 2
+$J   BSS 2
+$J0  BSS 2
+$J1  BSS 2
+$J2  BSS 2
+$J3  BSS 2
+$J4  BSS 2
+$J5  BSS 2
+$J6  BSS 2
+$J7  BSS 2
+$J8  BSS 2
+$J9  BSS 2
+$K   BSS 2
+$K0 BSS 2
+$K1  BSS 2
+$K2  BSS 2
+$K3  BSS 2
+$K4  BSS 2
+$K5  BSS 2
+$K6  BSS 2
+$K7  BSS 2
+$K8  BSS 2
+$K9  BSS 2
+$L   BSS 2
+$L0 BSS 2
+$L1  BSS 2
+$L2  BSS 2
+$L3  BSS 2
+$L4  BSS 2
+$L5  BSS 2
+$L6  BSS 2
+$L7  BSS 2
+$L8  BSS 2
+$L9  BSS 2
+$M   BSS 2
+$M0  BSS 2
+$M1  BSS 2
+$M2  BSS 2
+$M3  BSS 2
+$M4  BSS 2
+$M5  BSS 2
+$M6  BSS 2
+$M7  BSS 2
+$M8  BSS 2
+$M9  BSS 2
+$N   BSS 2
+$N0  BSS 2
+$N1  BSS 2
+$N2  BSS 2
+$N3  BSS 2
+$N4  BSS 2
+$N5  BSS 2
+$N6  BSS 2
+$N7  BSS 2
+$N8  BSS 2
+$N9  BSS 2
+$O   BSS 2
+$O0  BSS 2
+$O1  BSS 2
+$O2  BSS 2
+$O3  BSS 2
+$O4  BSS 2
+$O5  BSS 2
+$O6  BSS 2
+$O7  BSS 2
+$O8  BSS 2
+$O9  BSS 2
+$P   BSS 2
+$P0  BSS 2
+$P1  BSS 2
+$P2  BSS 2
+$P3  BSS 2
+$P4  BSS 2
+$P5  BSS 2
+$P6  BSS 2
+$P7  BSS 2
+$P8  BSS 2
+$P9  BSS 2
+$Q   BSS 2
+$Q0  BSS 2
+$Q1  BSS 2
+$Q2  BSS 2
+$Q3  BSS 2
+$Q4  BSS 2
+$Q5  BSS 2
+$Q6  BSS 2
+$Q7  BSS 2
+$Q8  BSS 2
+$Q9  BSS 2
+$R   BSS 2
+$R0  BSS 2
+$R1  BSS 2
+$R2  BSS 2
+$R3  BSS 2
+$R4  BSS 2
+$R5  BSS 2
+$R6  BSS 2
+$R7  BSS 2
+$R8  BSS 2
+$R9  BSS 2
+$S   BSS 2
+$S0  BSS 2
+$S1  BSS 2
+$S2  BSS 2
+$S3  BSS 2
+$S4  BSS 2
+$S5  BSS 2
+$S6  BSS 2
+$S7  BSS 2
+$S8  BSS 2
+$S9  BSS 2
+$T   BSS 2
+$T0  BSS 2
+$T1  BSS 2
+$T2  BSS 2
+$T3  BSS 2
+$T4  BSS 2
+$T5  BSS 2
+$T6  BSS 2
+$T7  BSS 2
+$T8  BSS 2
+$T9  BSS 2
+$U   BSS 2
+$U0  BSS 2
+$U1  BSS 2
+$U2  BSS 2
+$U3  BSS 2
+$U4  BSS 2
+$U5  BSS 2
+$U6  BSS 2
+$U7  BSS 2
+$U8  BSS 2
+$U9  BSS 2
+$V   BSS 2
+$V0  BSS 2
+$V1  BSS 2
+$V2  BSS 2
+$V3  BSS 2
+$V4  BSS 2
+$V5  BSS 2
+$V6  BSS 2
+$V7  BSS 2
+$V8  BSS 2
+$V9  BSS 2
+$W   BSS 2
+$W0  BSS 2
+$W1  BSS 2
+$W2  BSS 2
+$W3  BSS 2
+$W4  BSS 2
+$W5  BSS 2
+$W6  BSS 2
+$W7  BSS 2
+$W8  BSS 2
+$W9  BSS 2
+$X   BSS 2
+$X0 BSS 2
+$X1  BSS 2
+$X2  BSS 2
+$X3  BSS 2
+$X4  BSS 2
+$X5  BSS 2
+$X6  BSS 2
+$X7  BSS 2
+$X8  BSS 2
+$X9  BSS 2
+$Y   BSS 2
+$Y0  BSS 2
+$Y1  BSS 2
+$Y2  BSS 2
+$Y3  BSS 2
+$Y4  BSS 2
+$Y5  BSS 2
+$Y6  BSS 2
+$Y7  BSS 2
+$Y8  BSS 2
+$Y9  BSS 2
+$Z   BSS 2
+$Z0  BSS 2
+$Z1  BSS 2
+$Z2  BSS 2
+$Z3  BSS 2
+$Z4  BSS 2
+$Z5  BSS 2
+$Z6  BSS 2
+$Z7  BSS 2
+$Z8  BSS 2
+$Z9  BSS 2
+         ENDF
+$LIT   EQU     17776B
+$RTMP1 EQU     TEXT+1
+$RTMP2 EQU     TEXT+2
+$RTMP3 EQU     TEXT+3
+$RTMP4 EQU     TEXT+4
+$RTMP5 EQU     TEXT+5
+$RTMP6 EQU     TEXT+6
+$RTMP7 EQU     TEXT+7
+$RTMP8 EQU     TEXT+8
+$RTMP9 EQU     TEXT+9
+$RTMP10 EQU    TEXT+10
+$RTMP11 EQU    TEXT+11
+$RTMP12 EQU    TEXT+12
+$RTMP13 EQU    TEXT+13
+$RTMP14 EQU    TEXT+14
+$RTMP15 EQU    TEXT+15
+$RTMP16 EQU    TEXT+16
+$RTMP17 EQU    TEXT+17
+$RTMP18 EQU    TEXT+18
+$RTMP19 EQU    TEXT+19
+$RTMP20 EQU    TEXT+20
+$RTMP21 EQU    TEXT+21
+$RTMP22  EQU     TEXT+22                                     [HB 22.06.71]
+$RTMP23 EQU    TEXT+23
+$RTMP24  EQU     TEXT+24                                     [HB 22.06.71]
+$RTMP25 EQU    TEXT+25
+$RTMP26 EQU    TEXT+26
+$RTMP27 EQU    TEXT+27         **KEEP HERE AND BELOW FOR WRITING
+$RTMP28 EQU    TEXT+28         SYMBOLIC FOR SIC
+$SYMLN BSS     1
+$HOLD1 BSS     1
+$HOLD2 BSS     1
+$SNFU  BSS     2
+$SNFT  BSS     2
+$WKX   BSS     1
+$FADG2 BSS     1               MUST FOLLOW WKX
+$LGF1  BSS     2
+$LGF11 EQU     LGF1+1
+$AH    EQU     SNFU
+$AL    EQU     SNFU+1
+$PQ    EQU     SNFT
+$WKA   EQU     SNFT+1
+$WKB   EQU     FADG2
+$EXF1  EQU     SNFU
+$EXF3  EQU     SNFT
+$EXF4  EQU     WKX
+$EXF41 EQU     FADG2
+$LGF4  EQU     SNFU
+$LGF3  EQU     SNFT
+$LGF2  EQU     WKX
+$LGF22 EQU     FADG2
+$ATF1  EQU     SNFU
+$ATF11 EQU     SNFU+1
+$ATF2  EQU     SNFT
+$FADG4 EQU     WKX
+$FADG6 EQU     LGF1
+$MADCH BSS     1               TBG-2/S7/68--SBRM MADCHK ADDR STORAGE.
+$MATT2 BSS     1
+$BUF10 EQU     BUF+10
+$BUF11 EQU     BUF+11
+$BUF12 EQU     BUF+12
+$BUF13 EQU     BUF+13
+$BUF14 EQU     BUF+14
+$BUF15 EQU     BUF+15
+$BUF16 EQU     BUF+16
+$BUF17 EQU     BUF+17
+$BUF18 EQU     BUF+18
+$BUF19 EQU     BUF+19
+$BUF20 EQU     BUF+20
+$BUF21 EQU     BUF+21
+$BUF22 EQU     BUF+22
+$BUF23 EQU     BUF+23
+$BUF24 EQU     BUF+24
+$BUF25 EQU     BUF+25
+$BUF26 EQU     BUF+26
+$BUF27 EQU     BUF+27
+$BUF28 EQU     BUF+28
+$BUF29 EQU     BUF+29
+$BUF31 EQU     BUF+31
+$BUF30 EQU     BUF+30
+$BUF32 EQU     BUF+32
+$IOP   BSS     1               TBG 2/27/68
+$OOP   BSS     1               TBG-2/27/68
+$MATT3 BSS     1
+$MATT4 BSS     1
+$VECT2 BSS     1
+$MATPAR BSS    1
+$DOPTR   BSS     1         POINTER TO NEXT FOR-NEXT LOC.
+$CHFLG   BSS     1         <0 IF CHAINING.
+$RRLBL   BSS     1         RUNTIME RELABELING   FOR 4.02.
+$RELABL        BSS     1
+$XPAGE BSS     1
+$XPAGE1        BSS     1
+
+$BRS21 ZRO     BRSL            REPLACES MISSING BRS 21
+       STX     BRSX
+       STA     BRSGN           SAVE ORIGINAL SIGN OF NUMBER
+       STE
+BRS21A XAB
+       EOR     MONE
+       ADD     =1
+       XAB
+       EOR     MONE
+       ADC     ZERO
+       NOD     48
+       LDE
+       LDX     BRSX
+       SKA     =4B7            SKIP IF POSITIVE
+       BRU     *+2             TEST FURTHER IF NEGATIVE
+       BRR*    BRS21
+       SKN     BRSGN           TEST ORIGINAL SIGN OF NUMBER
+       BRR*    BRS21
+       STE                     PATHOLOGICAL CASE: DO OVER
+       RSH     1               RESCALE NUMBER
+       EAX     1,2
+       BRU     BRS21A
+
+$EUPAGE EQU    *+2             KLUDGE TO SKIP OVER BRS21 LITERALS
+
+       NOLIST EXT,GO
+
+       END
+2BAS     IDENT   74-01-03  BASIC EXEC   FILE:/S2B/
+* MODIFIED 2/28/68 BY RJSLUTZ FOR MATRIX OPERATIONS
+SETBASE OPD    7700000B,2
+SIC    OPD     11400000B,2
+ISC    OPD     13500000B,2
+$LBKSIZ  EQU     30        FOR CHAINS                        HB 72-04-18
+$MLBKSZ  EQU     -LBKSIZ&37777B
+BASIC    BRU     ENTER     CHANGED FOR 4.02
+CONTIN BRU     SETSTA
+GO       LDX     CONTIN    GO FILE ENTRY HERE.  FOR 4.02
+         STX     GO
+         BRS     43        GET RELABELING TO FIGURE OUT
+*        NOW DO COMPLICATED MERGING.  CONTENTS OF A AND B
+*        REGISTERS IN COMMENTS FIELD.
+*        NOP               SC--R1R2/E0C1C2--
+         LSH     6         --R1R2E0/C1C2----
+         ETR     =777777B  --R1R2E0/C1C2----  (JUST TO MAKE SURE.)
+         CAX               NO CHANGE.
+         LRSH    18        --------/R1R2E0C1
+         CXA               --R1R2E0/R1R2E0C1
+         LSH     12        R2E0R1R2/C1------
+         CLB               R2E0R1R2/-------
+         LSH     6         E0R1R2--/--------
+         STA     RPAG      FINALLY HAVE BASIC RUNTIME PAGES
+         BRS     43        RELEASE RUN PAGES, MAKE READ ONLY      <5.10
+         CAX
+         ETR     =77B6
+         BRS     44
+*        CXA
+*        RSH     6
+*        ETR     =77B
+*        MRG     B00T00
+*        BRS     80
+*        LSH     6
+*        SKA     B57       ALL DONE?
+*        BRU     *-5       NO.     >5.10
+ENTER  BRS     43              GET SMT BYTES FOR BAS  E0R1R2--
+       LSH     6
+       STA     RPAG
+       ETR     =77B
+       CLB
+       LSH     18
+       MRG     RPAG
+       ETR     =@77B
+       STA     RPAG
+         CLA               INITIALIZE RUNFLG TO COMPILING         <5.10
+         STA     RUNFLG
+ENTER1   LDA     ONE       START ACCUMULATING STATISTICS.         >5.10
+*        BRS     22
+         STA     34000B    ACQUIRE TEXT PAGE.
+         BRS     43
+         CLA
+         STP     RELABL    CLEARS RELABL & PUTS COMPILER MAP. INTO XPAGE
+         BRS     43        STP RELABL MAY HAVE GOTTEN PAGE.
+         XAB
+         ETR     =77777700B
+         XAB
+       ETR     =77B6           NOW MAP RUNTIME OUT OF MEMORY SPACE
+         BRS     44
+         LDX     MONE      INITIALIZE GOSUB LIST.            HB 72-04-04
+         STX     37777B    AND ACQUIRE RUNTIME SCRATCH PAGE. HB 72-04-04
+         BRS     43        AND FIND OUT WHICH IT WAS.
+         XAB
+         ETR     =77B
+         MRG     RPAG
+         STA     RRLBL     HOLDS RUNTIME RELABELING
+         LDA     XPAGE     AND GET BACK A TEXT PAGE.
+         XAB
+         BRS     44        END OF 4.02 CHANGES.
+         LDX     BRMLD     FOR BRM* INSTEAD OF SBRM.         HEB,4.3
+         LDA     BRRWD
+         STA     BRMA,2
+         ADD     TWO
+         BRX     *+1
+         BRX     *-3       HEB,4.3
+       EAX     VERPR
+       SBRM    MESX
+         LDX     =PBGN-PTV                                   [HB 24.06.71]
+       LDA     PTV,2
+         STA     100B+PTV-PBGN,2   STORE AWAY POP TRANSFERS  [HB 24.06.71]
+       BRX     *-2
+         STX     CHFLG     0 MEANS NO CHAIN IN PROGRESS.
+       LDA     MONE
+         STA     ARRTOP    SAY NO ARRAYS SET.                HB 72-04-18
+       SBRM    INITL
+         SBRM    CLOSLL    CLOSE ALL FILES                         5.13
+       LDA     =2B7
+       LDB     ONE
+         STB     OUTFIL    INIT TO TTY                       HB 72/01/07
+       EAX     LIT
+       STP     0,2
+       STP     HOLD1
+       CLAB
+         STA     INFILE    INIT TO TTY                       HB 72/01/07
+       EAX     -2,2
+*      STX     SCTMP       DELETED FOR 4.10
+       STP     0,2
+$BBSIC   NOP     *-*       STUFF FOR LITMAX DELETED 4.10.
+$BBSCH  LDA     MONE
+       STA     PAULNK
+       STA     DTAFLN
+         STA     GTMP      5.13
+       LDP     PY              3/21/69 TBG
+       STP     PI
+       CLEAR
+       EAX     LIT
+       EAX     -2,2
+       STP     0,2
+       STX     LITTOP
+       STA     DTMP
+       BRS     78
+       EAX     EUPAGE
+       STX     LLINE
+       STX     FLINE
+       LDA     LINE
+       STA     0,2
+       LDA     =124000B
+       STA     SYMLN
+         BRU     GOEND1    CHANGED FOR BETTER RESPONSE TIME  [HB 24.06.71]
+RUBOUT   ZRO     CTMP5     CHANGED FOR 4.10.
+         SKN     CHFLG     SEE IF ESCAPE DURING CHAIN.
+         BRU     RUB1      NO.     HB 72-03-02
+         CLB               HB 72-03-02
+         STB     CHFLG     B IS NOW ZERO.
+         SBRM    INITL     WIPE OUT POSSIBLE GARBAGE IN ARRAYS.
+         BRU     RUB1A     5.10
+RUB1     STA     GNIUS     REARM ESCAPES.                         <5.10
+         LDA     =2B6
+         MIN     ESCFLG
+         SKR     ESCFLG
+         SKR     ESCFLG
+         BRU     RUB1A     NOT RUNNING.
+         BRS     78        HERE ONLY IF ESCFLG INITIALLY ZERO.
+         LDA     GNIUS
+         BRU*    CTMP5     CONTINUE RUNNING.
+RUB1A    LDX     MONE
+         BRS     13        SKIP IF INPUT BUFFER EMPTY.
+         BRS     78        REARM ESCAPES ONLY IF SOMETHING IN THE BUFFER.
+         BRS     11        NOW EMPTY THE BUFFER.
+         BRS     29        EMPTY THE OUTPUT BUFFER.               >5.10
+         BRU     GOEND     SKIP AROUND.                           <5.13
+         DATA    100000    = LINE FOR END CHECKING.
+BRMLD    DATA    BRML
+BRRWD    BRR*    BRMS      FOR BRM* CALLING                       >5.13
+$GOEND   CLA               INITIALIZE TO COMPILING                <5.10
+         STA     RUNFLG
+GOEND1   BRS     43        GET BACK COMPILER                      >5.10
+         LDB     XPAGE
+         BRS     44
+         SKN     CHFLG     IN A CHAIN?
+         BRU     RUB3      NO.
+         LDA     INFILE    CHECK TO SEE IF INPUT FILE MUST
+         SKE     MONE      BE OPENED.
+         BRU     PP1       NO, ALREADY OPENED.
+         BRU     LOAD2     YES, GO OPEN THE FILE.
+
+RUB3     LDA     CRCH      5.10
+         CIO     ONE       5.10
+       LDA     LFCH
+       CIO     ONE
+       LDA     CRCH
+         STA     ESCFLG    5.10
+         CLA               5.10
+         STA     INFILE
+         SKE     PAULNK    LEAVE FILE OPEN IF IN PAUSE       HB 72-02-24
+         BRU     PP1       HB 72-02-24
+         SBRM    CLOSLL    CLOSE ALL FILES                         5.10
+
+$PP1   CLA
+       SKE     INFILE
+       BRU     *+3
+       LDA     =36B
+       CIO     ONE
+       LDA     LITTOP
+       SKG     LLINE
+         BRU     NOMEM     FOR 4.02  HEB.
+       CLX
+       EAX     TEXT
+       STX     TPTR
+       STX     ETXT
+       EAX     -1,2
+       STX     POLPTR
+       EAX     TSTK
+       STX     STKPTR
+       EAX      TEMFIL
+       STX     TEMPTR
+       EAX      CTRHDR
+       STX     CTR
+       STX     SSTPTR
+       EAX     CC
+       STX     CCS
+       EAX     GOEND
+       STX     EOFL
+       EAX     LINENO
+       STX     SBASE
+       CLEAR
+       STA     LPAREN
+       STA     RPAREN
+       STA     SCOUNT
+       STA*    SSTPTR
+       STA*    CTR
+       STA*    STKPTR
+         STA     LNHDR     FOR BETTER ERROR HANDLING         [HB 01.07.71]
+         STA     PNTFLG
+       STA     IFFOR
+       STA     TEMPX
+       STA     POPCDE
+       STA     RECDE
+       STA     KO              RUBOUT PROCESSING
+       LDA     MONE
+       STA     MATFLG          TBG-2/8/68
+       STA     MATPAR          RJS-68/2/25
+       STA     NUMB
+       STA     CTMP4           FOR NMBR SUBROUTINE
+       STA     DTACTR
+       STA     LETTMP
+       STA     INPTMP
+         STA     QUESSW    5.10
+         COPY    AX,N      5.10
+       STA     CTMP2
+       BRS     12
+         LDA     RUNFLG    SEE IF ANYTHING SPECIAL                <5.10
+         SKE     ONE       SEE IF RUN AT COMMAND.
+         BRU     *+2
+         BRU     RUNRUN
+         SKE     FOUR      SEE IF KLUDGED UP RUN CMD.
+         BRU     *+2
+         BRU     AHEAD     >5.10
+RESET  CLA
+       STA     XCOUNT
+PNEXT  CAX      
+STRT   CIO     INFILE
+       STA      BUF,2        CHARACTER STORED IN BUF+(COUNT)
+       SKN     KO
+       BRU     *+2
+       BRU     STRT1
+       CAB
+       LDA     =RUBOUT
+       STA     201B
+       LDA     =2000000B
+       BRS     78
+       SKR     KO
+       NOP
+       BAC
+STRT1    SKE     =137B     IGNORE NON-EOF 137'S.  4.02
+         BRU     *+5
+         LDA     INFILE    SEE IF EOF BITS ARE SET.
+         SKA     =3B5
+         BRU     EOF       THEY ARE.  REAL AND TRUE EOF.
+         BRU     STRT      EXTRANEOUS 137.  IGNORE IT.  4.02
+       SKE     LFCH
+       BRU     *+2
+       BRU     AHEADA          IGNORE LF'S
+       SKE     =141B   &A      RJS-68/2/23
+       BRU     *+2             RJS-68/2/23
+         BRU     UPAR      4.02
+       SKE     =161B   &Q      RJS-68/2/23
+       BRU     *+2             RJS-68/2/23
+         BRU     BACKAR    4.02
+       SKE     =170B   &X      RJS-68/2/23
+       BRU     *+2             RJS-68/2/23
+         BRU     BACKAR    4.02
+         SKE     =167B     SEE ABOUT 'W.                     HB 72/02/03
+         BRU     *+2
+         BRU     BKSLSH    YES, DELETE WORD.                 HB 72/02/03
+       SKE     CRCH
+       BRU     *+3
+       CLX
+       BRU     SWAP
+       SKE     MBCH
+       BRU     AHEAD
+       CIO     INFILE
+         CNA               UNPACK SPACE COUNT.               HB 72/02/03
+         COPY    AX,XA,B
+         XXA
+         STB     BUF,2
+         EAX     1,2       GET TO NEXT CHARACTER             HB 72/02/08
+         XXA
+         SKG     =90       OVERFLOWED LINE YET?                    5.12
+         BRX     *-5
+         STA     XCOUNT    HB 72/02/03
+         BRU     AHEAD0    HB 72-02-24
+AHEAD  MIN     XCOUNT
+AHEADA LDA     XCOUNT
+AHEAD0   SKG     =90       HB 72-02-24
+       BRU     PNEXT
+       LDA     CRCH
+       CIO     ONE
+       LDA     LFCH
+       CIO     ONE
+       LDA     MONE
+       STA     NUMB
+       EAX     TLNG
+       SBRM    MSG
+       LDX     MONE
+       BRS     14
+       BRS     11
+       BRU     PP1
+BACKAR   LDA     =77B      TYPE OUT AN ←.  4.02
+         CIO     ONE
+BACKCR   LDA     CRCH      AT BEGINNING OF LINE.             HB 72/02/03
+         CIO     ONE
+       LDA     LFCH
+       CIO     ONE
+         BRU     PP1       RESTART WHOLE MESS.               HB 72/02/03
+UPAR     LDA     =76B      CHANGED TO PRINT ↑.  4.02
+       CIO     ONE              RJS-68/2/23
+         SKR     XCOUNT    LABEL REMOVED                     HB 72/02/03
+       BRU     *+2
+         BRU     BACKCR    AT BEGGING OF LINE.               HB 72/02/03
+       LDX     XCOUNT
+       BRU     STRT
+BKSLSH   LDA     =74B      PUT OUT \.                        HB 72/02/03
+         CIO     ONE
+         SKR     XCOUNT    GET TO PREV. CHAR
+         BRU     *+2
+         BRU     BACKCR    ALREADY AT BEG. OF LINE.
+BACKUP   LDX     XCOUNT
+         LDA     BUF,2
+         SKE     ZERO      IS IT A SPACE?
+         BRU     BKSL      NO, GOTO SECOND PART.
+         SKR     XCOUNT    YES, KEEP SKIPPING SPACES.
+         BRU     BACKUP
+         BRU     BACKCR    AT BEG. OF LINE.
+BKSL     SKR     XCOUNT    SEE ABOUT PREV. CHAR.
+         BRU     *+2
+         BRU     BACKCR    RUNNOUT.
+         LDX     XCOUNT
+         LDA     BUF,2
+         SKE     ZERO
+         BRU     BKSL      NOT SPACE, STILL IN WORD.
+         MIN     XCOUNT
+         LDX     XCOUNT
+         BRU     STRT      GO GET A NEW INPUT CHAR.          HB 72/02/03
+EOF      CLA               CLOSE INPUT FILE.
+         XMA     INFILE
+         BRS     20        DO NOT RESTORE ARRAYS.
+         LDA     TWO       SEE WHAT OTHER RUN CONDITIONS     5.10
+         SKE     RUNFLG    CHECK FOR RUN AT FILE EOF.
+         BRU     GOEND     NO.
+         BRU     RUNRUN    GO DO RUNNING.                   >5.10
+SETSTA   LDA     ONE       BASIC SYSTAT NUMBER.                    5.13
+*        BRS     22
+         LDB     ONE       CHECK AND SET RUNFLG.            <5.10
+         SBRM    CLOSLL
+         LDA     RUNFLG
+         SKE     THREE     =3 MEANS RUN ON CONTINUE
+         BRU     GOEND
+         STB     RUNFLG    RESET TO 1=RUN BEFORE COMMAND.
+         BRU     GOEND     START THINGS UP.                 >5.10
+*
+*SCAN
+*
+JUMP2  MIN     SCOUNT          SKIP TWO CHARACTERS
+$IMORE   MIN     SCOUNT    NEXT CHARACTER
+ISAME  LDX     SCOUNT          SAME CHARACTER
+SWAP     LDA     CRCH      KEEP RETURNING (RET) AT END OF LINE    <5.10
+         SKN     BUF
+         LDA     BUF,2         PICK UP BUF + SCOUNT               >5.10
+       SKE     ZERO
+       BRU     *+2
+       BRU     IMORE
+         SKE     LFCH      IS IT A LINE FEED TO IGNORE?      HEB,4.3
+         BRU     *+2       NO.
+         BRU     IMORE     HEB,4.3
+         SKG     ONE       FOR LINE-BY-LINE COMMENTS.              5.10
+         LDA     CRCH      5.10
+       LDX     SBASE
+       SKG     =17B
+       BRU     0,2
+       SKG     =31B
+       BRU     1,2             NUMBER
+SWAP0    SKG     =40B      5.10
+       BRU     2,2
+       SKG     =72B
+       BRU     3,2             ALPHABETIC
+       SKE     =73B            [
+       BRU     *+3
+       LDA     =10B
+       BRU     0,2
+       SKE     =75B            ]
+       BRU     *+3
+       LDA     =11B            )
+       BRU     0,2
+       SKE     =76B            ↑
+       BRU     *+3
+       LDA     THREE              &
+       BRU     0,2
+       SKE     CRCH
+         BRU     SWAP1     <5.10
+         XMA     BUF       RESET BUF TO FLAG VALUE
+         ADD     B00T00
+         XMA     BUF
+         BRU     4,2       GO ON
+SWAP1    SKG     =137B     CHECK FOR LOWER CASE LETTER.
+         SKG     =77B
+         BRU     CERRH     ILLEGAL (UNRECOGNIZABLE) CHARACTER.
+         SUB     =40B      CONVERT TO UPPER CASE.
+         BRU     SWAP0     GO CHECK ALL OVER.                      >5.10
+$MORE    STX     SBASE
+       BRU     IMORE
+$SAME    STX     SBASE
+       BRU     ISAME
+$LINENO  BRU     CERR1
+       BRU     LN1
+         BRU     PIX       FOR ':', SEE IF PICTURE STMT      [HB 20.06.71]
+       BRU     LA1
+       SKN     NUMB
+       SBRM    DELETE
+       BRU     PP1
+LN1    SKR     SCOUNT
+       NOP
+       SBRM    NMBR
+       LDA     CTMP4
+       STA     NUMB
+       SETBASE LINENO
+       BRU     SAME
+$GETCH   ZRO     CTMP1     GET CHAR FROM BUF, CHAR NO. IN X  4.02
+         LDA     BUF,2
+         SKG     =132B
+         SKG     =100B     CONVERT LOWER CASE TO UPPER CASE.
+         BRR     CTMP1
+         EOR     =140B     THIS DOESN'T AFFECT THE X REGISTER.
+         BRR     CTMP1     4.02
+
+$PREMON  ZRO     PTMP1     GET A PREMONITION OF WHAT'S NEXT  HB 72/02/03
+         LDX     SCOUNT    (BUT WITHOUT ACTUALLY GETTING IT.)
+LUKL     BRX     *+1       GET NEXT CHARACTER
+         SBRM    GETCH
+         SKG     ZERO      SKIP OVER SPACES.
+         BRU     LUKL
+         BRR     PTMP1     (NO PACKED SPACES.)               HB 72/02/03
+
+$NMBR    ZRO     ALPCNT
+       SETBASE NMBR1
+       BRU     MORE
+NMBR1  BRR*    NMBR
+       BRU     NMBR2
+       BRR*    NMBR
+       BRR*    NMBR
+       BRR*    NMBR
+NMBR2  SUB     =20B
+       SKN     CTMP4
+       BRU     *+3
+FNU    STA     CTMP4
+       BRU     MORE
+         XMA     CTMP4
+       MUL     =5
+       CBA
+         ADD     CTMP4
+       SKG     =99999
+       BRU     FNU
+       EAX     NLER
+       BRU     MESG
+LA1    LDA     SCOUNT
+       SUB     ONE
+       STA     SCOUNT
+       STA     CTMP1
+       LDA     THREE
+       SBRM    GCHAR
+       LDX     =CTB-ECTB
+       SKE     ECTB,2
+       BRX     *-1
+       EXU     EINST,2
+       BRU     0,2
+CTB    ASC     'TEL'
+       ASC     'TAM'           TBG-2/8/68
+       ASC     'CCA'           RJS-68/2/23
+       ASC     'PYT'           RJS-68/2/23
+       ASC     'AER'
+       ASC     'TAD'
+       ASC     'IRP'
+       ASC     'TOG'
+       ASC     'ROF'
+       ASC     'XEN'
+       ASC     'FED'
+       ASC     'SOG'
+       ASC     'TER'
+       ASC     'MID'
+       ASC     'MER'
+$INPTST  ASC     'PNI'     RJS-68/2/27
+       ASC     'IRW'
+       ASC     'EPO'
+       ASC     'DNE'
+       ASC     'OTS'
+       ASC     'SIL'
+       ASC     'NUR'
+       ASC     'AOL'
+       ASC     'LED'
+       ASC     'SER'
+       ASC     'VAS'
+       ASC     'TES'
+       ASC     'NOC'
+       ASC     'UAP'
+       ASC     'IUQ'           8/6/68 TBG
+       ASC     'AHC'          3/21/69 TBG
+         ASC     'OLC'     CLOSE COMMAND.                          5.10
+         ASC     'EXE'     EXECUTE COMMAND.                  5.10
+ECTB   EQU     *
+       EAX     LET
+       EAX     MAT             TBG-2/8/68
+       EAX     ACCEPT          RJS-68/2/23
+       EAX     TYPE            RJS-68/2/23
+       EAX     READ
+       EAX     DATA
+       EAX     PRINT
+       EAX     GOTO
+       EAX     FOR
+       EAX     NEXT
+       EAX     DEF
+       EAX     GOSUB
+       EAX     RETURN
+       EAX     DIM
+       EAX     REM
+       EAX     INPUT
+       EAX     WRITE
+       EAX     OPEN
+       EAX     END
+       EAX     STOP
+       EAX     LIST
+       EAX     RUN
+       EAX     LOAD
+       EAX     DEL
+       EAX     RES
+       EAX     DUMP
+       EAX     LET
+       EAX     CON
+       EAX     PAUSE
+       EAX     QUIT            8/6/68 DAL
+       EAX     CHAIN           3/21/69 TBG
+         BRU     CLOSE     5.10
+         BRU     XECUTE    EXECUTE COMMAND.                  5.10
+EINST  BRU     *+1
+       LDB     =177777B
+       SKM     =23051B         IF
+         BRU     LETON     5.10
+       SKR     SCOUNT
+       BRU     IF
+LETON    SKM     =27057B   ' NO'   <5.10
+         BRU     LETIM
+         SKR     SCOUNT    GET BACK LAST CH.
+         BRU     ON        >5.10
+LETIM  LDA     CTMP1
+       STA     SCOUNT
+       BRU     LET
+         
+*        CHAIN COMMAND WRITTEN FOR 4.10.
+CHAIN    SBRM    PREMON    GET NEXT CHARACTER                     <5.10
+         SKE     =56B      'N' FOR  CHANGE  STATEMENT
+         BRU     *+2
+         BRU     CHANGE    IT IS.
+         LDA     TWO       >5.10
+         SBRM    SKALP
+         SKN     NUMB      A DIRECT COMMAND?
+         BRU     CHAIN1    NO, COMPILE CODE.
+         SBRM    LOSA          COPY FILE NAME INTO STRING
+         BRU     CHCLS     NAVY CORR  -HB731113
+         BRU     *+3       -HB731113
+DIRCH1   EAX     CHMSG
+         SBRM    MESX      TYPE 'CHAIN'
+         EAX     FROM      TYPE 'FROM FILE  '
+         SBRM    MESX
+         LDA     MONE
+         XMA     INFILE    CLOSE CURRENT INPUT FILE.
+         BRS     20
+       CLEAR
+         SBRM    LOSOPN    TRY OPENING THE FILE FOR LOAD, CHAIN    5.10
+       BRU     CHAP1
+CHCLS  LDA     MONE
+       XMA     INFILE
+       BRS     20
+       LDA     =1B7
+       LDB     =FBFPTR
+       CLX
+       SBRM    LOSOPN
+$CHAP1   LDA     MONE      HB 72-04-11
+         STA     CHFLG
+         SKN     RELABL
+         BRU     BBSCH     NO.
+         LDA     XPAGE1    YES, RELEASE IT.
+         ETR     =77B
+         BRS     121
+         CLA               AND SET TO PAGE NOT ACQUIRED.
+         STA     RELABL
+         BRU     BBSCH
+CHAIN1   SBRM    SETLN     HERE TO COMPILE CODE.
+         LDA     CHOP1
+         SBRM    OPEF      TRY TO PUT OUT CHOP1, PTRS, FILE NAME.
+         BRU     CHNF      DIDN'T MAKE IT.
+         BRU     MNEOL     FINISH UP, DONE WITH COMPILING.
+CHNF     LDA     CHOP2     WRITE OVER POP 70 WORD.
+         LDX     GMS       <5.10
+         STX     LLINE     RESET LLINE.
+         STA     0,2       >5.10
+         BRU     MNEOL
+CHOP1  DATA    170B5           CHAIN POP
+CHOP2    BRU     DIRCH1
+CHMSG    ASC     'CHAIN$/' END OF 4.10 CHANGES TO CHAIN.
+         
+* QUIT COMMAND RETURNS IMMEDIATELY TO EXEC 8/6/68 DAL
+QUIT     SKN     NUMB      DIRECT STATEMENT?                 HB 72-03-21
+         BRU     *+2       NO, COMPILE SOMETHING.
+         BRS     10        YES.
+         SBRM    SETLN     START HEAD.
+         LDA     QUIT1
+         MIN     LLINE
+         STA*    LLINE
+         MIN     LLINE
+         BRU     NOEOL
+QUIT1    BRU     QUIT2
+QUIT2    BRS     43        GET BACK COMPILER RELABELLING.
+         LDB     XPAGE
+         BRS     44
+         BRS     10        HB 72-03-21
+
+
+CON    SKN     NUMB
+       BRU     DIRON
+       LDA     PAULNK
+       SKG     ZERO
+         BRU     *+6       CHANGED FOR SEPARATE RUNTIME      [HB 71.07.22]
+         AXC               FOR ENDLIN POP.                   HB 72/01/13
+         STA     PAULNK    RESET PAUSE FLAG                  HB 72-02-24
+         STX     NUMB
+         BRU     RUNSTR    GO START RUNNING WITH NO INIT.    [HB 71.07.22]
+       TCO     =37B
+       BRU     PP1
+
+XECUTE   SKN     NUMB      SEE IF DIRECT OR INDIRECT.       <5.10
+         BRU     *+2
+         BRU     DTERR     ERROR, MUST BE INDIRECT.
+         LDA     TWO       SET RUNFLG TO RUN ON EOF.
+         STA     RUNFLG
+         BRU     REM       GO COMPILE REMARK.               <5.10
+         
+LOAD   SKN     NUMB
+       BRU     DIRON
+         LDA     ONE       SKIP OVER 'D'                     HB 72-03-21
+
+         SBRM    SKALP     HB 72-03-21
+$LOAD0   SBRM    LOSA      5.10
+       BRU     LOAD1A
+LOAD1  CLX
+       EAX     FROM
+       SBRM    MESX
+       CLEAR
+       BRU     LOAD2
+LOAD1A LDA     =1B7
+       LDB     =FBFPTR
+       CLX
+LOAD2    SBRM    LOSOPN    OPEN THE FILE                           5.10
+       BRU     PP1
+FROM     ASC     'FROM FILE: /'    HB 72-04-27
+$LOSA    ZRO     SICA1     5.10
+       LDA     =3*NFNBUF-1
+       STA     FBFPTR
+       STA     FBFPTR+1
+LOSA0  MIN     SCOUNT
+      LDX     SCOUNT
+       LDA     BUF,2
+         SKG     ZERO      5.10
+         BRU     LOSA0     5.10
+         SKR     SCOUNT    5.10
+       SKE     CRCH
+         BRU     *+3       5.10
+       MIN     SICA1
+         BRR     SICA1     5.10
+       LDX     MONE
+       LDA     THREE
+       BRS     12
+       BRS     11
+LOSA1  MIN     SCOUNT
+       LDX     SCOUNT
+         SBRM    GETCH     GETCH HANDLES LC PROPERLY. 4.02
+       SKE     CRCH
+       BRU     *+3
+       SKR     SCOUNT
+       BRR*    LOSA
+       WCI     FBFPTR
+       BRU     LOSA1
+LOSA2  WCI     FBFPTR
+       BRR*     LOSA
+
+LOSOPN   ZRO     SICA1     OPEN FILE FOR LOAD, CHAIN              <5.10
+       BRS     15
+       BRU     FILER
+       XXA
+       LRSH    18
+       ETR     =7
+       SKE     THREE
+       BRU     FILER           WRONG TYPE, MUST BE SYMBOLIC
+       STX     INFILE
+         LDX     MONE      RESET ECHO TABLE, CLEAR BUFFER
+         CLA
+         BRS     12
+         BRS     11        OF GARBAGE MAYBE LEFT
+         BRR     SICA1     >5.10
+
+$INITL   ZRO     CTMP1
+         LDA     MONE      HB 72-03-21
+         LDX     =-52      ASTS+ASS=2*FNS
+         STA     AST,2     INITIALIZE FUNCTIONS.
+         BRX     *-1
+         EAX     AST
+         COPY    XA,AX,B
+         XXA
+         STB     0,2       SET STRINGS NULL
+         STA     2,2       ARRAYS UNDEFINED.
+         EAX     4,2
+         XXA
+         SKG     =ZS
+         BRU     *-6
+         CLEAR   5.13
+         BRR     CTMP1     HB 72-03-21
+         
+PBGN   BRU     POP0        SIN
+       BRU     POP1        COS
+       BRU     POP2        TAN
+       BRU     POP3
+       BRU     POP4
+       BRU     POP5        ABS
+       BRU     POP6        RND
+       BRU     POP7        SGN
+       BRU     POP10
+       BRU     POP11
+         BRU     POP12     ENDLIN POP                        HB 72/01/13
+         HLT     0
+       BRU     SICN
+         BRU     POP15     RET
+         BRU     POP16     GOS
+       BRU     POP17
+       BRU     POP20
+       BRU     POP21
+         BRU     POP22     NOLINE
+       BRU     POP23       POW
+       BRU     POP24       TA2
+       BRU     POP25       TA1
+       BRU     POP26       ACCPT
+       BRU     POP27       SCCPT
+       BRU     POP30       READ
+       BRU     POP31       RESD
+         BRU     POP32     CGOTO   0
+         BRU     POP33     CGOSUB  10
+         BRU     POP34     ID (FUNCTION DEFINITION)
+       BRU     ISCN
+         BRU     POP36     RUN-TIME FORMATTER.                      5.10
+       BRU     POP37       EFN--ENTER FUNCTION.
+       BRU     POP40       TV2
+       BRU     POP41       TV1
+         BRU     POP42     SLEN--STRING FUNCTIONS.           HB 72/02/14
+         BRU     POP43     SNUM
+         BRU     POP44     SDAT
+         BRU     POP45     SSTR    HB 72/02/14
+         BRU     POP46     SOUTB   5.10
+         BRU     POP47     SOUTS   5.10
+         BRU     POP50     DIM2    HB 72/01/03
+         BRU     POP51     DIM1    HB 72/01/03
+         BRU     POP52     SINB    5.10
+         BRU     POP53     SINS    5.10
+         BRU     POP54
+         HLT     55
+         HLT     0
+         BRU     POP57     NEXT
+         HLT     0
+       BRU     POP61       RBIA
+       BRU     POP62       RBIS
+         HLT     0
+         HLT     0
+         HLT     0
+         BRU     POP66     OPEN FILE                               5.10
+         BRU     POP67     CLOSE   5.10
+         BRU     POP70     CHAIN   HB 72-03-21
+         BRU     POP71     PAUSE
+         BRU     POP72     HED     HB 72-05-11
+         BRU     POP73     TAL
+         BRU     POP74     BASC
+         BRU     POP75     CHR     HB 72-05-11
+         BRU     POP76     SCAT
+         BRU     POP77     FMN     HB 72/01/03
+PTV    EQU     *
+$NOMEM   EAX     ERR6X     'OUT OF MEMORY'
+         SBRM    MESX      PUT OUT MESSAGE
+         BRU     GOEND     FOR 4.02  HEB.
+$MESX   ZRO     RTMP1
+       CXA
+       LDB     MONE
+         LDX     ONE
+       BRS     34
+         BRR     RTMP1
+
+$MSG     ZRO     GMS
+         SBRM    MESX      SHORTER HB 71.12.29
+       SKN     NUMB
+       BRU     *+2
+       BRU     QXS
+         TCO     ZERO      CHANGED                           [HB 71.07.22]
+       LDA     NUMB
+       LDB     TEN
+       LDX     ONE
+       BRS     36
+QXS      TCO     CRCH                                        [HB 71.07.22]
+         TCO     LFCH
+       BRR*   MSG
+
+$MESG   SBRM    MSG
+       BRU     PP1
+
+INPB     EQU     2B7       INPUT BIT ****SEE :INPBIT: IN 4BAS****  5.12
+$CLOSLL  NOP     RTN0      ENTER BY BRU OR BRM.                   <5.10
+         BRS     17        CLOSE ALL FILES.
+         LDA     MONE      SET ALL FILES IN TABLE CLOSED.
+         LDX     =MNFILE
+         STA     FILTND,2
+         STA     HTND,2    INIT LOCATION TABLE.
+         BRX     *-2
+         LDA     =INPB     <5.12
+         LDB     ONE
+         STP     FILET     INITIALIZE HEAD OF FILET.              >5.12
+         BRR     RTN0      >5.10
+
+$RUNGO   BSS     0         HB 72-04-04
+RUNSTR   BRS     43
+         STA     RUNFLG    <0 MEANS RUNNING PROGRAM          5.10
+         LDB     RRLBL
+         BRS     44        SWITCH TO RUNTIME
+         CLA               INITIALIZE TTY OUTPUT POS         HB 72-04-04
+         STA     ESCFLG    5.10
+         STA     SPCCNT
+         STA     RTMP2     HB 72-04-04
+         BRU*    NUMB      AND THEN START EXECUTING.
+
+$MKPTR   ZRO     PTRR      MAKE SYS POINTERS FROM            HB 71.12.20
+         ETR     LENMSK    BASIC POINTERS.
+         STA     SPTR5     GET LENGTH
+         CBA
+         ADM     SPTR5     MAKE END POINTER, DON'T TOUCH X
+         LDB     SPTR5     BEG PTR IN A, END PTR IN B.
+         BRR     PTRR
+
+$BASPTR  ZRO     PTRR      MAKE BASIC POINTER FROM SYS PTR.
+         STA     SPTR5     SAVE BEG POINTER
+         XAB
+         SUB     SPTR5     LEN IN A, BEG PTR IN B.
+         BRR     PTRR                                        HB 71.12.20
+
+VERPR    DATA    10440523B 'BAS'  LOOKS PRETTIER             [HB 24.06.71]
+         DATA    22241415B 'IC-'
+         ASC     '5.17  10-15-75$/'
+$ERR6X   ASC     'OUT OF MEMORY/'
+$ERR13X ASC     'BAD FILE NAME/'
+$MBCH    DATA    135B      MULTI - BLANK CHAR.               HB 71.12.29
+$LFCH    DATA    152B      LINE FEED.
+$CRCH    DATA    155B
+$LINE    DATA    100000D   MUST BE HERE RELATIVE TO ENDATA  4.02
+*                          TO MAKE DTHRD WORK PROPERLY.
+$CDE12   BRU     FNEND
+$INPFMT  DATA    60000234B FREE FORMAT IS 6                  HB 72/02/14
+$FORMAT  DATA    64040200B G13.7 FORMAT                      HB 72/01/13
+$ENDATA  DATA    -1
+$PY      DATA    31103755B
+         DATA    24211002B
+
+*        ADJUST POINTERS.
+*        INPUT:  X=ADDRESS OF POINTERS NEEDING ADJUSTMENT.
+*                B=RETURN ADDRESS, 4B7 SET IF STRING.
+
+$ADJP    SKB     B00T00
+         BRU     ADJPST    GO ADJUST STRING POINTERS.
+         LDA*    0,2       GET THE  TITLE.
+         ETR     ADRMSK    GET RID OF NASTY BITS.
+         STA     0,2       ALL DONE.
+         XXB
+         BRU     0,2       RETURN.
+ADJPST   STB     GCRTN     SAVE RETURN ADDRESS.
+         STX     GCT1      SAVE UNPOLLUTED BLOCK POINTER.
+*
+*        MAKE NEW POINTER FROM FOLLOWING EQUATIONS:
+*        [SPTR, SPTR' ARE OLD AND NEW STRING POINTERS.
+*         PTRA, PTRA' ARE OLD AND NEW TITLES,
+*         AND  LEN  = THE LENGTH OF THE BLOCK.]
+*
+*        SPTR = 3 * PTRA - (3 * LEN + 1)
+*        SPTR' = 3 * PTRA' - (3 * LEN + 1).
+*
+*        THEREFORE,
+*        3 * LEN + 1 = 3 * PTRA - SPTR,
+*        AND SUBSTITUTING IN THE EQ. FOR SPTR',
+*        SPTR' = 3(PTRA' - PTRA) + SPTR.
+
+         LDA     0,2
+         ETR     LENMSK    HB 72/01/10
+         ADD     1,2
+         ADD     THREE
+         MUL     MAGIC     HAVE PTRA.
+         SKG     LLINE     WITHIN COLLECTABLE AREA?          HB 72/01/10
+         BRU     ADJPS1
+         CAX
+         STA     GCT2
+         LDA     0,2       GET PTRA'.
+         ETR     ADRMSK
+         SUB     GCT2      PTRA' - PTRA.
+         MUL     =3B7
+         LSH     2         3(PTRA' - PTRA).
+         LDX     GCT1      GET BACK BLOCK POINTER.
+         ADM     1,2       SPTR' = 3(PTRA' - PTRA) + SPTR.
+ADJPS1   CXB               RETURN WITH ADVERTISED VALUES.
+         BRU*    GCRTN
+
+
+*        ROUTINE TO COMPUTE SIZE OF A BLOCK.
+*        INPUT:  X=POINTER TO TITLE WORD.
+*        OUTPUT: A=LENGTH OF BLOCK, IN WORDS.
+*                NO OTHER REGISTERS AFFECTED.
+$BKSIZE  ZRO     GCR2
+         LDA     0,2
+         SKA     MBKSIZ    SEE IF ANY BITS IN BLOCK SIZE.
+         BRU     BKSZST    IT IS A STRING BLOCK.
+         LDA     -1,2      GET LENGTH FROM PREVIOUS WORD.
+         BRR     GCR2
+BKSZST   ETR     MBKSIZ    GET RID OF LOUSY BITS.
+         STB     GCT1
+         RSH     14        MOVE LENGTH TO PROPER PLACE.
+         LDB     GCT1      RESTORE B REG.
+         BRR     GCR2
+MBKSIZ   DATA    3774B4
+
+
+*        ROUTINE TO TRACE THROUGH LISTS.
+*        INPUT:  X=ADDRESS OF SUBROUTINE TO DO MAGIC THINGS
+*                TO EACH POINTER (OR BFOCK).
+
+$GCTRAC  ZRO     GCR1
+         STX     GCPROC
+         CLX               5.10
+         EAX     AST       START WITH STRINGS.
+TRACE1   LDB     =4B7+*+5  HB 72/01/10
+         LDA     0,2       SEE IF A STRING TO MARK.          
+         STX     GCR2      HB 72/01/25
+         SKE     MONE      SKIP IF NOT                       HB 72/01/10
+         BRU*    GCPROC    YES.
+         LDX     GCR2      RESTORE THE POINTER.              HB 72/01/25
+         SKN     2,2       IS THE STRING ARRAY DEFINED?      HB 72/01/10
+         BRU     *+2
+         BRU     GCTRC0    NO, DON'T TRY MARKING             HB 72/01/10
+         LDA     3,2       GET NUMBER OF ENTRIES
+         STA     GCCNT
+         STX     GCPTRA    SAVE MAIN POINTER.
+         LDX     2,2       FIRST OF THE BLOCK OF POINTERS.   HB 72/01/10
+STRACE   LDB     =*+5+4B7                                 HB 72/01/10
+         LDA     0,2       SEE IF THIS ELEMENT DEFINED.
+         STX     GCR2      HB 72/01/25
+         SKE     MONE
+         BRU*    GCPROC    DO MAGIC THING.
+         LDX     GCR2      RESTORE POINTER                   HB 72/01/25
+         EAX     2,2       ADVANCE TO NEXT ONE
+         SKR     GCCNT     ALL DONE?
+         BRU     STRACE    NO.                               HB 72/01/10
+         LDX     GCPTRA    GET BACK POINTER TO S BLOCK
+         EAX     2,2       POINT AT ARRAY POINTER
+         LDA     1,2       GET 2*LEN+1 TO POINT AT TITLE WORD
+         ADD     1,2
+         ADD     THREE     FOR (0) ELEMENT, TITLE            HB 72/01/25
+         STA     GCCNT
+         ADM     0,2       KLUDGE.
+         LDB     =*+2
+         BRU*    GCPROC    MARK OR ADJUST.
+         LDA     GCCNT     FOR RE UPDATING POINTER.
+         COPY    N,B,BX
+         ADM     0,2
+         EAX     -2,2      GET BACK TO FIRST WORD.
+GCTRC0   EAX     4,2       POINT AT NEXT S BLOCK             HB 72/01/10
+         CXA
+         SKG     =ZST      ALL DONE WITH S BLOCKS?
+         BRU     TRACE1    NO
+         EAX     AS        MARK ARITH ARRAYS.
+GCTRCA   EAX     2,2
+         SKN     0,2       ANYTHING IN THIS ONE?
+         BRU     *+2
+         BRU     GCTRC1
+         LDA     -2,2
+         ADD     ONE       COMPUTE LENGTH.
+         MUL     -1,2
+         CBA
+         ADD     -2,2       MUST MAKE 2((M+1)(N+1))          HB 72/01/25
+         ADD     -2,2      HB 72/01/25
+         ADD     THREE     1+TITLE+LENGTH WORD.              HB 72/01/25
+         STA     GCCNT
+         ADM     0,2       TO POINT IT AT THE HEAD.
+         LDB     =*+2
+         BRU*    GCPROC
+         LDA     GCCNT
+         COPY    N,BX      GET BACK POINTER-POINTER.
+         ADM     0,2       RESTORE TO NORMAL POSITION.
+GCTRC1   EAX     2,2
+         CXA               INCREMENT ADDRESS AND TEST.
+         SKG     =ZS
+         BRU     GCTRCA    NOT DONE YET.
+         BRR     GCR1      RETURN, ALL DONE.
+         
+*                DECPIC  AND  DECPXA:
+*
+*                THESE ROUTINES DECODE A PICTURE EITHER AT RUN-TIME
+*                OR AT COMPILE TIME, DEPENDING ON WHICH IS CALLED.
+*                DECPIC  IS FOR COMPILE TIME, AS IT EXPECTS 1
+*                CHARACTER PER WORD.
+*                DECPXA  IS FOR RUNTIME, AND EXPECTS 3 CHARACTERS PER WORD.
+*
+
+$WOFFST  EQU     9         OFFSET OF W FIELD FROM RIGHT HAND END.
+$DOFFST  EQU     15          ""   "" D   "    ""    "    ""   " .
+
+$DECPIC  ZRO     IOLINK
+         LDX     BRU79
+         BRU     *+3
+$DECPXA  ZRO     IOLINK
+         LDX     BRU80
+         STX     RLI82A
+         STA     IOPTR     SAVE THE WORD ADDRESS WHERE FORMATS GO.
+         LDA     =40001B   SET INDIRECT BIT, POINT IOLINK ELSEWHERE.
+         ADM     IOLINK
+
+
+CRACKL   CLB               MAKE EVERYTHING BUT EXPONENTS LEGAL.
+         LDA     =BIFMT!OV!FORTEL        INITIALLY INTEGER.
+         STA     IOFMT     INITIALIZE THE FORMAT WORD.
+         STB     IOW       INITIALIZE THINGS.
+         STB     IOD
+
+NXCHR    SBRM    FORCHR    GET THE FIRST CHARACTER.
+         BRU     QUOTE     NOT NUMBER FORMAT CHARACTER.
+         BRU     EXPNT     [EXCLAMATION POINT.]
+         BRU     DOLL      '''     5.11
+         BRU     DOLL      '$'                               HB 72/01/13
+         BRU     POINT     '.'
+         BRU     MSIGN     '-'
+         BRU     PSIGN     '+'
+         BRU     FIELD     [AT]    5.11
+         BRU     FIELD     [POUND]
+         SKB     MONE      [FOR (RET)] ANY PROCESSING GOING ON?
+         BRU     PACKWD    YES, PACK THE WORD.
+         CLA               NO, ALL DONE.
+         MIN     IOPTR     0 ENTRY DENOTES END OF FORMAT WORD LIST.
+         STA*    IOPTR
+         LDA     IOPTR     GIVE FINAL VALUE OF POINTER.
+         BRR     IOLINK
+
+
+PSIGN    SKB     =HAVSGN   IS A SIGN ALLOWED?
+         BRU     SGNERR
+         LDA     BPSIGN
+
+SIGN     ADM     IOFMT     SET SIGN IN FORMAT WORD.
+         MIN     IOW
+         LDA     =HAVSGN
+
+MERGE    CBX               MERGE  A  AND  B  INTO  B .
+         COPY    AB,XB
+         BRU     NXCHR
+
+
+MSIGN    SKB     =HAVSGN
+         BRU     SGNERR
+         LDA     BMSIGN
+         BRU     SIGN
+
+SGNERR   SKB     =EXPNOK   *********** WON'T WORK FOR RUNTIME.
+         BRU     BACK1     SIGN OKAY IF LOOKING FOR EXPONENT.
+         BRU     PIXCER    OTHERWISE IT IS ILLEGAL.                 5.10
+
+
+FIELD    MIN     IOW       INCREMENT FIELD WIDTH COUNT.
+         SKB     =GETIOD
+         MIN     IOD       ALSO  DECIMALS POINT IF GETTING IT.
+         SKE     THREE     SEE IF [POUND].                         5.11
+         BRU     PACKWD    NO, [AT], SO TERMINATE FIELD            5.11
+         LDA     =HAVSGN   REQUIRE DECIMAL POINT BEFORE EXPONENT.
+         BRU     MERGE
+
+
+POINT    SKB     =GETIOD   ALREADY HAVE '.'?
+         BRU     PIXCER    5.10
+         MIN     IOW       NO.
+         LDA     =BFFMT-BIFMT      CHANGE INTEGER TO FIXED FMT.
+         ADM     IOFMT
+         LDA     =HAVSGN!GETIOD!EXPNOK  POINT ENABLES EXPONENT.
+         BRU     MERGE
+
+
+DOLL     SKB     MONE      SEE IF ANYTHING GOING ON.
+         BRU     BACK1     BACK UP, PACK WORD.
+         LDB     STRFMT    RESET FORMAT TYPE                       5.11
+         STB     IOFMT     5.11
+DOLLL    MIN     IOW       LOOP, GETTING $ CHARS.
+         SKE     FOUR      SEE IF $ OR ' TO TERMINATE              5.11
+         BRU     DOLLM     ', TERMINATE HERE                       5.11
+         BRM     RLI82     GET A CHAR.
+         LDA     CRCH      AT END OF LINE.                   HB 72/01/25
+         SKE     FOUR      '   $' STILL A DOLLAR?
+         BRU     *+2       5.10
+         BRU     DOLLL     GO INCRMENT IOW                   HB 72/01/13
+         SKE     SEVEN     '?      <5.11
+         BRU     *+2
+         BRU     DOLLL     INCREMENT AND STOP ON '.               >5.11
+         SKE     CRCH      <5.10
+         BRU     *+2
+DOLLM    MIN*    IOLINK    SO THAT RUNTIME DOESN'T LOOP            5.11
+         LDA     IOW       SPLIT UP WIDTH TO ALLOW BIGFIELDS
+         RSH     5
+         STA     IOD       TOP INTO IOD, BOTTOM LEAVE IN IOW.
+         CLA
+         LSH     5
+         STA     IOW
+BACK1    SKR*    IOLINK    BACK UP 1 CHAR, PACK FMT WD.
+         BRU     PACKWD    >5.10
+
+
+EXPNT    SKB     =EXPNOK   MAKE SURE EVERYTHING IS ALL RIGHT.
+         BRU     *+2       1 BIT MEANS IT IS.
+         BRU     PIXCER    5.10
+         LDA     =BEFMT-BFFMT      CONVERT FIXED TO FLOATING FMT.
+         ADM     IOFMT
+         LDX     =-3       GET 3 MORE EXCLAMATION POINTS.
+         BRM     RLI82     GO GET A CHARACTER.
+         BRU     PIXINC    5.10
+         SKE     =76B      CONVERT [UP-ARROW] TO [EXCLAIM.]
+         BRU     *+2
+         LDA     ONE
+         SKE     ONE
+         BRU     PIXCER    NOT [EXCLAMATION POINT]                  5.10
+         BRX     *-7       LOOP.
+         LDA     FOUR      INCREMENT WIDTH FIELD.
+         ADM     IOW
+
+
+PACKWD   LDA     IOW       CHECK  IOW  AND PUT IN FMT WD IF OK.
+         SKA     =@37B SAME AS  SKLE   =37B
+         BRU     PIXFLD    FIELD TOO WIDE.                          5.10
+         CLB
+         LSH     WOFFST    SHIFT TO THE CORRECT PLACE.
+         ADM     IOFMT
+         LDA     IOD       IOD < IOW BY DEFINITION AND PROGRAM.
+         LSH     DOFFST
+         ADM     IOFMT
+         LDX     IOFMT
+         MIN     IOPTR     STORE AWAY THE FORMAT WORD.
+         STX*    IOPTR
+         BRU     CRACKL    GO PROCESS ANOTHER FORMAT SPECIFICATION.
+
+
+QUOTL    SKR     IOW
+         BRU     STOPQ
+         WCI     SPTR1     WRITE CHARACTER                          5.10
+         SBRM    FORCHR    GET ANOTHER CHARACTER.
+         BRU     QUOTZ     ALLOW NORMAL STRING CHARACTERS          5.10
+         BRU     QUOTL     AND EXCLAMATION POINTS, BUT NOT:
+         BRU     STOPQ     5.11
+         BRU     STOPQ     '$'                               HB 72/01/13
+         BRU     STOPQ     '.'
+         BRU     STOPQ     '-'
+         BRU     STOPQ     '+'
+         BRU     STOPQ     5.11
+         BRU     STOPQ     [POUND]
+         BRU     STOPQ     [RETURN]
+
+QUOTE    SKB     MONE      ANY PROCESSING GOING ON?
+         BRU     BACK1     BACK UP 1 CHAR, PACK THE WORD.
+         CAX               SAVE THE CHARACTER.
+         MIN     IOPTR
+         LDA     IOPTR     MAKE CHARACTER ADDRESSES.
+         MUL     =3B7
+         LSH     2
+         ADD     TWO
+         STA     SPTR1
+         STA     SPTR2
+         LDA     =36B!4B7       FOR SKR LOOPS.
+         STA     IOW
+         CXA               GET BACK THE CHARACTER.
+
+QUOTZ    SKE     SIX       CHECK FOR SPECIAL CHARS                <5.10
+         BRU     QUOTL     NOPE.
+         LDA     TWO
+         STA     IOD
+         COPY    X,A
+         BRM     RLI82     GET FIRST CH, CHECK SPECIAL.          <5.13
+         LDA     =26       KLUDGE AMPERSAND.
+         SKG     =27B
+         SKG     B17
+         BRU     *+2
+         BRU     QUOTU
+         SKG     =132B
+         SKG     B100      SEE IF LOWER CASE LETTER.
+         BRU     *+2
+         EOR     =140B
+         SKG     =72B
+         SKG     =40B
+         BRU     QUOTV
+         MRG     B100
+         BRU     QUOTV     >5.13
+QUOTY    BRM     RLI82     GET NEXT CH.
+         BRU     QUOTX
+QUOTU    SKG     =27B      MAKE SURE IT'S A NUMBER.                5.13
+         SKG     B17
+         BRU     QUOTW
+         ETR     SEVEN
+         CNA
+         COPY    N,XA,B    MERGE NEW PART WITH OLD.
+         LSH     3
+         CAX
+         SKR     IOD       REDUCE COUNT.
+         BRU     QUOTY
+QUOTX    RSH     3
+QUOTV    ETR     CHMSK     ONLY ALLOW A CHARACTER.                 5.13
+         BRU     QUOTL     WRITE TH
+QUOTW    SKR*    IOLINK    BACK UP ONE CHAR..
+         CXA               GET BACK BUILT CHAR.
+         BRU     QUOTX     >5.10
+
+STOPQ    SKE     CRCH      STOPPPING ON (RET)?                    <5.10
+         SKR*    IOLINK    NO, SAVE THAT CHAR.
+         LDA     SPTR2     COMPUTE LENGTH FOR  IOW .              >5.10
+         SUB     SPTR1
+         CLB
+         LSH     WOFFST    POSITION IT CORRECTLY
+         MRG     HOLFMT                                      HB 72/01/25
+         STA*    IOPTR
+         LDA     SPTR2     UPDATE WORD TO POINT AT
+         MUL     MAGIC       THE NEXT WORD PAST THE END OF THE STRING.
+         STA     IOPTR
+         BRU     CRACKL
+
+
+
+PIXCER   EAX     CERR10    NEW ERRORS FOR RUN OR COMPILE           <5.10
+PIXERR   CAB               REGISTER.
+         LDA     RLI82A
+         SKE     BRU79     IN RUNTIME STUFF?
+         EAX     ERR17     YES, GOTO RUNTIME ERROR ROUTINE.
+         LDA*    IOLINK    RESET FOR ARROW PRINT ROUTINE.
+         STA     SCOUNT
+         CBA               RESTORE CHARACTER.
+         BRU     0,2       GOTO ERROR ROUTINE.
+PIXFLD   EAX     FERROR    'FORMAT ERROR'
+         BRU     PIXERR
+PIXINC   EAX     ISER
+         BRU     PIXERR    REAL ERROR.                             >5.10
+
+
+*        EQUIVALENCES FOR FORMATS:
+
+HAVSGN   EQU     1B        OFF IF SIGN IS ALLOWED.
+GETIOD   EQU     2B        ON IF GETTING DECIMAL PLACES IN NUMBER.
+EXPNOK   EQU     4B        ON IF OKAY TO HAVE AN EXPONENT.
+
+$BPSIGN  DATA    3B2       PLUS SIGN SPECIFICATION FOR FORMAT WORD.
+$BMSIGN  DATA    2B2       MINUS ""        ""       "    ""    "" .
+
+BEFMT    EQU     4B7       CODE FOR FLOATING FORMAT.
+BFFMT    EQU     3B7       CODE FOR FIXED FORMAT.
+BIFMT    EQU     1B7       CODE FOR INTEGER FORMAT.
+OV       EQU     4B6       OVERFLOW HANDLING BIT.  1 MEANS TRY HARD.
+FORTEL   EQU     4B4       DOES FUNNY PROCESSING ON EXPONENTS.
+$STRFMT  BSS     0         FORMAT FOR STRING VALUE           HB 72/01/07
+$FORMSK  DATA    7B7       MASK OF THE FORMAT NUMBER IN THE FORMAT WORD.
+$HOLFMT  DATA    6B7       FORMAT FOR TEXT (STRING)          HB 72/01/07
+
+
+
+
+
+FORCHR   ZRO     RTN1      GET A CHARACTER FOR  DECPIC .
+         CBX               SAVE THE FLAGS.
+FRCHRL   BRM     RLI82     GET A CHARACTER
+         LDA     CRCH      NO CHARACTERS LEFT, USE (RET).
+         SKE     LFCH      SEE IF A LINE-FEED.
+         BRU     *+2
+         BRU     FRCHRL    IGNORE LINE-FEEDS.
+         SKE     =76B      CONVERT [UP-ARROW] TO [EXCLAMATION PT].
+         BRU     *+2
+         LDA     ONE
+         CXB               RESTORE FLAG REGISTER.
+         LDX     =BFORT-EFORT
+         SKE     EFORT,2   SEARCH THROUGH THE TABLE OF FORMAT CHARACTERS.
+         BRX     *-1
+         COPY    XA,AB,BX  RING-AROUND THE ROSY
+         CNA               GET POSITIVE OFFSET FROM THE FRONT OF THE TABLE.
+         ADM     RTN1      RETURN SKIPPING SO MUCH.
+         COPY    XB,BA,AX  RESTORE REGISTERS.
+         BRR     RTN1
+BFORT    DATA    155B      [RETURN]
+         DATA    3         [POUND SIGN]
+         DATA    40B       5.11
+         ASC     "  +  -  .  $  '" 5.11
+         DATA    1         [EXCLAMATION POINT]
+EFORT    BSS     0
+
+
+$LCUC    ZRO     ALPCNT    CONVERT CHAR IN A REG TO UPP      [HB 22.06.71]
+         SKG     =132B
+         SKG     =100B
+         BRR     ALPCNT
+         EOR     =140B
+         BRR     ALPCNT                                      [HB 22.06.71]
+
+
+$LLL2    BSS     0         START OF LITERALS.
+
+       NOLIST  EXT,GO
+
+       END
+3BAS     IDENT   73-04-03--FIO PACKAGE.  TBG & HEB.  FILE /S3B/
+*
+* INTERNAL TO STRING CONVERSION
+*
+ISC    POPD    13500000B,2
+$ISCN  STX     SICA3
+       STP    SICA1
+       LDA     0
+       STA     IOLINK
+       CLA
+       STA     COUNT
+       STA     FRESWT
+       STA     TFOUR
+       STA     ERNUM
+       STA     OVDGTS
+       SBRM     GETFMT
+       LDA     IOFMT
+       SKG     ZERO
+       BRU     IOBOL
+         SKE     SEVEN     SEE IF STRING VAR.                HB 72/01/14
+         BRU     *+2       NO.
+         BRU     IOSTR     YES, GO PROCESS                   HB 72/01/14
+       LDP     SICA1
+       STE
+       NOD     48
+       LDE
+       STP     SICA1
+       STP     SPTR1
+         LDB     SICA3     GET THE FORMAT WORD.              [HB 22.06.71]
+         SKN     SICA1     TEST THE VALUE FOR POSITIVE OR NEGATIVE.
+         BRU     ISCP      IT IS POSITIVE.
+         LDA     THIRTEEN  THE SIGN CHARACTER WILL DEFINITELY BE '-'.
+         STA     SIGN2
+         BRU     NFRFMT    THE FORMAT IS PROBABLY CORRECT.
+ISCP     CLA               ASSUME SPACE IS PUT OUT.
+         SKB     XPSGN     TEST IF ASSUMPTION WAS CORRECT.         5.10
+         LDA     ELEVEN    IT WASN'T, GET TRUE PLUS SIGN.
+         SKB     XSGN      SEE IF IT WAS VALID TO LOOK AT XPSGN.   5.10
+         BRU     *+2       YES, IT WAS.
+         LDA     MONE      NO, IT WASN'T.
+         STA     SIGN2
+         BRU     NFRFMT                                      [HB 22.06.71]
+
+IOFREE LDB     MONE            SET ZERO SUPPRESS FLAG
+       STB     FRESWT
+       LDA     IOD
+       SKE     ZERO            TEST FOR G FORMAT - NON-ZERO FIELD WIDTH
+       BRU     GFMT
+       LDA     SEVEN
+       STA     IOD
+       LDA     THIRTEEN        SET FORMAT FOR FREE FORM
+       STA     IOW
+       SBRM     RNDEXP          CALLS ROUND SUBROUTINE
+       LDP     SPTR1
+       STP     SICA1
+       LDA     IODEXP          EXAMINE MAGNITUDE OF THE NUMBER
+       SKG     FIVE
+       SKG     MTWO
+       BRU     IOEXPB
+         EOR     MONE      PUSHED IOD THE RIGHT DIRECTION    [HB 24.06.71]
+       ADM     IOD
+       BRU     IOFCON
+         
+GFMT   CLA
+       STA     IOFMT
+       STA     FRESWT
+       SBRM    RNDEXP
+       LDP     SPTR1
+       STP     SICA1
+       LDA     IOW
+       SUB     IOD
+       SUB     THREE
+       STA     RNDFLG
+       LDA     IODEXP
+       SKG     RNDFLG          TEST FOR W-D-2>EXP>-1
+       SKG     MTWO
+         BRU     IOEXPS                                      [HB 16.06.71]
+       BRU     IOFCON
+         
+NFRFMT LDX     IOFMT           NOT FREE FORMAT
+       BRU     *,2
+       BRU     IOINT       1 = INTEGER.
+       BRU     IOEXP       2 = EXPONENTIAL, RIGHT JUSTIFIED.
+       BRU     IOFCON      3 = FIXED POINT, RIGHT JUSTIFIED.
+       BRU     IOEXPS      4 = EXPONENTIAL, LEFT JUSTIFIED.
+       BRU     IOFCNS      5 = FIXED POINT, LEFT JUSTIFIED.
+         BRU     IOFREE    6 = FREE FORMAT, LEFT JUSTIFIED   HB 72/01/14
+         
+IOFCNS LDA     MONE
+       STA     FRESWT
+IOFCON SBRM    RNDFI           F CONVERSION
+       LDA     MTWO
+       SUB     IOD             CALCULATE NUMBER OF SPACES TO OUTPUT
+       SKE     MTWO
+       SUB     ONE
+         SKN     SIGN2     GET COUNTS RIGHT FOR SIGN         [HB 23.06.71]
+         BRU     *+2
+         ADD     ONE                                         [HB 23.06.71]
+       SKN     IODEXP
+         BRU     *+2       FASTER THAN   SUB   ONE           [HB 23.06.71]
+       ADD     ONE
+       ADD     IOW
+       SKN     IODEXP
+       SUB     IODEXP
+       SKA     B00T00
+ERR4   BRU     FLDSHT          ERROR: SPECIFIED FIELD IS TOO SHORT
+       SKG     ZERO
+       BRU     FCON2
+       SBRM     SPCOUT
+FCON2  LDA     SIGN2
+         SKE     MONE      FOR SIGN DIDDLING                 [HB 22.06.71]
+       SBRM     CHROUT
+FCON3  LDA     IODEXP
+       SKG     MONE
+       BRU     FCON4           NO DIGITS BEFORE DECIMAL POINT
+       ADD     ONE             OUTPUT DIGITS BEFORE DECIMAL POINT
+       CNA
+       CAX
+       SBRM     GETDGT
+       SBRM     CHROUT
+       BRX     *-2
+FCON4    LDA     FOURTEEN  OPTIONAL DECIMAL POINT ELIMINATED.
+       SBRM     CHROUT
+FCON6  LDA     IODEXP          CALCULATE NO. OF ZEROES AFTER DEC. PT.  
+       ADD     ONE
+       CAX
+       SKG     MONE
+       BRU     FCON7
+FCON8  SKR     IOD             OUTPUT DIGITS AFTER DECIMAL POINT
+       BRU     *+2
+       BRU     ISCEND
+       SBRM     GETDGT
+       SKN     FRESWT
+       BRU     FCON9
+       SKE     SIXTEEN
+       BRU     *+3
+       MIN     COUNT
+       BRU     FCON8
+       STA     TEMP1
+       SKR     COUNT
+       BRU     *+4
+       MIN     COUNT
+       LDA     TEMP1
+       BRU     FCON9
+       LDA     SIXTEEN
+       SBRM    CHROUT
+       BRU     *-7
+FCON9  SBRM    CHROUT
+       BRU     FCON8
+FCON7  LDA     SIXTEEN         OUTPUT ZEROS AFTER DECIMAL PT.
+       SKR     IOD
+       SBRM     CHROUT
+       BRX     *-2
+       BRU     FCON8
+IE1    LDX     ERNUM
+         LDP*    IOLINK    RETURN THE POINTERS IN A, B.      [HB 21.06.71]
+       BRR     IOLINK
+         
+IOEXPB SKG     MONE
+       BRU     IOEXP
+IOEXPS LDA     MONE
+       STA     TFOUR
+         LDA     IOW       COMPUTE DIGITS BEFORE DECIMAL PT. [HB 11.06.71]
+         SUB     IOD
+*        SKE     IOW       INCLUDE WHEN D=0 DOESN'T PUT OUT '.'.
+*        SUB     ONE
+*        SUB     FIVE
+         SKN     SIGN2     ACCOUNT FOR SIGNS.
+         SUB     ONE       (SUBTRACT ONE MORE WHEN THERE IS A SIGN)
+         SUB     FIVE
+         STA     DGTCNT
+         SKA     B00T00
+         BRU     ERR2      NOT ENOUGH ROOM.
+         STA     DGTCNT                                      [HB 11.06.71]
+IOEXP  SBRM    RNDEXP
+       LDA     IOW
+EXP1   SUB     IOD
+       SKG     FIVE
+ERR2   BRU     EXPSRT          ERROR: SPECIFIED FIELD IS TOO SHORT
+       SUB     SIX
+         SKN     TFOUR     NO LEADING SPCS IF LEFT JUSTIFIED [HB 11.06.71]
+       SKG     ZERO
+       BRU     EXP2
+       SBRM     SPCOUT
+EXP2   LDA     MONE            ADJUST EXPONENT FOR NO DIGITS BEFORE PT.
+       SKN     IODEXP
+       LDA     ONE
+       ADM     DEXP
+       LDA     SIGN2            OUTPUT SIGN OF NUMBER
+         SKE     MONE      FOR SIGN DIDDLING                 [HB 22.06.71]
+       SBRM     CHROUT
+EXP3   SKN     TFOUR           CHECK FOR IO TYPE 4
+       BRU     EXP6            NO - OUTPUT NORMAL EXPONENTIAL FORM
+*
+*  OUTPUT EXPONENTIAL FORM WITH THE NUMBER OF DIGITS BEFORE THE
+*  DECIMAL POINT GIVEN BY IOW-IOD-6.                         [HB 11.06.71]
+* 
+EXP3A    SKR     DGTCNT    CHECK FOR ALL LEADING DIGITS OUT  [HB  10.06.71]
+       BRU     *+2             NOT DONE
+       BRU     EXP6
+       LDA     ONE
+       SKN     IODEXP          ADJUST EXPONENT
+       LDA     MONE
+       ADM     DEXP
+       SKN     DEXP            CHECK FOR SIGN CHANGE IN EXPONENT
+       BRU     *+5             NO CHANGE
+       LDA     MONE            
+       STA     IODEXP          CHANGE SIGN OF EXPONENT
+       CNA 
+       STA     DEXP            CHANGE EXPONENT TO +1
+       SBRM    GETDGT
+       SBRM    CHROUT          OUTPUT DIGIT
+         BRU     EXP3A                                       [HB  10.06.71]
+EXP6   LDA     FOURTEEN        OUTPUT DECIMAL POINT
+       SBRM     CHROUT
+EXP4   SKR     IOD
+       BRU     EXP5
+       LDA     Q32
+       SKR     FORTAL
+       LDA     Q37
+       SBRM     CHROUT          OF 'E'. BY D. JOHNSON. MAY 27, 1966
+       CLA
+       SKE     DEXP            MAKE SURE ZERO EXP. HAS POSITIVE SIGN
+       BRU     *+2
+       STA     IODEXP
+       LDA     THIRTEEN
+       SKN     IODEXP
+       SUB     TWO
+       SBRM     CHROUT
+EXPOUT LDA     DEXP            OUTPUT EXPONENTS
+       RSH     23
+       DIV     TEN
+       CBX
+       SKN     FORTAL
+       BRU     *+3
+       SKG     ZERO            CHECK FOR LEADING ZERO
+       BRU     *+3
+       ADD     SIXTEEN
+       SBRM     CHROUT
+       CXA
+       ADD     SIXTEEN
+       SBRM     CHROUT
+       BRU     ISCEND
+EXP5   SBRM     GETDGT          OUTPUT DIGITS AFTER DECIMAL PT.
+       SKN     FRESWT
+       BRU     EXP4-1
+       SKE     SIXTEEN
+       BRU     *+3
+       MIN     COUNT
+       BRU     EXP4
+       STA     TEMP1
+       SKR     COUNT
+       BRU     *+4
+       MIN     COUNT
+       LDA     TEMP1
+       BRU     EXP4-1
+       LDA     SIXTEEN
+       SBRM    CHROUT
+       BRU     *-7
+         
+* 
+*  OUTPUT OCTAL
+* 
+IOBOL  LDB     SICA1
+       CLA
+       LCY     3
+       ADD     SIXTEEN
+       SBRM    CHROUT
+       LDP     SICA1
+       LSH     3
+       STP     SICA1
+       BRU     IOBOL
+
+
+IOSTR    LDA     IOW       GET WIDTH OF FIELD                HB 72/01/14
+         RSH     5         GET TOP FIVE BITS OF WIDTH TOO         <5.10
+         LDA     IOD
+         LSH     5         >5.10
+         CNA               TO PUT OUT PROPER NUMBER OF STRING
+         CAX               CHARACTERS.
+IOSTR1   GCI     SICA1     TRY FOR STRING CHARACTER
+         CLA               PUT OUT SPACES FOR EXTRA WIDTH
+         WCI*    IOLINK    PUT OUT
+         BRX     IOSTR1            (WIDTH) CHARACTERS.
+         BRU     ISCEND    RETURN WHEN DONE.                 HB 72/01/14
+         
+EXPSRT LDA     TWO             ACTION TAKEN FOR FIELD TOO SHORT
+       STA     ERNUM           REDUCE IOD IF POSSIBLE
+       LDA     OVFL
+       SKG     ZERO
+       BRU     *+6
+       LDA     TEN
+         WCI*    IOLINK                                      [HB 20.06.71]
+       SKR     IOW
+       BRU     *+2
+       BRU     IE1
+       LDA     IOW
+       SUB     SIX
+       STA     IOD
+       SKG     MONE
+       BRU     *+2
+       BRU     EXP2
+       CLA
+       STA     IOD
+       BRU     EXP2
+         
+IOINT    CLA               INTEGER FORMAT.  SET IOD TO ZERO. [HB 71.07.21]
+         STA     IOD
+         SBRM    RNDFI     ROUND THE NUMBER, GET THE EXPONENT.
+         LDA     IODEXP
+         SKN     IODEXP    SEE IF -1<ROUNDED NUMB<1
+         BRU     *+4
+         CLAB              IT IS, SET IT AND THE
+         STP     SICA1     EXPONENT TO ZERO.
+         STA     IODEXP
+         SUB     IOW       COMPUTE NUMBER OF LEADING SPACES.
+         EOR     MONE
+         SKN     SIGN2     ACCOUNT FOR SIGN
+         SUB     ONE
+         SKG     MONE      SEE IF FIELD IS BIG ENOUGH.
+         BRU     FLDSHT    IT IS NOT.
+         SBRM    SPCOUT    PUT OUT THE LEADING SPACES.
+         LDA     SIGN2     AND THE SIGN
+         SKE     MONE
+         SBRM    CHROUT
+         LDA     MONE
+         SUB     IODEXP    NOW PUT OUT THE APPROPRIATE NUMBER
+         CAX               OF DIGITS.
+         SBRM    GETDGT
+         SBRM    CHROUT
+         BRX     *-2       LOOP A LOT.
+         BRU     ISCEND    AND EXIT.                         [HB 71.07.21]
+         
+SPCOUT ZRO     EEE             INSERT SPACES BEFORE OR AFTER NUMBER
+         SKG     ZERO      GUARANTEE SOME TO PUT OUT         [HB 71.07.21]
+         BRR     EEE                                         [HB 71.07.21]
+       CNA
+         LDB     IOFMT     BETTER TEST                       [HB 16.06.71]
+         SKB     MFOUR     SAME AS  SKLE  =3.                      5.10
+         BRR     EEE
+         ADM     IOW       UPDATE THE WIDTH (IMPORTANT)
+         AXC                                                 [HB 16.06.71]
+         WCI*    IOLINK                                      [HB 20.06.71]
+       BRX     *-1
+       BRR*    SPCOUT
+
+
+
+FLDSHT LDA     FOUR
+       STA     ERNUM
+       LDA     OVFL
+       SKG     ZERO
+       BRU     FCON2
+       LDA     TEN
+         WCI*    IOLINK                                      [HB 20.06.71]
+       SKR     IOW
+       BRU     FCON2
+       BRU     IE1
+
+
+CHROUT ZRO     EEE             OUTPUT CHARACTERS OF THE NUMBER
+*       SKN     TFOUR              ****DELETED****           [HB 16.06.71]
+       SKR     IOW
+       BRU     *+2
+       BRU     IE1
+         WCI*    IOLINK                                      [HB 20.06.71]
+       BRR*    CHROUT
+
+
+GETDGT ZRO     EEE            GET NEXT DECIMAL DIGIT CONVERSION
+       LDP    SICA1              OF THE NUMBER IS SICA1,SICA2
+       LRSH    2
+       XAB
+       ADD     SICA2  
+       XAB
+       ADC     SICA1  
+       STP    SICA1
+       LRSH    19
+       ADD     SIXTEEN
+       XMA     SICA1  
+       LDB     SICA2  
+       ETR     B05T23
+       LSH     3
+       XMA     SICA1  
+       STB     SICA2  
+       BRR*    GETDGT
+         
+OUTSET ZRO     DDD             OUTSET MULTIPLIES THE NUMBER IN A,B
+*                              TEN OR TENTH SUCCESSIVELY, UNTIL THE
+*                              BINARY EXPONENT IS LEQ ZRO AND  GTR
+*                              -4. THE DECIMAL EXPONENT OF THE NUMBER
+*                              IS  OBTAINED
+       LDP    SICA1
+       SKE     ZERO
+       BRU     OS1
+       CLB
+       STB     DEXP
+       BRU     CNVDON+3
+OS1    SKN     SICA1
+       BRU     OS2
+       SBRM    BRS21
+       STP    SICA1
+       STP    SPTR1
+OS2    LSH     39
+       LDX     MONE
+       SKG     ZERO            EXAMINE SIGN OF BINARY EXPONENT
+       LDX     ONE
+       STX     DEXP
+       STX     IODEXP
+         EAX     RLIO9         ADDRESS OF FLOATING 1/10      [HB 11.06.71]
+       SKA     B00T00
+         EAX     RLIO8         ADDRESS OF FLOATING 10        [HB 11.06.71]
+       STX     NCONV
+       LDP    SICA1
+       STE
+       NOD     38
+ADJUST XXA
+       LSH     3
+       RSH     3
+       SKG     ZERO
+       SKG     MFOUR           BINARY EXPONENT IS NOT LEQ 0 AND GTR -4
+       BRU     ADJ1
+CNVDON CNA                     CONVERSION DONE
+       XXA
+       LRSH    1,2
+       STP    SICA1
+       LDA     DEXP
+       SKN     IODEXP
+       CNA
+       XMA     IODEXP
+       STA     PLUS
+       BRR*    OUTSET
+ADJ1   XXA
+       STX     EXPONT
+       LDX     NCONV
+       SBRM     DPMRIO          MULTIPLY BY 10 OR 1/10
+       MIN     DEXP
+       BRU     ADJUST
+         
+DPMRIO ZRO     EEE             THIS IS A MULTIPLY ROUTINE FOR 48 BIT
+*                              MANTISSA WITH THE EXPONENT IN A 3RD
+*                              WORD. THE MLTIER IS IN A,B WITH THE
+*                              EXPONENT IN EXPONT. THE MLTCND IS IN
+*                              3 WORDS POINTED TO BY X. THE PRODUCT
+*                              IS RETURNED IN A,B,X
+       STA     TEMP1
+       BAC
+       RCY     2
+       MUL     0,2
+       STA     TEMP2
+       LDA     1,2
+       LRSH    2
+       MUL     TEMP1
+       ADD     TEMP2
+       MUL     TWO
+       STB     TEMP2
+       XMA     TEMP1
+       MUL     0,2
+       XAB
+       ADD     TEMP2
+       XAB
+       ADC     TEMP1
+       STA     TEMP3
+       LDA     2,2
+       ADD     EXPONT
+       CAX
+       LDA     TEMP3
+       NOD     38
+       BRR*    DPMRIO
+         
+* 
+*  ROUND NUMBER
+* 
+RNDEXP ZRO     AT
+       LDA     MONE
+       BRU     ROUND
+RNDFI  ZRO     AT
+       CLA
+ROUND  STA     RNDFLG
+       SBRM    OUTSET
+       LDB     SICA2
+         COPY    B,E       CLEAR EXPONENT OF B.              [HB 11.06.71]
+       STB     SICA2
+       LDA     MTWO
+       SUB     IOD
+       SKN     RNDFLG
+       SUB     IODEXP
+         SKN     TFOUR     TREAT THIS SPECIALLY              [HB 11.06.71]
+         BRU     *+3
+         ADD     ONE       INCLUDE  IOD  COUNT               [HB 16.06.71]
+         SUB     DGTCNT                                      [HB 11.06.71]
+       SKG     MQ12
+       LDA     MQ12
+       CAX
+       SBRM    GETDGT
+       BRX     *-1
+       SKG     Q20
+       BRU     RND6
+       LDA     IODEXP
+       SKN     RNDFLG
+       CLA
+         SKN     TFOUR     TREAT TYPE 4 SPECIALLY            [HB 11.06.71]
+         BRU     *+3                                         [HB 16.06.71]
+         ADD     ONE                                         [HB 16.06.71]
+         SUB     DGTCNT                                      [HB 11.06.71]
+RND5   SUB     IOD
+         SUB     ONE       FOR ROUNDING.                     [HB 11.06.71]
+       SKE     ZERO
+       BRU     RND2
+       LDP     RLIO21
+RND1   FAD     SPTR1
+       STP     SICA1
+RNDONE SBRM    OUTSET
+       LDB     SICA2
+         COPY    B,E       CLEAR EXPONENT OF B.              [HB 11.06.71]
+       STB     SICA2
+       SKN     RNDFLG
+       BRR*    RNDFI
+       BRR*    RNDEXP
+RND6   LDP     SPTR1
+       BRU     RNDONE-1
+RND2   SKG     ZERO
+       BRU     RND3
+       CNA
+         CAX                                                 [HB 11.06.71]
+       LDP     RLIO21
+       FMP     RLIO18
+       BRX     *-1
+       BRU     RND1
+RND3   CAX
+       LDP     RLIO21
+       FMP    RLIO19
+       BRX     *-1
+       BRU     RND1
+
+
+*              CONS FOR ROUND
+RLIO18   DATA    24B6,4               10.0.                  [HB 11.06.71]
+RLIO19   DATA    31463146B,31463775B  .1                     [HB 11.06.71]
+RLIO20 EQU     RLIO19
+RLIO21   DATA    24B6,3               5.0 FLOATING.          [HB 16.06.71]
+         
+*
+* STRING TO INTERNAL CONVERSION
+*
+SIC    POPD    114B5,2
+$SICN  LDA     0
+       STA     IOLINK  
+       LDP*   IOLINK
+         STP     STMP3     5.12
+       CXA
+       LDB     BRU80
+       SKA     FOUR
+       LDB     BRU79
+       STB     RLI82A
+       CLAB
+       STA     COUNT
+       STA     ERNUM
+       STP    SPTR1
+       STP    SICA1
+       STA     RLIO7
+       STA     DGTCNT
+       STA     RLIO2           CORRECTION. D. JOHNSON. MAY 27, 1966
+       STA EXPONT
+       LDA     MONE
+       STA     RLIO4
+       STA     RLIO5
+       STA     EXPFLG
+       STA     DFLG
+       STA     SIGNFL
+RLI1   BRM     RLI82           GET ONE CHARACTER FROM STRING
+       BRU     RLI3     STRING EXHAUSTED
+       SKG     ZERO
+       BRU     RLI1
+       LDB     MONE
+       SKG     Q25
+       SKG     FIFTEEN
+       BRU     RLI2
+       MIN     SIGNFL
+       STA     TEMP1
+       MIN     DGTCNT
+       LDA     DGTCNT
+       SKG     TWELVE
+       BRU     *+2
+       BRU     RLI11
+       SKN     EXPFLG
+       BRU     RLI10
+       SKN     DFLG
+       BRU     RLI24
+RLI23  LDA TEMP1
+       SBRM    RLITEN
+       BRU     RLI1
+RLI11  SKN     DFLG
+       BRU     RLI1
+       MIN     EXPONT
+       BRU     RLI1
+RLI2   SKE     MBCH
+       BRU     *+4
+       BRM     RLI82
+       BRU     RLI3
+       BRU     RLI1
+       SKE     Q37
+       BRU     *+2
+       BRU     RLEX
+       SKE     Q32
+       BRU     *+2
+       BRU     RLEX
+         SKE     =105B     LOWER CASE E                      [HB 23.06.71]
+         BRU     *+2
+         BRU     RLEX                                        [HB 23.06.71]
+       SKE     FOURTEEN
+       BRU     *+2
+       BRU     RLPD
+       SKN     SIGNFL
+       BRU     RLERR
+       SKE     ELEVEN
+       BRU     *+2
+       BRU     RLPM2
+       SKE     THIRTEEN
+       BRU     RLERR
+       SKN     EXPFLG
+       BRU     *+3
+       MIN     RLIO4
+       BRU     RLPM2
+       MIN     RLIO5
+RLPM2  MIN     SIGNFL
+       BRU     RLI1
+RLEX   SKN     EXPFLG
+       BRU     RLERR
+       SKR     DGTCNT
+       BRU     *+3
+       LDA     ONE
+       STA     SICA2
+       MIN     EXPFLG
+       STB     SIGNFL
+       CLA
+       STA     DGTCNT
+       BRU     RLI1
+RLPD   SKN     DFLG
+       BRU     RLERR
+       MIN     DFLG
+       MIN     SIGNFL
+       BRU     RLI1
+RLI24  LDA TEMP1
+       SKE     SIXTEEN         CHECK FOR INSIGNIFICANT ZERO
+       BRU     RLI25           NO
+       MIN     COUNT           YES - INCREMENT COUNT
+       BRU     RLI1
+RLI24A LDA     SIXTEEN
+       SBRM    RLITEN
+RLI25  MIN     RLIO2           INCREASE DIGIT COUNT
+       SKR     COUNT           ANY ZEROS BEFORE NUMBER
+       BRU     RLI24A          YES
+       MIN     COUNT           NO - SET COUNT TO ZERO
+       BRU     RLI23
+RLERR  LDA     SIX
+       STA     ERNUM
+       BRU     RLI1
+RLI10  LDA     TEMP1
+       SUB     SIXTEEN
+       XMA     RLIO7
+       MUL     TEN
+       LSH     23
+       ADM     RLIO7
+       BRU     RLI1
+         
+*
+*  INPUT FOR THREE CHARACTERS PER WORD
+*
+$RLI80 GCI*    IOLINK
+       BRR     RLI82
+       MIN     RLI82
+       BRR     RLI82
+*  INPUT FOR ONE CHARACTER PER WORD
+* 
+$RLI79  XXB 
+       EAX*    IOLINK          LOAD X WITH ADDRESS OF POINTERS
+       LDA     1,2
+       SKG     0,2             CHECK FOR GREATER THAN END POINTER
+       BRU     RLI81
+       MIN     0,2             INCREMENT POINTER BY ONE
+       MIN     RLI82           RETURN TO CALL PLUS TWO
+       LDX     0,2
+       LDA     0,2             LOAD CHARACTER
+RLI81  XXB 
+       BRR     RLI82
+RLI3   LDX     Q47
+       LDP    SICA1              FLOAT NUMBER
+       NOD     47
+       LDE
+       STP     SICA1
+       LDA     RLIO7
+       SKN     RLIO5
+       CNA
+       SUB     RLIO2
+       ADD     EXPONT
+       LDX     ARLIO8
+       SKG      ZERO
+       LDX     ARLIO10
+       STX     ADJFAC  
+       SKG      ZERO
+       CNA
+       STA     COUNT
+       LDP    SICA1
+       SKR     COUNT
+       BRU     *+2
+       BRU     RLRTN
+       STE 
+RLI31  STX     EXPONT
+       LDX     ADJFAC
+       SBRM    DPMRIO
+*                              THE NUMBER WAS ENTERED AS AN INTEGER
+*                              AND IS NOW ADJUSTED BY MULTIPLYING
+*                              BY 10 OR 1/10 THE NUMBER OF TIMES
+*                              DETERMINED BY RLIO2 AND RLIO7
+       SKR     COUNT
+       BRU     RLI31
+       XXA
+       SKG     =-256
+       BRU     UNFLO
+       SKG     D255        5.10
+       BRU     *+2
+       BRU     OVFLO
+       XXA
+       LDE 
+RLRTN  SKN     RLIO4
+       SBRM    BRS21           NEGATE NUMBER
+       LDX     ERNUM
+       BRR     IOLINK
+         
+RLITEN ZRO     AT
+       SUB     SIXTEEN
+       STA     ADJFAC
+       LDP     SICA1
+       LSH     2
+       XAB
+       ADD     SICA2
+       XAB
+       ADC     SICA1
+       LSH     1
+       XAB
+       ADD     ADJFAC
+       XAB
+       ADC     ZERO
+       STP     SICA1
+       BRR     AT
+
+
+GETFMT   ZRO     EEE       GET FORMAT FROM X                 [HB 22.06.71]
+         COPY    XB,A
+         LSH     3         BREAK OUT FORMAT TYPE.
+         STA     IOFMT
+         CLA
+         LSH     1
+         STA     OVFL      AND THE OVERFLOW SWITCH.
+         CLA
+         LSH     5
+         STA     IOD       THE DECIMAL PLACES FIELD.
+         CLA
+         LSH     1
+         STA     FORTAL    EXPONENTS FLAG.
+         CLA
+         LSH     5         FINALLY THE TOTAL WIDTH FIELD.
+         STA     IOW
+         BRR     EEE       AND RETURN                        [HB 22.06.71]
+
+
+
+UNFLO  LDA     =UNFLOM
+       LDB     MONE
+       LDX     ONE
+       BRS     34
+       LDP     INFTSM
+       BRU     RLRTN
+INFTSM DATA    2B7,401B
+UNFLOM ASC     'UNDERFLOW DURING INPUT$/'
+OVFLO  LDA     =OVFLOM
+       LDB     MONE
+       LDX     ONE
+       BRS     34
+         LDP     LGE       5.10
+       BRU      RLRTN
+OVFLOM ASC     'OVERFLOW DURING INPUT$/'
+*
+*   CONSTANTS
+* 
+$NULPTR   DATA    0         ZERO LENGTH STRING POINTERS.      HB 72/02/14
+$ZERO   DATA    0
+$ONE    DATA    1
+$B22T22   BSS     0         5.10
+$TWO    DATA    2
+$THREE  DATA    3
+$FL8      DATA    2B7       5.10
+$FOUR   DATA    4
+$FIVE   DATA    5
+$SIX    DATA    6
+$SEVEN    DATA    7
+$B10      BSS     0         5.10
+$EIGHT  DATA    8
+$B11      BSS     0         5.10
+$NINE     DATA    9         5.10
+$B12      BSS     0         5.10
+$TEN    DATA    10
+$B13      BSS     0         5.10
+$ELEVEN DATA    11
+$B14      BSS     0         5.10
+$TWELVE DATA    12
+$B15      BSS     0         5.10
+$THIRTEEN DATA  13
+$B16      BSS     0         5.10
+$FOURTEEN DATA  14
+$B17      BSS     0         5.10
+$FIFTEEN DATA   15
+$B20      BSS     0         5.10
+$SIXTEEN DATA   16
+$B24      BSS     0         5.10
+$Q20      DATA    20        5.10
+$B27      BSS     0         5.10
+$Q23    DATA    23
+$B31      BSS     0         5.10
+$Q25    DATA    25
+$B40      BSS     0         5.10
+$Q32    DATA    32
+$B44      BSS     0         5.10
+$Q36    DATA    36
+$B45      BSS     0         5.10
+$Q37    DATA    37
+$B46      BSS     0         5.10
+$Q38    DATA    38
+$B57      BSS     0         5.10
+$Q47      DATA    47                                          [HB 16.06.71]
+$MONE   DATA    -1
+$MTWO   DATA    -2
+$MFOUR  DATA    -4
+$MFIVE  DATA    -5
+$MSIX   DATA    -6
+$MQ12     DATA    -12       5.10
+$MAGIC    DATA    12525253B
+QX1    DATA    77777445B
+$B00T00 DATA    40000000B
+$B00T01   DATA    6B7       5.10
+$B00T09   DATA    77740000B OPCODE, INDIRECT MASK             HB 72/01/07
+$B01T23 DATA    37777777B
+$B05T23 DATA    01777777B
+$B08T23   DATA    177777B   5.10
+$ADRMSK  EQU     *                                           [HB 22.06.71]
+$B10T23  DATA    37777B                                      [HB 22.06.71]
+$B12T23   BSS     0
+$LENMSK   DATA    7777B
+$B777     BSS     0         5.10
+$B15T23 DATA    00000777B
+$B16T23   BSS     0         5.10
+$D255     BSS     0         5.10
+$CHMSK    DATA    377B      5.10
+EXP46  DATA    77777046B
+$B200     EQU     *         <5.10
+$XSGN     DATA    200B
+$B100     EQU     *
+$B17T17   BSS     0         5.10
+$XPSGN    DATA    100B      >5.10
+$FL9      DATA    22B6,4    9.0     5.10
+RLIO8  DATA    24000000B
+       DATA    00000001B
+       DATA    00000004B
+RLIO9  DATA    31463146B
+       DATA    31463146B
+       DATA    77777775B
+RLIO10 DATA    31463146B
+       DATA    31463154B
+       DATA    77777775B
+$BRU79   BRU     RLI79
+$BRU80   BRU     RLI80
+* 
+*   ADDRESS CONSTANTS
+* 
+ARLIO10 ZRO    RLIO10
+ARLIO9 ZRO     RLIO9
+ARLIO8 ZRO     RLIO8
+B00T23 EQU     MONE
+ISCEND EQU     IE1
+$SICFIN  EQU     34000             TBG 8/13/68
+$LLL3    BSS     0         START OF LITERALS.
+
+       NOLIST  EXT,GO
+
+       END
+4BAS     IDENT   73-04-03  FIRST OF RUN-TIME.  FILE:  /AS4B/
+*
+*      REARRANGED 3BASIC, 4BASIC FROM BASIC 4.0
+*      5.12.70  HEB.
+*
+SETBASE OPD     7700000B,2
+SIC    OPD     11400000B,2
+ISC    OPD     13500000B,2
+SIN    OPD     10000000B,1
+COS    OPD     10100000B,1
+EXP    OPD     10400000B,1
+LOG    OPD     11000000B,1
+
+*                RUNTIME VECTOR                              HEB,4.3
+*                POINTERS TO RUNTIME ROUTINES CALLED WITH SBRM.
+*                THESE MUST NOT BE MOVED WITHOUT CHANGING 6BAS.
+
+MA:IN    ZRO     MATIN
+MA:INS   ZRO     MATINS
+MA:OU    ZRO     MATOU
+MA:COP   ZRO     MATCOP
+MA:SUB   ZRO     MATSUB
+MA:ADD   ZRO     MATADD
+MA:MUL   ZRO     MATMUL
+MA:ZRS   ZRO     MATZRS
+MA:ONS   ZRO     MATONS
+MA:IDS   ZRO     MATIDS
+MA:KTA   ZRO     MATKTA
+MA:INV   ZRO     MATINV
+MA:TRN   ZRO     MATTRN
+MA:ZER   ZRO     MATZER
+MA:ONE   ZRO     MATONE
+MA:IDN   ZRO     MATIDN                                      HEB,4.3
+:LESS    ZRO     LESS      ARITH LESS                        24020
+:EQUAL   ZRO     EQUAL
+:GRTR    ZRO     GRTR
+:LEEQ    ZRO     LEEQ
+:NOTEQ   ZRO     NOTEQ
+:GREQ    ZRO     GREQ
+:SLT     ZRO     SLT       STRING LESS THAN                  24026
+:SEQ     ZRO     SEQ
+:SGT     ZRO     SGT                                         24030
+:SLE     ZRO     SLE
+:SNE     ZRO     SNE
+:SGE     ZRO     SGE                                         24033
+:TABF    ZRO     TABF      TAB(EXP)                                5.10
+:STOA    ZRO     STOA      STRING TO ARRAY                          5.10
+:ATOS    ZRO     ATOS      ARRAY TO STRING                          5.10
+RET:OUT  ZRO     RETOUT    ONLY PUT OUT (RET)                24037
+END:PN   ZRO     ENDPNT    ONLY END PRINT STATEMENT          24040
+:WBIA    ZRO     WBIA      WRITE BINARY ARITHMETIC
+:WBIS    ZRO     WBIS      WRITE BINARY STRING.
+:PAC     ZRO     PAC       PRINT ARITH, LONG TAB             24043
+:PSC     ZRO     PSC       PRINT TH, SHORT TAB
+:PAS     ZRO     PAS       PRINT ARITH, SHOR TAB
+:PSS     ZRO     PSS       PRINT STRING, SHORT TAB.
+:PA      ZRO     PA        PRINT ARITH ONLY.
+:PS      ZRO     PS        PRINT STRING ONLY.                24050
+:PTL     ZRO     PTL       PRINT LONG TAB ONLY.
+:PTS     ZRO     PTS       PRINT SHORT TAB ONLY.
+$:PAR    ZRO     PAR       PRINT ARITH, CARRIAGE RET         HB 71.12.28
+:PSR     ZRO     PSR       PRINT STRING, CARRIAGE RET        HB 71.12.28
+:PCR     ZRO     PCR       PRINT (RET), FINISH UP PRINT.
+ND:PCI   ZRO     ENDPCI    END PICTURE ON INPUT                    5.10
+:EOFF    ZRO     FEOF      EOF(FILE NUMBER)                        5.10
+:TIMF    ZRO     FTIM      TIM(N)  5.10                           24060
+TT:OUT   ZRO     SOUTTY    SET TO TTY OUTPUT.
+TT:IN    ZRO     SINTTY    SET TTY INPUT.
+
+MXSLEN   EQU     300D      STRINGS LIMITED TO LENGTH 300.          5.10
+         
+
+$BRS50 ZRO     BRSL            REPLACES MISSING BRS 50
+       STX     BRSX
+       STE
+       XXA
+       SKG     =23
+       BRU     FIX1
+       XXA
+       EAX     -23,2
+       LSH     0,2
+       LDX     BRSX
+       BRR*    BRS50
+FIX1   CNA
+       XXA
+       RSH     23,2
+       LDX     BRSX
+       BRR*    BRS50
+
+$BRS51 ZRO     BRSL            REPLACES MISSING BRS 51
+       STX     BRSX
+       RSH     15
+       COPY    B,E
+       LDX     =38
+       NOD     48
+       LDE
+       LDX     BRSX
+       BRR*    BRS51
+
+TAN    POPD    10200000B,2
+$POP2  STP     RTMP21
+       LDX     0
+       STX     RTMP4
+       CLX
+       COS
+       SKE     ZERO
+       BRU     *+3
+       LDP     LGE             *OVERFLOW
+       BRR     RTMP4
+       STP     RTMP23
+       LDP     RTMP21
+       SIN
+       SKE     ZERO
+       BRU     *+2
+       BRR     RTMP4
+       FDV     RTMP23
+       BRR     RTMP4           *MODIFY FOR OVERFLOW ERROR
+$LGE   DATA    37777777B   5.10
+       DATA    77777377B
+ABS    POPD    10500000B,2
+$POP5  SKA     B00T00
+       SBRM    BRS21
+       BRR     0
+RND    POPD    10600000B,2
+$POP6  LDA     HOLD1
+       MUL     =6880305
+       DIV     =37777761B
+       STB     HOLD1
+       LDA     HOLD2
+       MUL     =6880305
+       DIV     =37777761B
+       STB     HOLD2
+       LDA     HOLD1
+       CLX
+       NOD     48
+       RCH     142B            LDE
+       BRR     0
+INT    POPD    10700000B,1
+$POP7  SKA     B00T00      CHECK IF NEGATIVE NUMBER
+         BRU     INT1
+INT0     SKD     =38           NO
+       BRU     ERR10
+       RSH     0,2
+         LDX     =38
+         COPY    B,E
+       NOD     48
+         LDE
+       BRR     0
+INT1     COPY    BX,E          GET EXPONENT SIGN EXTENDED
+       XXA
+       SKG     MONE
+       BRU     *+3             NUMBER IS BETWEEN -1 AND 0
+       CXA
+         BRU     INT0
+       LDA     B00T00
+       CLB                     SET NUMBER TO -1
+       BRR     0
+SGN    POPD    11700000B,1
+$POP17 SKG     ZERO
+       BRU     SGN1
+       LDP     LIT
+       BRR     0
+SGN1   SKA     B00T00
+       LDA     B00T00
+       CLB
+       BRR     0
+
+NLN    POPD    12200000B,1
+$POP22   EAX     NOLNX     'UNDEF LINE NO IN '
+       BRU     MESSAG
+
+ENDLIN   POPD    112B5,2           END OF LINE POP.          HB 72/01/14
+$POP12   EAX*    0         GET TRANSFER ADDRESS.
+         STX     NUMB      FOR ERRLN.
+         SKN     ESCFLG    HAS THERE BEEN AN ESCAPE?               5.10
+         BRU     0,2       NO, GO ON.
+         CXA               SET PAULNK SO IT ACTS LIKE PAUSE       <5.10
+         ETR     ADRMSK
+         STA     PAULNK    >5.10
+         EAX     ESCM      YES, TELL USER ABOUT IT.
+         BRU     MESSAG
+ESCM     ASC     '$(ESC) AT/'                                HB 72/01/14
+         
+FOPEN    POPD    166B5,2           OPEN A FILE                    <5.10
+*
+*        BIT 23 OF ADDRESS:        1 = BINARY FILE
+*                                  0 = SYMBOLIC FILE.
+*        BIT 22 OF ADDRESS:        1 = INPUT
+*                                  0 = OUTPUT.
+*
+$POP66   BRM*    FFNUM     GET THE FILE NUMBER.
+         SKG     ONE       LEGAL NUMBER?
+         BRU     ERR14
+         STA     TEMF1     SAVE FOR TEMP
+         LDA     FILET,2
+         SKE     MONE
+         BRS     20
+         LDX     0
+         LDA     TWO
+         SKA     0,2       OPEN FOR INPUT
+         BRU     OPIN      YES.
+         LDP*    2,2       GET THE STRING.
+         SKA     B00T00    SEE IF BASPTRS.
+         BRM*    MKPTR     TURN INTO SYSTEM POINTERS.
+       STP     FILNAM
+       LDA     THREE           FANCY WAY TO GET FILE TYPE.
+       LDX     0
+       EOR     0,2
+       CLB
+       LSH     18
+       MRG     =1B7
+       LDB     =FILNAM
+       CLX
+       BRS     16
+       BRU     OPIN1
+FOPEN1   LDX     TEMF1     GET BACK THE FILE NUMBER
+         STA     FILET,2   SAVE THE FILE NUMBER
+         COPY    XB,X
+         EAX*    0
+         COPY    XA,BX,B
+         LSH     21
+         ADM     FILET,2   SET TYPE, USE BITS IN FILE TABLE.
+         STB     LPOST,2   ZERO POSITION,
+         STB     SPCCT,2   AND SPACES COUNT.
+         BRR     0
+OPIN     LDP*    2,2       DO THE LOOKUP.
+         SKA     B00T00    CHANGE POINTERS.                        5.10
+         BRM*    MKPTR     5.10
+       STP     FILNAM
+       LDA     =1B7
+       LDB     =FILNAM
+       CLX
+       BRS     15
+       BRU     OPIN1
+       BRU     FOPEN1
+OPIN1  CXA
+       SKE     ONE
+       BRU     ERR14
+       BRU     ERR13
+
+CLS      POPD    167B5,1   CLOSE A FILE (OR ALL OF THEM)          <5.10
+$POP67   LDP*    0
+         BRM*    CLOSEF
+         BRR     0
+
+CLOSEF   ZRO     RTN0
+         BRM*    FFNUM     GET NUMBER.
+         SKG     MONE      CLOSE ALL?
+         BRU     CLOSLL    YES.
+         SKG     ONE       CLOSE CMD I/O FILES?
+         BRR     RTN0      YES, DO NOTHING.
+         LDA     MONE
+         XMA     FILET,2   GET FILE NUMBER, RESET TO CLOSED.
+         SKE     MONE      WAS IT ALREADY CLOSED?
+         BRS     20        NO, CLOSE IT FOR SURE.
+         BRR     RTN0      RETURN  >5.10
+
+FFNUM    ZRO     RTN4      FIX FILE NUMBER.
+         SKD     Q23       DO INT FUNCTION.
+         BRU     ERR10     NUMBER TOO BIG.
+         RSH     0,2
+         CAX
+         SKG     =MAXFIL   SEE IF REALLY TO BIG.
+         BRR     RTN4      NO.
+         BRU     ERR10     BAD NUMBER.
+
+PAU    POPD    17100000B,2
+$POP71   LDX     0         <5.10
+         LDA     -2,2      GET STARTING ADDRESS OF NEXT.
+         STA     PAULNK
+         LDA     -3,2      STATEMENT NUMBER                       >5.10
+         STA     NUMB      HB 71.12.20
+       CLA
+       STA     INFILE
+       STA     OUTFILE
+       MIN     OUTFILE
+       EAX     PAUMSG
+         SBRM    MSG       PRINT OUT THIS MESSAGE            HB 71.12.20
+         BRU     GOEND     GO GET RELABELING RIGHT           HB 71.12.20
+PAUMSG ASC     '$PAUSE AT/'
+
+CHAIN  POPD    17000000B,2
+$POP70  LDX 0
+         LDP*    2,2       GET STRING POINTERS               5.10
+         SKA     B00T00    SEE IF BASIC POINTERS.
+         BRM*    MKPTR     YES, GET SYSTEM STRING POINTERS.
+       STP     FILNAM
+       LDA     =1B7
+       LDB     =FILNAM
+       CLX
+       BRS     15
+       BRU     OPIN1
+       STA     INFILE
+       CXA
+       LRSH    18
+       ETR     =7
+       SKE     THREE
+       BRU     ERR13
+         BRU     CHAP1     5.12.70  HEB.
+         
+POW    POPD    12300000B,2
+$POP23 STP     RTMP10
+       LDA     0
+       STA     RTMP4
+       LDP*    0
+       STP     RTMP7
+       SKE     ZERO              TBG 9/26/68
+       BRU     POW1A           TBG 9/26/68
+       LDP     LIT             TBG 9/26/68
+       BRR     RTMP4           TBG 9/26/68
+POW1A    CLA               SEE IF BASE=0                     HB 72-03-04
+         SKE     RTMP4
+         BRU     *+2       NO
+         BRU     POW3      YES, 0**X (X<>0)=0
+         LDA     RTMP7
+         SKD     =23                                         HB 72-03-04
+       BRU     POW2
+       RSH     0,2
+       CLB     ;* WAS RCH 102B, D.GARDNER 2/8/67
+       LDX     =23
+       NOD     48
+       RCH     142B            LDE
+       SKE     RTMP7
+       BRU     POW2
+       XAB
+       SKE     RTMP8
+       BRU     POW2
+       XAB
+       SKD     =23
+       BRU     POW2            TOO BIG
+       RSH     0,2
+       SKN     RTMP7
+       CNA
+       CAX
+       SKA     =40000B
+       BRU     *+2
+       BRU     POW2
+       LDP     RTMP10
+       BRU     *+2
+       FMP     RTMP10
+       BRX     *-1
+       CLX
+       SKN     RTMP7
+       BRR     RTMP4
+       STP     RTMP10
+       LDP     LIT
+       FDV     RTMP10
+       BRR     RTMP4
+POW2   LDP     RTMP10
+         SKE     ZERO      TEST FOR BASE=0                   HB 72/02/14
+         BRU     *+3       NO.
+POW3     CLAB              RETURN 0.                         HB 72-03-04
+         BRR     RTMP4     HB 72/02/14
+         SBRM    ALOG1     FIXES PRINTOUT BUG WHEN ERROR.    [HB 17.06.71]
+       FMP*    RTMP4
+         SBRM    EXP1                                        [HB 17.06.71]
+       BRR     RTMP4
+         
+*
+*        POPS FOR STRING VALUED OR ARGU(MENT)ED FUNCTIONS.
+*
+SLEN     POPD    142B5,2           RETURN LENGTH OF STRING   HB 72/02/14
+$POP42   ETR     LENMSK    GET RID OF LOUSY BITS.
+       SBRM    BRS51       CONVERT TO FLOATING,
+         BRR     0         RETURN.
+
+SNUM     POPD    143B5,2           CONVERT STRING TO NUMBER
+$POP43   BRM*    MKPTR     GET SYSTEM POINTERS.
+         STP     MM
+         LDX     0         SAVE RETURN.
+         STX     RTMP4
+         LDX     FORMAT    FOR FREE FIELD.
+         SIC     MM
+         NOP     0
+         XXA               CHECK FOR ERRORS.
+         SKE     SIX
+         BRU     SNUM1     HB 72-02-24
+         EAX     BSCHX
+         SBRM    MESX      GIVE NON-FATAL ERROR, RETURN 0.
+         SBRM    ERRLN
+         TCO     CRCH
+         TCO     LFCH
+         LDP     LGE       RETURN INFINITY                          5.10
+         BRR     RTMP4     5.10
+SNUM1    CXA               GET BACK MOST SIGNIFICANT PART.   HB 72-02-24
+         BRR     RTMP4
+
+SDAT     POPD    144B5,2           RETURN THE DATE, RIGHT NOW.
+$POP44   LDA     =18       GET A SMALL BLOCK.  FOR TSS 4.2   HB 72-04-04
+         BRM*    SBLOCK
+         CBA               BEGINNING POINTER.
+         BRS     91
+         CAB               MAKE BASIC POINTERS.
+         LDA     =18       HB 72-04-27
+         BRR     0
+
+SSTR     POPD    145B5,2
+$POP45   LDX     0
+         STX     RTMP4
+         LDX     =3*RTMP28-1  POINTER TO TEMPORARY COPY
+         STX     MM
+         STX     MM1       NULL OUT POINTERS.
+         LDX     FORMAT
+         ISC     MM
+         LDX     RTMP4
+         STX     0
+         GCD     MM        GET FINAL CHAR, TRIM OFF IF '.'
+         CLA
+         SKE     FOURTEEN
+         MIN     MM1
+         LDP     MM        CREATE NEW STORAGE FOR THIS STRING.
+         BRM*    BASPTR
+SHT      STP     MM        STRING.HEAD.TALE..
+         BRM*    SBLOCK    ALLOCATE THE STORAGE.
+         EAX     MM        AND COPY THE STRING INTO IT.
+         BRM*    COPY
+         BRR     0         RETURN                            HB 72/02/14
+
+HED      POPD    172B5,2     RETURN FIRST CH IN STR.         HB 72-05-11
+$POP72   ETR     LENMSK
+         SKE     ZERO      NULL?
+         BRU     *+2
+         BRR     0         YES, RETURN NULL
+         LDA     ONE       CHANGE LENGTH TO ONE
+         BRU     SHT
+
+TAL      POPD    173B5,2    RETURN ALL BUT FIRST CH.
+$POP73   ETR     LENMSK
+         SKG     ONE       LONG ENOUGH TO HAVE A TAIL?
+         BRU     RETNUL    NO, RETURN NULL STRING.
+         SUB     ONE       REDUCE LENGTH BY ONE.
+         XAB               AND INCREMENT BEGINNING POINTER BY ONE.
+         ADD     ONE
+         XAB
+         BRU     SHT       GO MAKE A NEW STRING.
+RETNUL   CLAB              RETURN NULL STRING (ZERO LENGTH)
+         BRR     0
+
+BASC     POPD    174B5,2
+$POP74   BRM*    MKPTR     GET POINTERS.
+         STP     MM
+         GCI     MM        GET FIRST CH.
+         LDA     MONE      NULL, RETURN -1.
+       SBRM    BRS51
+         BRR     0
+
+CHR      POPD    175B5,2    RETURN CH CORRESPONDING TO ARG.
+$POP75   SKD     =23
+         BRU     RETNUL    RETURN NULL FOR GARBAGE.
+         RSH     0,2
+         SKG     =377B     SEE IF IN RANGE FOR CH.
+         SKG     MONE
+         BRU     RETNUL
+         STA     RTMP4
+         LDA     ONE       GET ROOM FOR THE NEW STRING.
+         BRM*    SBLOCK
+         STB     MM1       SAVE BEGINNING POINTER.
+         LDA     RTMP4     THE CH.
+         WCI     MM        KLUDGE.
+         LDA     ONE       GET BACK LENGTH (B PRESERVED).
+         BRR     0
+         
+FEOF     0       RTN0      EOF FUNCTION, CHECK STATUS OF FILE     <5.10
+         BRM*    FFNUM
+         SKG     MONE      SEE IF A FILE NUMBER.
+         BRU     ONGERR    'RANGE ERROR'
+         LDA     MONE
+         SKE     FILET,2
+         BRU     *+2
+         BRU     FCKR  RETURN -1 FOR FILE CLOSED.
+         LDA     TWO
+         LDB     FILET,2
+         SKB     =ERRBIT
+         BRU     FCKR      RETURN TWO FOR ERROR.
+         LDA     ONE
+         SKB     =EFBITS
+         BRU     FCKR
+         CLA               RETURN 1 FOR END-FILE,
+FCKR     SKE     ONE
+         BRU     FETR
+         XAB
+         ETR     LENMSK
+         BRS     20
+         LDA     MONE
+         STA     FILET,2
+         CBA
+FETR   SBRM    BRS51
+         BRR     RTN0      RETURN
+
+FTIM   0       RTN0    TIM FUNCTION, RETURNS TIMES IN CLOCK TICKS.
+       SBRM    BRS50   SEE ARG.
+       SKE     ZERO
+       BRU     FTIM1
+       BRS     42      TIM(0) RETURNS TIME SINCE STARTUP.
+       BRU     FETR
+FTIM1  SKE     ONE
+       BRU     FETR    RETURN INT OF ARGUMENT.
+       BRS     88
+       BRU     FETR    >5.10
+       
+STOA     ZRO     RTN0      CONVERT STRING TO AN ARRAY              <5.10
+         STB     SPTR2     SAVE THE STRING POINTER.
+         SKN     2,2       DEFINED?
+         BRU     *+2
+         BRU     ERROR3    'UNDEFINED SUBSCRIPTED VARIABLE'
+         LDB     MTWO      =(NOT)1
+         SKB     1,2       SECOND DIMENSION = 1?
+         BRU     ERROR2    'WRONG NUMBER SUBSCRIPTS'
+         ETR     LENMSK    GET RID OF POSSIBLE LOUSY BITS.
+         SKG     0,2       STRING LONGER THAN ARRAY?
+         BRU     *+2
+         BRU     ERROR8    'ARRAY OUT OF BOUNDS'
+         LDB     SPTR2
+         ADM     SPTR2     MAKE END POINTER.
+         STB     SPTR1     STORE BEGINNING POINTER.
+         CAB               SAVE LENGTH.
+         LDA     0,2       SKIP OVER A(0:N,0)
+         ADD     0,2
+         ADD     TWO
+         ADD     2,2       BASE ADDRESS.
+         COPY    AX,BA     GET BACK LENGTH.
+STOAL  SBRM    BRS51       CONVERT FIXED TO FLOATING.
+         STP     0,2       SAVE AWAY THE VALUE.
+         EAX     2,2       GET TO NEXT VALUE.
+         GCI     SPTR1     GET A CHARACTER.
+         BRR     RTN0      RETURN IF OUT OF CHARS.
+         BRU     STOAL     LOOP                                    >5.10
+         
+ATOS     ZRO     RTN0      CONVERT ARRAY TO STRING.                5.10
+         SKN     2,2       ARRAY DEFINED?
+         BRU     *+2
+         BRU     ERROR3    'UNDEFINED SUBSCRIPTED VARIABLE'
+         LDA     ONE
+         SKE     1,2       JUST ONE DIMENSION? (KLUDGY TEST.)
+         BRU     ERROR2    'WRONG NUMBER SUBSCRIPTS'
+         LDA     2,2       SKIP OVER A(0:N,0)
+         ADD     0,2
+         ADD     0,2       2(N+1)
+         ADD     TWO
+         STA     BUF10
+         LDP*    BUF10     GET A(0,1) == A(0).
+       SBRM    BRS50
+         SKG     0,2       SEE IF OUT OF ARRAY BOUNDS,
+         SKG     MONE      SEE IF NEGATIVE.
+         BRU     ERROR8    'ARRAY OUT OF BOUNDS'
+         SKG     =MXSLEN   SEE IF STRING WOULD BE TOO LONG.
+         BRU     *+2
+         BRU     SLENR     'STRING TOO LONG'
+         MRG     B00T00    FOR SKR LOOP.
+         STA     BUF11
+         MRG     B00T01    MARK AS A STRING
+         STA     SPTR1
+         ETR     LENMSK    GET RID OF 4B7 BIT.
+         BRM*    SBLOCK    ALLOCATE BLOCK FOR THE STRING.
+         STB     SPTR2
+         STB     SPTR3
+         ROV               CLEAR OVERFLOW INDICATOR.
+ATOSL    SKR     BUF11
+         BRU     ATOSD
+         LDA     TWO       GET TO NEXT ELEMENT IN ARRAY.
+         ADM     BUF10
+         LDP*    BUF10
+       SBRM    BRS50       GET INTEGER.
+         SKG     =377B
+         OVT               TEST FOR BIG, OVERFLOW.
+         BRU     BSCHER    'BAD STR CHAR'
+         SKG     MONE
+         BRU     BSCHER
+         WCI     SPTR2
+         BRU     ATOSL
+ATOSD    LDP     SPTR1
+         BRR     RTN0      ALL DONE.                               >5.10
+         
+READ     POPD    130B5,2
+$POP30   BRM*    NXTDAT    GET NEXT DATA ITEM.
+         BRU     RDER1     STRINNG READ.
+RDST     STP*    0         SAVE THE DATA ITEM.
+         BRR     0
+
+RESD     POPD    131B5,2
+$POP31   BRM*    NXTDAT    GET NEXT DATA ITEM.
+         BRU     RDST      GOT STRING, WHICH WAS WANNTED.
+         BRU     RDER2
+
+
+NXTDAT   ZRO     RTN1      GET NEXT DATA ITEM, SKIP IF ARITH.
+         SKN     RTMP15    ANY DATA STATEMENTS AT ALL
+         BRU     *+2
+         BRU     NODATA    NO, THERE AREN'T.
+NXD1     LDX     RTMP15    GET THE POINTER TO DATA LIST.
+         LDP     0,2       AND THE DATA ITEM (POSSIBLY).
+         SKA     B00T00    SEE IF POSSIBLY A POINTER OR STRING.
+         BRU     NXD2      MAYBE IT IS.
+NXD1A    MIN     RTN1      SKIP 1 IF ARITHMETIC.
+         MIN     RTMP15    ADVANCE POINTER
+         MIN     RTMP15
+NXD1B    CLX
+         BRR     RTN1      RETURN.
+NXD2     SKA     =2B7      SEE IF JUST NEGATIVE DATA.
+         BRU     NXD3      NO, NEW POINTER OR STRING OR DEL.
+         BRU     NXD1A     NEGATIVE ARITHMETIC
+NXD3     SKA     =1B7
+         BRU     NXD4      NEW POINTER OR DELETED STATEMENT.
+         ETR     LENMSK
+         ADD     1,2
+         MUL     MAGIC
+         ADD     ONE       UPDATE RTMP15 TO FIRST WORD
+         STA     RTMP15    AFTER END OF STRING.
+         LDP     0,2       GET BACK ORIGINAL
+         BRU     NXD1B     JUST A STRING, RETURN WITH NO SKIP.
+NXD4     SKE     MONE
+         BRU     NXD5      NEW POINTER
+         LDA     -1,2      DELETED ENTRY WITH POINTER TO NEXT.
+         BRU     NXD6
+NXD5     CAX               HAVE POINTER TO NEXT STATEMENT
+         LDA     0,2
+NXD6     SKE     =ENDATA   IS THIS THE END OF THE DATA CHAIN?
+         BRU     *+2       NO
+         BRU     NODATA    YES.
+         ADD     ONE
+         STA     RTMP15    RESET THE POINTER TO NEXT DATA STATEMENT.
+         BRU     NXD1      TRY TO GET NEXT DATA.
+         
+ACCPT    POPD    126B5,2
+$POP26   LDX     0
+         STX     RTMP4     SAVE 0 BECAUSE OF SIC LOCAL.
+         BRM*    QMARK
+         LDA     TWELVE    COMMA FOR TERMINAL CH.
+         BRM*    GETFLD    GET NEXT FIELD ON INPUT.
+         LDX     FORMAT    FREE FORMAT INPUT.
+         SIC     MM
+         NOP
+         XXA               CHECK THE ERROR FLAG.
+         SKE     SIX
+         BRU     *+2       IT IS OKAY.
+         BRU     BADINP
+         CXA               GET BACK FOR STORING.
+         STP*    RTMP4
+         BRR     RTMP4     RETURN.
+
+BADINP   LDP     STMP3     MUST CHANGE FOR SDS 3.0 SIC.            5.12
+BADIN1   LDX     ONE       PRINT OUT THE BAD STRING.
+         BRS     35
+         EAX     BADCHX
+         SBRM    MESX      PUT OUT ERROR MESSAGE.
+         LDA     RTMP4     RESTORE 0.
+         STA     0
+         SBRM    ERRLN
+         LDA     CRCH
+         CIO     ONE
+         LDA     LFCH
+         CIO     ONE
+         BRU     POP26     TRY AGAIN.
+
+SCCPT    POPD    127B5,2
+$POP27   BRM*    QMARK     PRINT OUT QUESTION MARK.          HB 71.12.22
+         LDA     CRCH      RETURN IS DEFAULT TERMINAL CH.
+         BRM*    GETFLD    READ FIELD FROM FILE.
+         BRM*    BASPTR    MAKE INTO BASIC POINTERS.
+         SKG     =MXSLEN   SEE IF STRING TOO BIG.            HB 72/02/03
+         BRU     *+2
+         BRU     SLENR     YES     HB 72/02/03
+         STP     SPTR1     SAVE THEM
+         BRM*    SBLOCK    ALLOCATE SOME ROOM FOR IT.
+         EAX     SPTR1     ADDRESS OF SOURCE STRING PTRS.
+         BRM*    COPY      COPY STRING READ INTO PERM. STORAGE.
+         STP*    0         SAVE THE VALUE.
+         BRR     0         RETURN                            HB 71.12.22
+
+
+QMARK    ZRO     RTN2      PRINT OUT QUESTION MARK, MAYBE.
+         LDA     IFNO      PUT OUT ? ONLY IF STRAIGHT TO TTY.
+         SKA     MONE      INPUT FROM TTY?
+         BRR     RTN2      HB 71.12.27
+         SKN     QUESSW    SEE IF ALLOWED TO PUT OUT ?.            5.10
+         BRR     RTN2      NO.     5.10
+         LDX     MONE      SEE IF INPUT BUFFER NOT EMPTY.    HB 72-05-11
+         BRS     13
+         BRR     RTN2      HB 72-05-11
+         TCO     =37B      IT IS GOING TO TTY.
+         TCO     ZERO
+         BRR     RTN2      HB 71.12.28
+
+*        GETFLD GETS NEXT INPUT FIELD FROM  INFILE  .
+*
+*        THE FIELD WILL ALWAYS BE TERMINATED BY EITHER (RET) OR
+*        &D, AND IF TERMINATED WITH &D, THE EXPECTED TERMINATING 
+*        CHARACTER WILL BE PRINTED OUT.
+*
+*        THE TERMINATING CHARACTER IS IN THE A REGISTER ON ENTRY,
+*        AND SHOULD BE EITHER (RET) OR ','.
+*
+*        LEADING CARRIAGE RETURNS ALWAYS CAUSE A QUESTION
+*        MARK TO BE PRINTED OUT AGAIN, AND ARE OTHERWISE IGNORED.
+*
+*        IF THE TERMINAL CHARACTER IS ',', THEN LEADING SPACES WILL
+*        ALSO BE IGNORED.  THE CARRIAGE RETURNS AND SPACES
+*        MAY BE FREELY MIXED, AND WILL BE IGNORED NO MATTER WHAT THE
+*        ORDER.
+
+GETFLD   ZRO     RTN1                                        HB 71.12.22
+         STA     SPTR1     SAVE TENTATIVE TERMINAL CH.
+         LDX     =3*RTMP28-1
+         STX     MM        INITIALIZE POINTER.
+         STX     MM1
+         SKN     FMTSW     SEE IF FORMATTING.                     <5.10
+         BRU     GTSV      NO.
+         BRM*    GETELM    GET NEXT FORMAT THING.
+         BRU     *+4
+         LDB     CRCH      CHECK THAT FORMAT MATCHES WHAT'S WANTED.
+         EAX     IOERR2    'FORMAT NOT FOR NUMBER.'
+         BRU     *+3
+         LDB     TWELVE
+         EAX     IOERR1    'FORMAT NOT FOR STRING.'
+         XAB
+         SKE     SPTR1
+         BRU     0,2       ERROR.
+         CLA
+         STA     QUESSW
+         LSH     9         GET TOP OF WIDTH FOR POSSIBLE STRING.
+         ETR     =37B
+         CAX
+         LSH     1
+         LDA     CURFOR
+         ETR     FORMSK
+         SKE     STRFMT    SEE IF THAT IS THE TOP.
+         CLX               NOPE, JUST NUMERIC FORMAT.
+         CXA
+         LSH     5         GET THE MAIN WIDTH.
+         SUB     ONE
+         MRG     B00T00    NUMBER OF CHARACTERS.
+         STA     IOW
+         STA     SPTR1     CLEAR TERMINAL CHAR.
+         SKN     RETFLG    AT END OF LINE?
+         BRU     GTC       NO, START GETTING CHAR'S
+GTRT     BSS     0         NO PADDING AT END OF FIELD.
+GTRT1    LDP     MM        RETURN WITH POINTERS IN A, B.
+         BRR     RTN1
+GTSV     LDB     MONE
+         STB     IOW       INFINITE WIDTH
+GTFLD0   CAB
+GTFLD1   BRM*    GIN       GET INPUT
+         BRU     GTRT      5.10
+         SKE     CRCH      TERMINAL CHAR, SPECIAL THINGS.
+         BRU     *+5
+         BRM*    QMARK     GIVE QUES FOR LEADING (RET)'S.
+         CLA               RESET (RETFLG).
+         STA     RETFLG
+         BRU     GTFLD1
+         XAB               GET BACK TCH.
+         SKE     CRCH      GETTING A STRING?
+         BRU     GTIS      NO, GO IGNORE SPACES.
+         CBA
+         SKE     TWO       SEE IF FIRST CH IS '"' ' OR ".
+         BRU     *+2
+         BRU     *+3
+         SKE     SEVEN
+         BRU     GTED      GO SEE ABOUT EDITING.
+         STA     SPTR1     MUST RESET TCH.
+         BRU     GTC       GO GET NEXT CHARACTER.
+GTIS     CBA               GET BACK INPUT CH.
+         BRU     *+3
+GTIS1    BRM*    GIN       5.10
+         BRU     GTRT      5.10
+         SKG     ZERO      SKIP TO FIRST NON-SPACE CHARACTER.
+         BRU     GTIS1
+         SKE     CRCH      IS IT (RET)?                      HB 71.12.28
+         BRU     GTED      NO, FIRST GOOD CHARACTER.
+         BRM*    QMARK
+         CLA
+         STA     RETFLG    RESET (RETFLG).
+         BRU     GTIS1     YES, IGNORE IT.                   HB 71.12.28
+GTW0     CBA               RESTORE CHAR                            5.10
+GTW      WCI     MM
+         SKR     IOW       SEE IF ALL DONE                         5.10
+         BRU     GTRT1     NO.     5.10
+GTC      BRM*    GIN       5.10
+         BRU     GTRT      EOF     5.10
+GTED     SKG     =140B     IS IT A CONTROL CHAR?
+         BRU     GTCK      NO, CHECK FOR TCH.
+         LDB     IFNO      5.10
+         SKB     MONE      SEE IF FROM TTY.
+         BRU     GTCK      NO, GO CHECK, BYPASS EDITING.
+         LDB     =377B     MASK
+         LSH     15
+         LDX     =BED-LED
+         SKM     LED,2     SEARCH THROUGH EDITING TABLE.
+         BRX     *-1
+         BRU*    LED,2     JUMP TO PROPER PLACE.
+BED      141     GTCA      DELETE A CHAR.
+         144     GTCD      STOP
+         161     GTCQ      QUIT WHOLE THING.
+         162     GTCR      RETYPE.
+         166     GTCV      A LITERAL CHARACTER.
+         167     GTCW      DELETE A WHOLE WORD.
+LED      00      *+1       REPOSITION CHARACTER.             HB 71.12.28
+         RSH     15
+         BRU     GTCK      CHECK FOR TERMINATING CHAR.       HB 71.12.28
+GTCA     TCO     =76B
+         GCD     MM
+         BRU     GCCR      NO CHARACTERS LEFT.
+         MIN     IOW       5.10
+         LDA     MM1
+         SKG     MM        SEE IF LAST CHAR. DELETED.
+GCCR     TCO     CRCH      YES, PUT OUT (RET).
+         TCO     LFCH
+         BRU     GTC
+GTCD     SKN     FMTSW     SEE IF FORMATTING                      <5.10
+         BRU     *+2
+         BRU     GTW       GO WRITE IT.
+         TCO     SPTR1     OUTPUT BACK ARROW.                     >5.10
+         LDA     SPTR1     GET      "   ".
+         BRU     GTCK      GO CHECK.
+GTCQ     TCO     =77B
+         LDA     MM        RESET LINE TO NULL.
+         XMA     MM1       RESET LINE TO NULL                     <5.10
+         SUB     MM1       UPDATE IOW.
+         ADM     IOW       >5.10
+         BRU     GCCR
+GTCR     TCO     CRCH      RETYPE  <5.10
+         TCO     LFCH
+         LDP     MM
+         LDX     ONE
+         BRS     35
+         BRU     GTC       >5.10
+GTCV     TCO     SIX       PUT OUT AMPERSAND.
+         CIO     INFILE    GET A CHAR,
+         SKG     =140B     ALLOW EITHER CONTROL OR
+         BRU     GTCV0     3 DIGITS.
+         CAB               SAVE CHAR TO PUT OUT SOME ECHO.
+         ETR     =77B
+         CIO     ONE
+         BRU     GTW0      GO WRITE CHAR.
+GTCV0    LDB     TWO       COUNT OF HOW MANY.
+         STB     SPTR2
+         CLB               SET PROPOSED CHAR. TO ZERO.
+         STB     SPTR3
+         BRU     GTCV2
+GTCV1    CIO     INFILE
+GTCV2    SKG     =27B
+         SKG     =17B      SEE IF OCTAL DIGIT.
+         BRU     GTCV3     NO, ERROR.
+         ETR     SEVEN     YES.
+         XMA     SPTR3     BUILD UP THE CHARACTER.
+         LSH     3
+         ADM     SPTR3
+         SKR     SPTR2
+         BRU     GTCV1     GO GET MORE CHARACTERS.
+         LDA     SPTR3
+         BRU     GTW       GO WRITE JUST FOUND CHARACTER.
+GTQM     BSS     0
+GTCV3    TCO     =37B      TYPE QUEST MARK ON TERMINAL.
+         BRU     GTC       START ALL ALL OVER.
+GTCW     TCO     =74B      PRINT IDENTIFYING CHAR.
+GTCW1    GCD     MM        GO BACK TO FIRST NO SPACE.
+         BRU     GCCR
+         MIN     IOW       5.10
+         SKG     ZERO      IS IT A SPACE.
+         BRU     GTCW1     YES
+GTCW2    GCD     MM
+         BRU     GCCR      ALL OUT, PRINT OUT (RET).
+         MIN     IOW       5.10
+         SKE     ZERO
+         BRU     GTCW2     NOT YET A ZERO.
+         MIN     MM1       LEAVE IN THAT LAST SPACE.
+         SKR     IOW       5.10
+         NOP     0         5.10
+         BRU     GTC
+
+GTCK     SKE     CRCH      SEE IF (RET), WHICH ALWAYS TERMINATES.
+         BRU     GTCK1
+         SKN     FMTSW
+         BRU     *+2
+         BRU     GTRT
+         CLA
+         STA     RETFLG    RESET (RETFLG) ONLY IF NOT FORMATTING.
+         BRU     GTRT
+GTCK1    SKE     LFCH      IGNORE (LF)                            <5.10
+         BRU     *+2
+         BRU     GTC
+         SKG     =140      SEE IF CONTROL, BUT NOT EDITING.       >5.10
+         BRU     *+2
+         BRU     GTQM      YES, TYPE QUES.
+         SKE     SPTR1     NORMALLY TERMINATING CHAR?
+         BRU     *+2
+         BRU     GTRT1     DON'T WRITE TCH.
+         CAB               SEE WHAT TCH IS.
+         LDA     SPTR1
+         SKE     TWELVE    SEE IF SPACES CAN TERMINATE (FOR NUMB.)
+         BRU     GTW0      GO WRITE CHAR.
+         CBA               GET BACK INPUT CH.
+         SKE     ZERO      IS IT A SINGLE SPACE?
+         BRU     GTW       NO
+         SKN     FMTSW
+         STA     INPSPC    RESET SPACE COUNT IF NOT FORMATTING.
+         BRU     GTRT
+
+GIN      0       RTN3      GET INPUT CHARACTER                    <5.10
+         SKN     INPSPC    SEE IF SAVED SPACES
+         BRU     *+5
+         MIN     INPSPC    REDUCE COUNT.
+         CLA
+GINR     MIN     RTN3      RETURN, SKIP 1 = EVERYTHING COOL.
+         BRR     RTN3
+         SKN     RETFLG    SEE IF AT END OF LINE.                  
+         BRU     *+2       NO.
+         BRU     *-5       YES, RETURN BLANK.
+         CIO     INFILE    MUST ACTUALLY GET THE CHAR.
+         SKE     =137B     POSSIBLE EOF?
+         BRU     *+4
+         SKN     INFILE    SEE IF REALLY THERE.
+         BRU     *-4       NO, READ ANOTHER CHAR.
+         BRR     RTN3      YES, RETURN SKIPPING NONE.
+         SKE     CRCH
+         BRU     *+4
+         SKR     RETFLG    SET RETFLG.
+         BRU     *-1
+         BRU     GINR
+         SKE     MBCH      SEE IF MULTI - BLANK.
+         BRU     GINR
+         CIO     INFILE    GET COUNT.
+         CNA
+         STA     INPSPC    INPUT SPACE COUNT.
+         BRU     GIN+1     START ALL OVER.                        >5.10
+         
+*        GET ELEMENT -- GETS NEXT ELEMENT FROM PICTURE.           <5.10
+GETELM   0       RTN2
+GTLM0    LDA*    IOPTR     GET NEXT IN PICTURE.
+         SKE     ZERO      AT END?
+         BRU     GTLM1     NO
+         LDA     IOPTR1    START OVER AT BEGINNING
+         STA     IOPTR
+         BRU     GTLM0
+GTLM1    MIN     IOPTR     (TO NEXT ELEMENT.)
+         STA     CURFOR
+         ETR     FORMSK    SEE WHAT KIND OF ELEMENT IT IS.
+         SKE     STRFMT    INPUT STRING?
+         BRU     *+4
+         MIN     RTN2      YES, SKIP 1 ON EXIT.
+         LDA     CURFOR
+         BRR     RTN2
+         BRM*    TSTFEL    SEE WHETHER HOLLERITH OR NUMBER.
+         BRU     *-3       NUMBER, RETURN SKIPPING NONE.
+*
+*        HAVE STRING PTRS IN RTMP23,RTMP24, MUST SCAN CHARACTER
+*        BY CHARACTER UNTIL END OF STRING OR RETURN, ALSO CHECK INPUT
+*        LINE.
+*
+GTLM2    GCI     RTMP23    GET CHARACTER FROM PICTURE.
+         BRU     GTLM0     THROUGH WITH HOLLERITH FIELD, GET NEXT.
+         CAB
+         BRM*    GIN       GET INPUT CHARACTER.
+         BRU     GTLM0     GET BY EOF'S QUICKLY.
+         SKE     CRCH      (RET) ON INPUT?
+         BRU     GTLM4     NO.
+         CBA               SEE IF PICTURE CHAR IS (RET).
+         SKE     CRCH
+         BRU     GTLM2     JUST GO WAIT FOR (RET) IN THE PICTURE.
+GTLM3    CLA               RESET RETFLG.
+         STA     RETFLG
+         BRU     GTLM2
+GTLM4    CBA               CHECK PICTURE CHAR.
+         SKE     CRCH      FOR (RET).
+         BRU     GTLM2     NOT (RET).
+         SKN     RETFLG    SEE IF ALREADY GOTTEN (RET) ON INPUT.
+         BRU     *+2       NO
+         BRU     GTLM3     YES, RESET (RETFLG).
+         BRM*    GIN       GET INPUT.
+         LDA     CRCH      SUPPLY (RET) AT EOF.
+         SKE     CRCH
+         BRU     *-3
+         BRU     GTLM3     GO RESET RETFLG.                       >5.10
+
+ENDPCI   0       RTN0      END INPUT WITH PICTURE                 <5.10
+         SKR     QUESSW    NOW ALLOW ? AT ALL ACCEPTS.
+         BRU*    *         SHOULD NOT HAPPEN.
+         CLA
+         STA     FMTSW     SAY NO PICTURE NO MORE.
+         XMA     RETFLG    SEE IF NECESSARY TO CLEAN OUT LINE.
+         SKG     MONE
+         BRR     RTN0      NO, EXIT.
+         BRM*    TORET
+         BRR     RTN0      TERMINATED INPUT RECORD, EXIT.
+
+$TORET   0       RTN1
+         BRM*    GIN
+         LDA     CRCH      SUPPLY (RET) AT EOF.
+         SKE     CRCH
+         BRU     *-3
+         CLA
+         STA     RETFLG
+         BRR     RTN1      >5.10
+         
+*        STRING HANDLING  ROUTINE AND POP.
+
+SCAT     POPD    176B5,2       STRING CONCATENATION          HB 71.12.22
+$POP76   ETR     LENMSK    ONLY LENGTH.
+         STP     SPTR1     SAVE THE POINTERS.
+         LDP*    0         GET SECOND STRING IN APPEND.
+         ETR     LENMSK
+         STP     SPTR3     SAVE AGAIN.
+         ADD     SPTR1     GET TOTAL LENGTH OF BLOCK REQUIRED.
+         SKG     =MXSLEN   SEE IF STRING TO LOONG.           HB 72/02/03
+         BRU     *+2
+         BRU     SLENR     YES, ERROR.                       HB 72/02/03
+         BRM*    SBLOCK    ALLOCATE IT.
+         EAX     SPTR1     COPY IN FIRST STRING.
+         BRM*    COPY
+         EAX     SPTR3     COPY IN SECOND STRING.
+         BRM*    COPY
+         BRR     0         RETURN NEW POINTERS IN A,B.       HB 71.12.22
+
+$COPY    ZRO     RTN5      COPY SOURCE TO DESTINATION        HB 71.12.22
+*
+*                          DESTINATION POINTERS IN A,B.
+*                          POINTER TO SOURCE PTRS IN X
+*
+*                          FINAL POINTERS RETURNED IN A, B.
+         BRM*    MKPTR     MAKE SYSTEM POINTERS.
+         STP     CPYP1     SAVE THEM
+         LDP     0,2
+         BRM*    MKPTR     MAKE SOURCE STRING POINTERS.
+         STP     CPYP2
+         GCI     CPYP2     GET A CHAR FROM THE SOURCE.
+         BRU     *+3       OUT OF CHARACTERS.
+         WCI     CPYP1     WRITE IT ON DESTINATION.
+         BRU     *-3
+         LDP     CPYP1
+         BRM*    BASPTR    MAKE BASIC POINTERS.
+         MRG     B00T01    SAY IT IS A STRING                      5.10
+         BRR     RTN5
+         
+RET      POPD    115B5,2
+*                           REWRITTEN FOR 4.10.
+$POP15   LDA*    RTMP14    GET THE RETURN POINTER.
+         SKE     MONE      CHECK FOR EMPTY RETURN LIST.
+         BRU     *+2
+         BRU     ERROR9
+         MIN     RTMP14    BUMP THE POINTER.
+         CAX
+         ENDLIN* -2,2      HB 72-04-04
+GOS      POPD    116B5,2
+*                           REWRITTEN FOR 4.10.
+$POP16   LDX     0         PUT IN RETURN                            <5.10
+         BRM*    GOSINS
+         BRU     3,2       GOTO NEXT PLACE.                         >5.10
+         
+CGOTO    POPD    132B5,2
+$POP32   CLX               FLAG.
+CGTGS    STX     RTMP4     SAVE VALUE
+         SKD     =23       TAKE INTEGER PART.
+         BRU     ONGERR    TOO BIG.
+         RSH     0,2
+         CLX               GET TOTAL NUMBER OF STEPS
+         EAX*    0         FROM ADDRESS FIELD OF CALLING WORD.
+         STX     RTMP5
+         SKG     RTMP5     GREATER THAN MAX?
+         SKG     ZERO      AND THAN ZERO?
+         BRU     ONGERR    NO.
+         LDX     0
+         ADM     0         INCREMENT RETURN LOC.
+         SKN     RTMP4     DOING GOSUB?
+         BRR     0         NO.
+         LDA     1,2       GET ENDLIN* -----
+         ETR     ADRMSK    TO SET UP A RETURN LOCATION.
+         ADD     TWO
+         CAX
+         BRM*    GOSINS
+         BRR     0         >5.10
+
+CGOSUB   POPD    133B5,2           COMPUTED GOSUB                   <5.10
+$POP33   LDX     MONE
+         BRU     CGTGS     GO USE COMMON CODE.                      >5.10
+
+GOSINS   ZRO     RTN0      MAKE GOSUB ENTRY                         <5.10
+         LDA     RTMP14
+         SUB     ONE       GO TO NEXT LOC FOR STACK.
+         SKG     DOPTR     ABOUT TO OVERFLOW?
+         BRU     ERR16
+         STA     RTMP14
+         STX*    RTMP14    STORE IN THE RETURN ADDRESS.
+         BRR     RTN0      >5.10
+         
+*
+*        STRUCTURE OF FOR-NEXT BLOCKS:
+*
+*        WORD    CONTENTS
+*           0    L-VALUE OF CONTROLLED VARIABLE.
+*           1    ADDRESS OF BEGINNING OF LOOP.
+*           2    LIMIT  (MSH)
+*           3      "    (LSH)
+*           4    STEP  (MSH)
+*           5     ""   (LSH)
+*           6    LINK TO NEXT BLOCK
+*
+NXT    POPD    15700000B,2
+$POP57 EAX*    0
+       CXA
+       ETR     ADRMSK
+       LDX     RTMP13
+NXT1   SKE     0,2
+       BRU     NXT2
+         LDP*    0,2       BEG OF 4.02 CHANGES, SPEED FOR NEXT LOOPS.
+         FAD     4,2
+         STP*    0,2       INDEX=INDEX+STEP
+         FSB     2,2       HAVE INDEX-LIMIT
+         SKN     4,2       LOOK AT SIGN OF STEP
+         BRU     POS
+         SKA     B00T00    IF INDEX-LIMIT < 0 THEN EXIT LOOP
+         BRU     FDONE
+         BRR     1,2       ELSE CONTINUE IN LOOP.
+FDONE    LDP*    0,2       RESET VALUE OF INDEX BACK TO ORIG. VAL.
+         FSB     4,2
+         STP*    0,2
+         LDA     6,2
+         STA     RTMP13
+         LDA     =-7
+         ADM     DOPTR     RESET POINTER TO LAST ENTRY. 4.10
+         LDX     0         ALSO FIRST FREE MEM LOC.
+         ENDLIN* -2,2      HB 72-04-04
+POS      SKA     MONE      SAME AS SKE =0
+         SKA     B00T00
+         BRR     1,2       INDEX-LIMIT MUST BE <= 0
+         BRU     FDONE     END 4.02 CHANGES.
+NXT2   CAB
+       LDA     0,2
+       SKE     MONE
+       BRU     *+2
+       BRU     ERROR1
+       LDX     6,2
+       STX     RTMP13
+       LDA     =-7
+         ADM     DOPTR     4.10
+       CBA
+       BRU     NXT1
+         
+TA2    POPD    12400000B,2
+$POP24   STP     TEMF4     SAVE VALUE TO BE STORED                  5.10
+         SKN     2,2       SEE IF MATRIX DEFINED             HB 72/01/06
+       BRU     TA20
+       LDA     TEN
+       STA     0,2
+       STA     1,2
+       LDA     =242
+         BRM*    ARRAY     ALLOCATE ARITHMETIC ARRAY         HB 71.12.29
+TA20     BRM*    AV2IN     FASTER  HB 71.12.29
+       BRU     TA12
+
+TA1    POPD    12500000B,2
+$POP25   STP     TEMF4     SAVE VALUE TO BE STORED                  5.10
+         CXA               CHECK FOR STRING                  HB 71.12.29
+         ETR     ADRMSK
+         SKG     =ZST      STRING OR ARITH ARRAY?
+         BRU     TA1S      STRING. HB 71.12.29
+         SKN     2,2       HB 72/01/06
+       BRU     TA10
+       LDA     TEN
+       STA     0,2
+       LDA     ONE
+       STA     1,2
+       LDA     =44
+         BRM*    ARRAY     ALLOCATE ARITHMETIC ARRAY         HB 71.12.29
+TA10   LDA      ONE
+       SKE     1,2
+       BRU     ERROR2          SINGLE VAR FROM DOUBLE SCT
+TA12   STA     RTMP11
+         BRM*    TADD      FASTER  HB 71.12.29
+TA12S    LDP     TEMF4     STORE THE VALUE.                         5.10
+         STP     0,2       5.10
+       STX*    0
+       BRR     0
+TA1S     SKN     2,2       PROCESS STRING ARRAY              HB 71.12.29
+         BRU     TA10S     IT IS DEFINED, DON'T DO IT AGAIN.
+         LDA     TEN       SET DIMENSION.
+         STA     3,2       HB 72/01/25
+         LDA     =22       NUMBER OF WORDS.
+         BRM*    SRRAY     ALLOCATE STRING ARRAY.
+TA10S    BRM*    SADD      STRING ADDRESS.
+         BRU     TA12S     JOIN COMMON                              5.10
+
+AV2IN    ZRO     RTN0      NEW MARKWORK                      HB 71.12.29
+       STX     RTMP9
+       EAX*    0
+       LDP     2,2
+       SKA     B00T00
+       BRU     ERROR4
+       SKD     =23
+       BRU     ERROR8          ARRAY OUT OF BOUNDS
+       RSH     0,2
+       LDX     RTMP9
+       SKG     1,2
+         BRR     RTN0      HB 71.12.29
+       BRU     ERROR8
+
+TADD     ZRO     RTN0      HB 71.12.29
+       STX     RTMP9
+       LDP*    0
+       SKA     B00T00
+       BRU     ERROR4          NEG ADDRESS
+       SKD     =23
+       BRU     ERROR5          TOO BIG
+       RSH     0,2
+       LDX     RTMP9
+       SKG     0,2
+       BRU     *+2
+       BRU     ERROR8          OUT OF BOUNDS
+       XMA     RTMP11
+       MIN     0,2
+       MUL     0,2
+       SKR     0,2
+       LSH     23
+       ADD     RTMP11
+       CLB
+       LSH     1               MUL=2
+       ADD     2,2
+       CAX
+         BRR     RTN0      HB 71.12.29
+
+SADD     ZRO     RTN0      GET STRING ADDRESS.               HB 71.12.29
+         STX     RTMP9
+         LDP*    0         GET SUBSCRIPT VALUE.
+         SKD     =23       CONVERT TO IN.
+         BRU     ERROR5    TOO BIG.
+         SKA     B00T00    NEGATIVE?
+         BRU     ERROR4    YES, ERROR.
+         RSH     0,2       MAKE INTEGER.
+         LDX     RTMP9     CHECK BOUNDS.
+         SKG     3,2
+         BRU     *+2
+         BRU     ERROR5    SUBSCRIPT TOO BIG.
+         CLB
+         LSH     1         TWO WORDS PER ENTRY.
+         ADD     2,2       MAKE REAL ADDRESS.
+         CAX
+         BRR     RTN0      RETURN  HB 71.12.29
+         
+*        ALL RELATIONS HAVE BEEN CHANGED TO NOT USE
+*        POPS, BECAUSE POPS ARE SCARCE.  RATHER, BRM* IS USED,
+*        AND IS A BIT SLOWER.
+*        RTN1 IS THE GENERAL MARK WORD FOR ALL OF THESE
+*        ROUTINES, WHICH SKIP IF THE CONDITION IS MET.
+*        SKIPC WILL CAUSE A SKIP ON RETURN, AND IS A COMMON
+*        LABEL FOR ALL OF THE RELATIONS.
+
+LESS     ZRO     RTN1      ALL RELATIONS CHANGED FOR         HEB,4.31
+         FSB     TEMFIL
+         SKG     ZERO
+         BRR     RTN1
+         BRU     SKIPC     SKIP
+EQUAL    ZRO     RTN1
+         SKE     TEMFIL
+         BRR     RTN1
+         SKE     ZERO
+         BRU     *+2
+         BRU     SKIPC
+         CBA
+         SKE     TEMF1
+         BRR     RTN1
+         BRU     SKIPC     THEY ARE EQUAL.
+GRTR     ZRO     RTN1
+         FSB     TEMFIL    *******ASSUME NO FPAU.********
+       SBRM    BRS21       INVERT PREV. OPERATION.
+         SKG     ZERO
+         BRR     RTN1
+         BRU     SKIPC
+LEEQ     ZRO     RTN1
+         FSB     TEMFIL    *******ASSUME NO FPAU.*******
+       SBRM    BRS21
+         SKG     ZERO
+         MIN     RTN1
+         BRR     RTN1
+NOTEQ    ZRO     RTN1
+         SKE     TEMFIL
+         BRU     SKIPC     SKIP (CONDITION IS MET.)
+         SKE     ZERO
+         BRU     *+2
+         BRR     RTN1
+         CBA
+         SKE     TEMF1
+SKIPC    MIN     RTN1
+         BRR     RTN1
+GREQ     ZRO     RTN1
+         FSB     TEMFIL
+         SKG     ZERO
+         MIN     RTN1
+         BRR     RTN1
+         
+*        STRING COMPARISONS FOLLOW THE SAME CONVENTIONS
+*        AS THE NUMERIC COMPARES, BUT WORK WITH STRINGS.
+
+SLT      ZRO     RTN1
+         BRM*    SCPTRS    GET BOTH SETS OF POINTERS.
+         LDP     TEMF2
+         SKSG    TEMFIL    COMPARE B > A.
+         BRR     RTN1      A >= B
+         BRU     SKIPC
+
+SEQ      ZRO     RTN1
+         BRM*    SCPTRS
+         SKSE    TEMF2
+         BRR     RTN1
+         BRU     SKIPC
+
+SGT      ZRO     RTN1
+         BRM*    SCPTRS
+         SKSG    TEMF2
+         BRR     RTN1
+         BRU     SKIPC
+
+SLE      ZRO     RTN1
+         BRM*    SCPTRS
+         SKSG    TEMF2     A > B
+         MIN     RTN1      B >= A
+         BRR     RTN1
+
+SNE      ZRO     RTN1
+         BRM*    SCPTRS
+         SKSE    TEMF2
+         MIN     RTN1
+         BRR     RTN1
+
+SGE      ZRO     RTN1      A >= B
+         BRM*    SCPTRS
+         LDP     TEMF2
+         SKSG    TEMFIL    B>A
+         MIN     RTN1      B <= A
+         BRR     RTN1
+
+SCPTRS   ZRO     RTN2      EXTRACT SYSTEM STRING POINTERS.
+         BRM*    MKPTR     FIRST SET IN A,B, GOES TO TEMF2.
+         STP     TEMF2
+         LDP     TEMFIL    SECOND SET IN TEMFIL, RETURNED THERE.
+         BRM*    MKPTR
+         STP     TEMFIL
+         BRR     RTN2
+         
+ID     POPD    13400000B,2
+$POP34 LDA     0
+       ADD     ONE
+       ETR     ADRMSK
+       STA     1,2
+       RCH     200B,2
+       EAX*    0
+       XXA
+       STA     0,2
+       LDX     0
+         ENDLIN* -3,2      HB 72-04-04
+EFN    POPD    13700000B,2
+$POP37 SKN     1,2
+       BRU     *+2
+       BRU     ERR11           FN NOT DEFINED
+       LDA     0
+       STA     RTMP12
+       LDP*    0,2
+       STP     RTMP25
+       STX     RTMP27
+       LDP*    0
+       STP*    0,2
+       BRU*    1,2
+$FNEND  STP*    RTMP12
+       LDP     RTMP25  RESTORE VALUE OF DUMMY VARIABLE
+       LDX     RTMP27
+       STP*    0,2
+         LDP*    RTMP12    GET BACK VALUE OF FN.             HB 71.12.07
+       BRR     RTMP12
+         
+TV2    POPD    14000000B,2
+$POP40 SKN     2,2
+       BRU     *+2
+       BRU     ERROR3          VARIABLE NOT DEFINED
+         BRM*    AV2IN     FASTER  HB 71.12.29
+       BRU     TV12
+TV1    POPD    14100000B,2
+$POP41 SKN     2,2
+       BRU     *+2
+       BRU     ERROR3          UNDEFINED
+         CXA               CHECK FOR STRING                  HB 71.12.29
+         ETR     ADRMSK
+         SKG     =ZST
+         BRU     TV1S      IT IS A STRING                    HB 71.12.29
+       LDA     ONE
+       SKE     1,2
+       BRU     ERROR2          SINGLE VAR FROM DOUBLE SCT
+TV12   STA     RTMP11
+         BRM*    TADD      FASTER  HB 71.12.29
+TV12S    LDA     0,2
+         LDB     1,2       FASTER THAN USING LDP.
+         EAX*    0         STORE IT AWAY.
+         STA     0,2
+         STB     1,2
+         SKE     MONE      CHECK FOR UNDEFINED.
+         BRR     0         IT IS DEFINED, RETURN.
+         BRU     ERROR3    UNDEFINED                         HB 71.12.29
+TV1S     BRM*    SADD      GET STRING ARRAY ADDRESS.         HB 71.12.29
+         BRU     TV12S     COMMON CHECK CHECK IF DEFINED     HB 71.12.29
+         
+RBIA     POPD    16100000,2        READ BINARY ARITH.        HB 71.12.09
+$POP61   WIO     INFILE    GET FIRST WORD OF THING.
+         EOR     B00T01    COMPLICATED THINGS TO CHECK FOR
+         SKE     B00T01    STRING OR ARITH (WHICH WILL HAVE
+         SKA     B00T01    EITHER ALL ZEROES OR 1 OF TOP TWO.)
+         BRU     *+2       IT IS ARITH.
+         BRU     RDER1     "STRING READ FOR NUMB".
+         EOR     B00T01    RESET BITS.                             5.10
+         EAX*    0         GET DESTINATION ADDRESS.
+         STA     0,2       STORE FIRST WORD.
+         WIO     INFILE
+         SKE     =27657537B        CHECK FOR EOF.
+         BRU     *+4
+         SKN     INFILE    TRUE EOF?
+         BRU     *+2       NOT, PROBABLY.
+         LDA     Q23       RETURN 6250335.000000                   5.10
+         STA     1,2
+         BRR     0
+
+RBIS     POPD    16200000,2
+$POP62   WIO     INFILE    READ BINARY STRING.
+         SKE     =27657537B        CHECK EOF
+         BRU     *+4
+         SKN     INFILE    REALLY EOF?
+         BRU     *+2       NO, BOMB OUT.
+         BRR     0         YES, RETURN.
+         EOR     B00T01    CHECK FOR STRING, AGAIN.
+         SKE     B00T01
+         SKA     B00T01
+         BRU     RDER2
+         ETR     LENMSK    GET LENGTH ALL ALONE.
+         STA     SPTR1     SAVE FOR FUTURE REFERENCE.
+         STA     SPTR5
+         SUB     ONE       ONE LESS FOR SKR LOOP.
+         MUL     MAGIC     CONVERT TO WORDS.
+         XMA     SPTR5
+         BRM*    SBLOCK    GET A BLOCK OF RIGHT SIZE.
+         STB     SPTR2     SAVE BEGINNING POINTER.
+         CBA
+         ADD     ONE       5.10
+         MUL     MAGIC
+         CAX               NO STARTS THE INPUT LOOP.
+         WIO     INFILE
+         STA     0,2       SAVE THE INPUT WORD.
+         EAX     1,2
+         SKR     SPTR5
+         BRU     *-4
+         LDP     SPTR1     GET STRING POINTERS.
+         MRG     B00T01    SET STRING BITS.
+         STP*    0
+         BRR     0
+
+WBIA     ZRO     RTN0      WRITE BINARY ARITHMETIC           HB 71.12.20
+         WIO     OUTFIL    ASSUME CORRECT OUTPUT FILES.
+         CBA
+         WIO     OUTFIL    PUT OUT BOTH WORDS OF NUMBER
+         BRR     RTN0      HB 71.12.20
+
+WBIS     ZRO     RTN0      WRITE BINARY STRING.              HB 71.12.20
+         ETR     LENMSK    GET LENGTH ONLY.
+         CNA               FOR LOOP.
+         STA     SPTR1
+         CNA
+         MRG     B00T01    MARKER FOR STRINGS.
+         WIO     OUTFILE
+         BRM*    MKPTR     GET SYSTEM POINTERS.
+         STP     SPTR2
+         BRU     WBIS1A
+WBIS1    WIO     OUTFIL    PUT OUT FULL WORD.
+         SKN     SPTR1     SEE IF ANY MORE CHARS.
+         BRR     RTN0      NO.
+WBIS1A   LDA     TWO       SKR CHAR. COUNT.
+         STA     SPTR4
+WBIS2    GCI     SPTR2     GET A CHARACTER.
+         LDA     =377B     GARBAGE CHAR.
+         MIN     SPTR1     INCREMENT COUNT.
+         COPY    XA,AX,B   COMPLICATED MERGE OF NEW CHARACTER.
+         LSH     8
+         COPY    AB,XB     NEW IN X, SHIFTED OLD IN A.
+         COPY    BX,BA     PUT NEW IN X, A FOR WIO.
+         SKR     SPTR4     TIME TO OUTPUT A WORD?
+         BRU     WBIS2     NO, TIME TO GET ANOTHER CHAR.
+         BRU     WBIS1     YES.    HB 71.12.20
+         
+DIM2   POPD    15000000B,2
+$POP50 STX     RTMP9
+         LDP     TEMF2     ALWAYS STORED HERE                HB 72/01/06
+       SKA     B00T00
+       BRU     ERROR4          NEG DIM
+       SKD     =23
+       BRU     ERROR5          TOO BIG
+       RSH     0,2
+       LDX     RTMP9
+       BRU     DIM12
+DIM1   POPD    15100000B,2
+$POP51   CXA               CHECK FOR STRING                  HB 72/01/06
+         ETR     ADRMSK
+         SKG     =ZST
+         BRU     DIM1S     IT IS A STRING.
+         LDA     ONE       HB 72/01/06
+DIM12  STA     1,2
+       STX     RTMP9
+         LDP     TEMFIL    ALWAYS STORED THERE               HB 72/01/06
+       SKA     B00T00
+       BRU     ERROR4
+       SKD     =23
+       BRU     ERROR5
+       RSH     0,2
+       LDX     RTMP9
+       STA     0,2
+       ADD     ONE
+       STA     RTMP9
+       LDA     1,2
+       ADD     ONE
+       MUL     RTMP9
+         CBA               NWORDS TO A                       HB 72/01/07
+         BRM*    ARRAY     ALLOCATE ARRAY STORAGE            HB 71.12.30
+       BRR     0
+DIM1S    LDP     TEMFIL
+         STX     RTMP9     SAVE BLOCK ADDRESS
+         SKA     B00T00    NEGATIVE DIM?
+         BRU     ERROR4    YES
+         SKD     =23       CHECK FOR HUGE, DO INTEGER FUN.
+         BRU     ERROR5    HUGE.
+         RSH     0,2
+         LDX     RTMP9     GET BACK ADDRESS FOR BLOCK
+         STA     3,2       SET UPPER BOUND.                  HB 72/01/25
+         CLB
+         ADD     ONE       FOR ZERO ORIGIN
+         LSH     1         NUMBER OF WORDS                   HB 72/01/25
+         BRM*    SRRAY     ALLOCATE THE ROOM
+         BRR     0         RETURN                            HB 72/01/06
+
+$ARRAY   ZRO     RTN0      ALLOCATE ARITH ARRAY              HB 71.12.29
+         LDB     MONE      SET NO BASIC IMENSIONS
+         STB     3,2
+         BRU     SARRAY    COMMON.
+
+SRRAY    ZRO     RTN0
+         LDB     MONE
+SARRAY   STB     2,2       RESEASE THIS ARRAY                HB 72/02/03
+         SUB     TWO       COUNT FOR INIT. LOOP.
+         STA     RTMP9
+         STX     RTMP10    SAVE ARRAY BLOCK ADDRESS.
+         ADD     FOUR      2 TO ORIG, 2 FOR TITLE.
+         BRM*    BLOCK
+         STB     -1,2      INSERT LENGTH IN TITLE.           HB 72/01/14
+         CAB               SAVE LOW ADDRESS.
+         LDX     RTMP10    GET BACK TO STORE BEGINNING ADDRESS
+         STA     2,2       ADDRESS(0,0) ELEMENT.
+         XXB
+         LDA     MONE      INIT ALL TO UNDEFINED.
+         STA     0,2
+         EAX     2,2
+         SKR     RTMP9
+         NOP     0
+         SKR     RTMP9     REDUCE COUNT BY 2.
+         BRU     *-5
+         CBX
+         BRR     RTN0      HB 71.12.29
+         
+DO       POPD    154B5,2
+*                           REWRITTEN FOR 4.10
+$POP54   EAX*    0         GET ADDRESS OF DO VARIABLE.
+         CXA
+         ETR     ADRMSK
+         STA*    DOPTR
+         LDP     TEMFIL
+         STP     0,2       INITIALIZE THE DO VARIABLE.
+         LDX     DOPTR
+         LDA     0         SAVE RETURN LOC.
+         STA     1,2
+         LDA     TEMF2
+         LDB     TEMF3
+         STA     2,2       SAVE THE LIMIT.
+         STB     3,2
+         LDA     TEMF4
+         SKE     ZERO
+         BRU     *+2
+         BRU     ERROR7
+         LDB     TEMF5
+         STA     4,2
+         STB     5,2       SAVE THE INCREMENT.
+         LDA     RTMP13    CHAIN THIS LIST ELEMENT IN.
+         STA     6,2
+         STX     RTMP13
+         LDA     SEVEN     AND BUMP DOPTR
+         ADM     DOPTR
+         LDA     RTMP14    BUT MAKE SURE THERE IS STILL
+         SKG     DOPTR     ROOM.
+         BRU     ERROR6
+         BRR     0         END OF 4.10 CHANGES.
+         
+*
+************************************************************************
+*        4BAS    73-04-03  SECOND PART OF BASIC RUNTIME:  /BS4B/       *
+*        ----    --------  ------ ---- -- ----- -------   ------       *
+************************************************************************
+*
+$SINTTY  0       RTN0      SET INPUT TO TTY.                      <5.10
+         LDX     IFNO
+         LDB     INPSPC
+         STB     SPCCT,2   SAVE SPACES COUNT.
+         LDA     INFILE
+         ETR     =EFBITS!ERRBIT SAVE FILE STATUS BITS.          5.10
+         SKN     RETFLG    AND LINE POSITION BIT.
+         BRU     *+2
+         MRG     =RETBIT
+         MRG     FILET,2
+         STA     FILET,2
+         LDA     RTN0
+         STA     0
+         CLX
+         LDA     =INPBIT   INPUT TO TTY.
+         BRU     SETIN
+
+$SOUTTY  ZRO     RTN0      SET OUTPUT TO TTY (USE AFTER WRITE)    <5.10
+         LDX     OFNO
+         LDA     ONE
+         STA     OUTFIL
+         STA     OFNO
+         LDA     SPCCNT
+         XMA     SPCCT,2
+         STA     SPCCNT    RESTORE FILE NUMBERS, SPACE COUNT.
+         LDA     RTMP2
+         XMA     LPOST,2   AND POSITION COUNT.
+         STA     RTMP2
+         BRR     RTN0      >5.10
+
+BINBIT   EQU     1B7       BITS IN FILE TABLE.                    <5.10
+INPBIT   EQU     2B7       ON FOR INPUT FILE  **SEE :INPB: IN 2BAS**
+RETBIT   EQU     4B6       ON IF RETFLG ON AT END OF PRINT
+EFBITS   EQU     3B5       FOR CHECK EOF.                    HB 72/01/27
+ERRBIT   EQU     4B5       5.10
+
+GETFIL   ZRO     RTN3      GETS FILE NUMBER, CHECKS LEGAL, ETC
+         LDP*    0
+         BRM*    FFNUM
+         SKG     MONE      FLAT ILLEGAL?
+         BRU     CLOSED    YES, ERROR.
+         LDA     FILET,2   GET FILE WORD
+         SKE     MONE      WAS FILE CLOSED?
+         BRR     RTN3
+         BRU     CLOSED    YES, ERROR.
+
+SINB     POPD    152B5,1   SET INPUT BINARY.
+$POP52   BRM*    GETFIL
+         SKA     =BINBIT   MAKE SURE IT'S BINARY.
+         BRU     SETIN
+         BRU     ERR18     NOPE, ERROR.
+
+SINS     POPD    153B5,1   SET INPUT SYMBOLIC.
+$POP53   BRM*    GETFIL
+         SKA     =BINBIT
+         BRU     ERR18
+SETIN    SKA     =INPBIT   MAKE SURE OPEN FOR INPUT.
+         BRU     *+2
+         BRU     ERR19
+         SKA     =EFBITS   SEE IF END-OF-FILE ON LAST READ.
+         BRU     INCLOS    CLOSE FOR INPUT.
+         ETR     LENMSK
+         STA     INFILE
+         STX     IFNO
+         CLB               RESTORE RETFLG.
+         SKA     =RETBIT
+         LDB     MONE
+         STB     RETFLG
+         LDA     SPCCT,2
+         STA     INPSPC
+         BRR     0
+INCLOS   BRS     20        CLOSE THE FILE,
+         LDA     MONE      RESET FILET ENTRY.
+         STA     FILET,2
+         EAX     FENDX     'FILE AT EOF'
+         BRU     MESSAG
+
+SOUTB    POPD    146B5,1   SET OUTPUT BINARY
+$POP46   BRM*    GETFIL
+         SKA     =BINBIT   MAKE SURE IT'S BINARY.
+         BRU     SETOUT
+         BRU     ERR18     TYPE WRONG.
+
+SOUTS    POPD    147B5,1   SET OUTPUT SYMBOLIC.
+$POP47   BRM*    GETFIL
+         SKA     =BINBIT   MUST NOT BE BINARY.
+         BRU     ERR18
+SETOUT   SKA     =INPBIT
+         BRU     ERR19     OPEN FOR INPUT.
+         ETR     LENMSK
+         STA     OUTFILE
+         LDA     SPCCT,2   UPDATE SPACE COUNT, LINE POS.
+         STA     SPCCNT
+         LDA     LPOST,2
+         STA     RTMP2
+         STX     OFNO
+         BRR     0                                                >5.10
+         
+FMN      POPD    177B5,2           SET UP FORMATTING         HB 72/01/01
+$POP77   LDA*    0         GET POINTER TO FORMAT.
+         SKE     =122B5    IS IT   NOLN  POP?
+         BRU     *+3       NO
+         EAX     NOLNX     YES, MAKE ERROR MESSAGE.
+         BRU      MESSAG
+         CAX               SEE IF REALLY A FORMAT.
+         LDA     0,2
+         LDB     B00T09    GET TAG, OPCODE, AND INDIRECT BITS.
+         SKM     =477B5    EAX 0,4     5.10
+         BRU     ERR17
+         CXA               GET BACK ADDRESS OF FORMAT.
+         ETR     ADRMSK
+         ADD     TWO       GET PAST EAX 0,4                        5.10
+FMNS     STA     IOPTR     SAVE ADDRESS                             5.10
+         STA     IOPTR1    FOR WRAPPING - AROUND.
+         LDA     MONE      SET FORMATTING SWITCH.
+         STA     FMTSW
+FMNL     BRM*    NXTFEL    MAKE SURE OF VARIABLE FORMAT      HB 72/01/08
+         BRU     FMNF      NO VARIABLE FORMAT
+         BRM*    TSTFEL    SEE IF IT IS HOLLERITH
+         BRU     *+2       GOT A VARIABLE FORMAT.
+         BRU     FMNL      GO LOOK SOME MORE.
+         LDA     IOPTR1    RESET TO BEGINNING OF LIST.
+         STA     IOPTR
+         BRR     0         RETURN                            HB 72/01/08
+FMNF     CLA               RESET FORMATTING SWITCH
+         STA     FMTSW     (USE FREE FORMAT ON ALL OUTPUT).
+         BRR     0
+
+WOFFST   EQU     9         OFFSET OF W FIELD FROM RIGHT-HAND END
+
+RFM      POPD    136B5,2           SET UP FORMATTING               <5.10
+*                                  (RUN-TIME FORMAT)
+$POP36   LDP*    0         GET STRING POINTERS.
+         BRM*    MKPTR     TURN INTO SYS STRING PTRS.
+         STP     BUF
+         LDA     RTMP14    CHECK FOR ROOM FOR FORMAT
+         SUB     DOPTR     UP IN RUNTIME SCRATCH PAGE.
+         SKG     B200      =128D  ARBITRARY LIMIT.
+         BRU     NOMEM     NOT ENOUGH ROOM.
+         LDA     DOPTR     LOCATION OF START OF FORMAT
+         SUB     ONE
+         SBRM    DECPXA    CRACK THE FORMAT.
+         ZRO     BUF       POINTERS TO FORMAT STRING.
+         LDA     DOPTR
+         BRU     FMNS      GO JOIN COMMON STUFF.                   >5.10
+
+TONUMB   ZRO     RTN2      SKIPS TO NEXT NUMERIC FORMAT IN THE PICTURE.
+TON      SBRM    NXTFOR    GET NEXT FORMAT WORD.             HB 72/01/08
+         BRU     *+2       HB 72/01/08
+         BRR     RTN2      NO SKIP MEANS NUMERIC FORMAT.
+         LDA     RTMP23    PUT OUT THE LITERAL STRING.
+         LDB     RTMP24
+         SBRM    OUTSTR
+         BRU     TON
+
+NXTFOR   ZRO     RTN3      GET NEXT FORMAT                   HB 72/01/01
+         BRM*    NXTFEL    GET THE ELEMENT
+         BRU     *-1       DON'T WORRY ABOUT WRAP - AROUND.
+         BRM*    TSTFEL    SEE WHAT KIND IT IS.
+         MIN     RTN3      VALUE FORMAT, SKIP ON EXIT.
+         BRR     RTN3      HB 72/01/01
+
+NXTFEL   ZRO     RTN4      GET ELEMENT, SKIP IF END OF LIST  HB 72/01/01
+         LDA*    IOPTR
+         MIN     IOPTR
+         STA     CURFOR    CURFOR ALWAYS CURRENT FORMAT.
+         SKE     ZERO      END OF FORMAT?
+         BRU     NXTFLL    NO, RETURN.
+         LDA     IOPTR1    YES, RESET TO BEGINNING OF LIST.
+         STA     IOPTR
+         BRR     RTN4      RETURN, NO SKIP.
+NXTFLL   MIN     RTN4      SKIP 1 ON EXIT.
+         BRR     RTN4      HB 72/01/01
+
+TSTFEL   ZRO     RTN4      SKIP ON LITERAL STRING.
+         ETR     FORMSK    HB 72/01/08
+         SKE     HOLFMT    HB 72/01/08
+         BRR     RTN4      NO, RETURN WITH NO SKIP.
+         STB     RTN5      SAVE B REG.
+         LDA     CURFOR    GET BACK FORMAT                   HB 72/01/08
+         RSH     WOFFST    GET WIDTH
+         ETR     =37B
+         STA     RTMP24    WILL BE END POINTER.
+         ADD     TWO       RESET IOPTR TO NEXT ELEMENT       HB 72/01/08
+         MUL     MAGIC     =1./3.
+         XMA     IOPTR
+         ADM     IOPTR     ALSO GET BEGINNING OF STRING.
+         MUL     =3B7      CONVERT TO POINTER.
+         LSH     2
+         SUB     ONE
+         STA     RTMP23    BEG POINTER.
+         ADM     RTMP24    (BEG PTR) + (LENGTH) = (END PTR).
+         LDA     CURFOR    RESTORE REGISTERS.
+         LDB     RTN5
+         MIN     RTN4      SKIP EXIT.
+         BRR     RTN4      HB 72/01/01
+         
+*        THE I/O ROUTINES HAVE BEEN DRASTICALLY CHANGED.
+*        BASICALLY, THERE ARE ROUTINES CORRESPONDING
+*        TO EACH TYPE OF VALUE WHICH MAY BE PRINTED AND
+*        EACH DELIMITER WHICH MAY FOLLOW THE VALUE.
+*
+*        THEY ARE NESTED IN THAT ONE SUBROUTINE MAY
+*        CAUSE OTHERS TO BE CALLED, SUCH AS  PAC  WHICH USES
+*         PA  TO PRINT AN ARITHMETIC VALUE AND  PTL TO
+*        PRINT A LONG TAB.
+
+$PAC     ZRO     RTN0      PRINT ARITH, LONG TAB.
+         BRM*    PA
+PC       SKN     FMTSW     DOING FORMATTING                  HB 72/01/08
+         SKA     B00T00    SEE IF CALL FROM PRINTING TAB           5.10
+         BRR     RTN0      YES, DO NOTHING MORE                    5.10
+         BRM*    PTL       NO, PUT OUT TABBING               HB 72/01/08
+         BRR     RTN0
+
+PSC      ZRO     RTN0      PRINT STRING, LONG TAB.
+         BRM*    PS
+         BRU     PC        HB 72/01/08
+
+PAS      ZRO     RTN0      PRINT ARITH, SHORT TAB.
+         BRM*    PA
+PSEM     SKN     FMTSW     SEE ABOUT DOING TABBING           HB 72/01/08
+         SKA     B00T00    TAB(N)> 5.10
+         BRR     RTN0      YES     5.10
+         BRM*    PTS
+         BRR     RTN0
+
+PSS      ZRO     RTN0      PRINT STRING, SHORT TAB.
+         BRM*    PS
+         BRU     PSEM      HB 72/01/08
+
+PAR      ZRO     RTN0      PRINT ARITH, (RET).               HB 71.12.28
+         BRM*    PA
+         BRU     PCR1      GO TERMINATE PRINT.
+
+PSR      ZRO     RTN0      PRINT STRING, (RET)               HB 71.12.28
+         BRM*    PS
+         BRU     PCR1
+
+PA       ZRO     RTN1      PRINT ARITHMETIC.
+         LDX     =3*BUF-1    INITIALIZE STRING POINTERS         HB 72/01/08
+         STX     MM
+         STX     MM1
+         SKN     FMTSW     SEE IF IN FORMATTING.
+         BRU     PA1       NO, DO REGULAR FREE FORM.
+         STP     TEMFIL    SAVE VALUE.                        HB 72/01/08
+         BRM*    TONUMB    GET A FORMAT
+         ETR     FORMSK    MAKE SURE IT IS FOR ARITHMETIC    HB 72/01/14
+         SKE     STRFMT
+         BRU     *+2       IT'S OKAY.
+         BRU     ERR17     'ERROR IN FORMAT/'.               HB 72/01/14
+         LDP     TEMFIL
+         LDX     CURFOR    GET BACK VALUE, FORMAT
+         ISC     MM        CONVERT TO CHARACTER              HB 72/01/08
+PA0      LDP     MM        RESTORE STRING POINTERS.
+         BRM*    OUTSTR    OUTPUT A STRING.
+         CLA               FLAG SAYS ITS OKAY TO DO TABBING.       5.10
+         BRR     RTN1      AND RETURN.
+PA1      CAX               SAVE THE VALUE, 
+         LDA     RTMP2     AND SEE ABOUT LINE OVERFLOW.
+         SKG     =63
+         BRU     *+2
+         BRM*    RETOUT    OUTPUT (RET), RESET POS AND SPCCNT.
+         LDA     FORMAT    STANDARD FREE FORMAT.
+         XXA               GET BACK VALUE.
+         ISC     MM
+         GCD     MM        SEE IF INTEGER.
+         CLA               IN CASE NO CHARS                  HB 71.12.23
+         SKE     FOURTEEN  '   .'
+         MIN     MM1       IT IS NOT, RESTORE THE CHARACTER.
+         BRU     PA0       GO PUT OUT STRING, RETURN.
+
+PS       ZRO     RTN1
+         SKN     SPCCNT    SEE IF AFTER TAB(N)                    <5.10
+         BRU     *+4       NO, GO ON ABOUT BUSINESS.
+         LDA     B00T00    RESET SIGN BIT OF SPCCNT.
+         ADM     SPCCNT
+         BRR     RTN1      AND RETURN WITHOUT PRINTING            >5.10
+         BRM*    MKPTR     MAKE POINTERS (SYSTEM ONES.)
+         STP     MM        SAVE THE POINTERS.
+         SKN     FMTSW     FORMATTED OUTPUT(Q).
+         BRU     PA0       NO, JUST PUT IT OUT.
+         BRM*    TONUMB    GET A VARIABLE FORMAT             HB 72/01/08
+         LDA     CURFOR    MAKE SURE CURFOR IS FOR STRINGS.
+         ETR     FORMSK    HB 72/01/08
+         SKE     STRFMT    HB 72/01/08
+         BRU     IOERR1    A RUN-TIME ERROR IF IT IS NOT.
+         LDA     CURFOR    GET BACK FORMAT                   HB 72/01/25
+         LDX     =3*BUF-1    HB 72/01/08
+         LDB     MM1
+         XXA
+         STA     MM1
+         XMA     MM        FANCY XMAB INSTRUCTION.
+         ISC     MM        CONVERT (HARD).
+         BRU     PA0
+
+PTL      ZRO     RTN1
+         MIN     SPCCNT    ALWAYS HAVE 1 SPACE.
+         MIN     RTMP2     BUMP POSITION COUNT.
+         LDA     RTMP2     GET POSITION,
+         SKG     =60       SEE IF TOO BIG,
+         BRU     *+2       NO.
+         BRU     PCRTAB    PRINT (RET) FOR TAB.
+         MUL     =75673570B =-1./15.
+         CLA               GET REMAINDER FROM DIVIDE
+         LSH     4         (ACTUALLY 15-REMAINDER)
+         ADM     RTMP2
+         ADM     SPCCNT    INCREMENT THINGS,
+         BRR     RTN1      RETURN.
+
+PTS      ZRO     RTN1      PRINT TAB SHORT.
+         MIN     SPCCNT
+         MIN     RTMP2     PUT OUT AT LEAST 1 SPACE.
+         LDA     RTMP2     CHECK FOR LINE OVERFLOW.
+         SKG     =63
+         BRU     *+3
+PCRTAB   BRM*    RETOUT    PRINT (RET), RESET POS AND SPCCNT.
+         BRR     RTN1      AND RETURN.
+         MUL     =12525253B        DIVIDE BY 3.
+         CLA
+         LSH     2         GET REMAINDER,
+         SUB     THREE     CONVERT TO FANCY THINGS.
+         CNA
+         ADM     RTMP2     BUMP THE POSITION,
+         ADM     SPCCNT    AND THE COUNT OF SPACES YET TO GO.
+         BRR     RTN1      RETURN
+
+PCR      ZRO     RTN0      PRINT CR (AT END OF PRINT.)
+PCR1     BRM*    ENDPIC    PUT OUT CHARS AT END OF PIC.      HB 72/02/08
+         BRM*    RETOUT
+         BRM*    ENDPNT    STOP PRINTING FOR THIS FILE.
+         BRR     RTN0
+
+$RETOUT  ZRO     RTN2
+         LDA     CRCH      AFFECTS ONLY A REG.
+         CIO     OUTFIL    PUT OUT (RET).
+         LDA     LFCH
+         CIO     OUTFIL
+         CLA
+         STA     SPCCNT    RESET THE SPACES-TO-GO-OUT,
+         STA     RTMP2     AND THE LINE POSITION.
+         BRR     RTN2      AND RETURN.
+
+ENDPNT   ZRO     RTN1      HB 72/01/08
+         BRM*    ENDPIC    PUT OUT CHARS AT END OF PIC.      HB 72/02/08
+$MATPND  NOP     RTN1      MAT PRINT END                           5.10
+         LDX     OFNO      OUTPUT FILE NUMBER.               HB 72/01/08
+         CLA
+         STA     FMTSW     RESET FORMATTING SWITCH,
+         LDA     RTMP2     RESET FILES TO TTY.               HB 72/01/27
+         STA     LPOST,2
+         LDA     LPOST1    POS OF TTY.
+         STA     RTMP2
+         LDA     SPCCNT    RESET SPACES, TOO.
+         STA     SPCCT,2
+         LDA     SPCCT1
+         STA     SPCCNT
+         LDA     ONE
+         STA     OUTFIL
+         STA     OFNO                                        HB 72/01/27
+         BRR     RTN1      HB 72/01/08
+
+ENDPIC   ZRO     RTN2      PUT OUT FINAL HOLLERITH STUFF     HB 72/02/08
+         SKN     FMTSW     ANY FORMATTING GOING ON?
+         BRR     RTN2      NO, RETURN
+ENDPC1   BRM*    NXTFEL    GET THE NEXT ELEMENT.
+         BRU     ENDPC2    AT END OF LIST, QUIT.
+         BRM*    TSTFEL    SEE WHAT KIND.
+         BRU     ENDPC2    VALUE EXPECTED, STOP.
+         LDP     RTMP23    LITERAL STRING, PUT IT OUT.
+         BRM*    OUTSTR
+         BRU     ENDPC1    GO GET MORE.
+ENDPC2   CLA               RESET FORMATTING SWITCH AND RETURN
+         STA     FMTSW
+         BRR     RTN2                                        HB 72/02/08
+
+OUTSTR   ZRO     RTN5      OUTPUT A STRING, KEEP TRACK OF POS.
+         STP     RTMP25    SAVE THE POINTERS.
+         LDX     SPCCNT    GET THE SPACE COUNT (FOR PACKING.)
+OUTSLP   GCI     RTMP25    GET NEXT CHARACTER.
+         BRU     OUTSF     GO FINISH UP.
+         SKG     ZERO      CHECK FOR SPACE.
+         BRU     OUTSS     A SPACE
+         SKE     MBCH      MULTI-BLANK?                      HB 72/02/08
+         BRU     *+2
+         BRU     OUTSC     YES, GO GET SPACE COUNT.          HB 72/02/08
+OUTSPC   COPY    XA,AX,B
+         SKG     ZERO      CHECK THE SPACE COUNT.
+         BRU     OUTSO     NO SPACES TO PUT OUT.
+         SKG     ONE       SEE IF JUST ONE SPACE
+         BRU     *+6       YES, PUT IT OUT UNPACKED.
+         LDB     =135B     CONDITIONALLY GET MULT SPC CHR.
+         SKG     TWO       CHECK TO SEE IF PACKING TWO BLANKS.
+         COPY    A,B       YES, INSTEAD PUT OUT TWO BLANKS.
+         XAB
+         CIO     OUTFIL
+         CBA               GET BACK THE COUNT (OR A SPACE.)
+         CIO     OUTFIL
+         CLA               ZERO SPACE COUNT.
+OUTSO    XXA               GET BACK THE ORIGINAL CHARACTER
+         SKG     MONE      SEE IF DUMMY TO GET OUT SPACES.
+         BRR     RTN5      YES, RETURN.
+         CIO     OUTFIL
+         MIN     RTMP2     ASSUME PRINTING CHAR, INCREMENT POS.
+         SKG     =136B     SEE IF IT REALLY WAS.
+         BRU     OUTSLP    YES, GET NEXT.
+         SKE     =335B
+         BRU     *+2
+         BRU     OUTSLP    COUNT RIGHT BRACKED CHAR'S.
+         SKG     CRCH      NO, SEE IF IT RETURNED THE CARRIAGE.
+         SKG     =151B     (LF), VT, EJECT, (RET).
+         BRU     *+4       NO, DO MORE CHECKING
+OUTSZ    CLA               YES, ZERO LINE POSITION.
+         STA     RTMP2
+         BRU     OUTSLP    LOOP.
+         SKE     =355B     CHECK FOR (RET) ONLY.,
+         BRU     *+2
+         BRU     OUTSZ     ZERO POSITION.
+         LDB     MTWO      BACK TWO FOR BACKSPACE,
+         SKE     =150B     CHECK FOR REALLY BACKSPACE
+         LDB     MONE      RESTORE POS CNT FOR REGULAR CTRL.
+         CBA
+         ADM     RTMP2
+         SKN     RTMP2     DON'T LET POS GET NEGATIVE.
+         BRU     OUTSLP
+         CLA               RESET THE POSITION.
+         STA     RTMP2
+         BRU     OUTSLP    GO LOOP A BUNCH.
+OUTSC    STX     SPCCNT    SAVE THE SPACE COUNT.             HB 72/02/08
+         GCI     RTMP25    GET THE NUMBER OF SPACES
+         BRR     RTN5
+         ADM     SPCCNT
+         ADM     RTMP2     HB 72-02-24
+         LDX     SPCCNT
+         BRU     OUTSSD                                      HB 72/02/08
+OUTSS    BRX     *+1       OUTPUT A SPACE (INCREMENT COUNT.)
+         MIN     RTMP2     INCREMENT POSITION                HB 72-02-24
+OUTSSD   CXA               GET SPACE COUNT.
+         SKG     =63D      SEE IF A BIG SPACE COUNT.
+         BRU     OUTSLP    NO, LET IT BUILD UP SOME MORE.
+         SUB     =63D      YES, PUT OUT SOME SPACES
+         CAX               REDUCE THE COUNT.
+         LDA     =135B
+         CIO     OUTFIL
+         LDA     =63D
+         CIO     OUTFIL
+         BRU     OUTSSD
+OUTSF    CLA               PUT OUT TRAILING SPACES.
+         STA     SPCCNT
+         LDA     MONE      DUMMY CHARACTER TO GET SPACES OUT.
+         BRU     OUTSPC
+
+TABF     ZRO     RTN0      CALL FOR TAB(N) FUNCTION               <5.10
+         XMA     SPCCNT    TRIM TRAILING BLANKS
+         CNA
+         ADM     RTMP2
+         LDA     SPCCNT
+       SBRM    BRS50       CONVERT TO INTEGER
+         SUB     ONE       SINCE TAB(1) IS ZERO SPACES.
+         SKG     =136      (IGNORING POSSIBLE OVERFLOW.)
+         SKG     RTMP2
+         LDA     RTMP2     DO NOTHING IF TOO BIG OR TOO SMALL.
+         SUB     RTMP2
+         ADM     RTMP2     UPDATE POSITION COUNTER.
+         MRG     B00T00    SET FLAG IN SPCCNT FOR PA.
+         STA     SPCCNT
+         CLAB              RETURN ZERO VALUE, IF GUY WANTS IT.
+         BRR     RTN0      >5.10
+         
+NODATA EAX     NODATX
+       BRU     MESSAG
+CLOSED EAX     CLOSEX
+       BRU     MESSAG
+$MESSAG SBRM    MESX
+       SBRM    ERRLN
+       BRU     GOEND
+ERRLN    ZRO     RTMP1     PRINT OUT LINE OF ERROR.          HB 72/01/14
+         CLA
+         CIO     ONE
+         LDX     NUMB      LAST TRANSFER ADDRESS.
+         LDA     -3,2      OFFSET OF LINE NUMBER
+         LDX     ONE
+         LDB     TEN       PUT OUT THE LINE NUMBER.
+         SKE     LINE      IF DIRECT STATEMENT
+         BRS     36
+         BRR     RTMP1                                       HB 72/01/14
+NODATX ASC     'OUT OF DATA/'
+NOLNX    ASC     'UNDEF LINE NO IN/'   MORE CLEAR MESSAGE    [HB 24.06.71]
+BADCHX ASC     'BAD INPUT CHARACTER/'
+FENDX    ASC     'FILE AT EOF/'    5.10
+CLOSEX   ASC     'FILE CLOSED/'    5.10
+ERR1X  ASC     'IMPROPER NESTING IN FOR LOOP/'
+ERR2X  ASC     'WRONG NUMBER SUBSCRIPTS/'
+$ERR3X  ASC     'UNDEFINED SUBSCRIPTED VARIABLE/'
+ERR4X  ASC     'NEGATIVE SUBSCRIPT/'
+ERR5X  ASC     'ARRAY DIM TOO LARGE/'
+ERR7X  ASC     '0 STEP SIZE IN FOR LOOP/'
+$ERR8X  ASC     'ARRAY OUT OF BOUNDS/'
+ERR9X  ASC     'RETURN BEFORE GOSUB/'
+ERR10X ASC     'NUMBER TOO BIG/'
+ERR11X ASC     'UNDEFINED FUNCTION/'
+ERR12X  ASC    'SQRT OF NEG NUMBER/'
+ERR14X ASC     'UNABLE TO OPEN FILE/'
+ERR15X ASC     'LOG OF NUMBER <= 0/'
+ERR16X ASC     'EXCESSIVE GOSUB NESTING/'
+ERR17X   ASC     'ERR IN FORMAT/'
+ERR18X   ASC     'FILE TYPE WRONG/'                           5.10
+ERR19X   ASC     'FILE USE WRONG/'                            5.10
+IER1X    ASC     'FORMAT NOT FOR STRING/'
+IER2X    ASC     'FORMAT NOT FOR NUMBER/'                          5.10
+RD1X     ASC     'STRING READ FOR NUMB/'  HB 71.12.20
+RD2X     ASC     'NUMB READ FOR STRING/'  HB 71.12.20
+SLENRX   ASC     'STRING TOO LONG/'                          HB 72/02/03
+BSCHX    ASC     'BAD STR CHAR/'   FOR ERROR IN NUM(A$)      HB 72/02/14
+ONGERX   ASC     'RANGE ERROR/'  IN ON/GOTO                        5.10
+ERR16  EAX     ERR16X
+       BRU     MESSAG
+$ERR17   EAX     ERR17X    ERROR IN PICTURE.                        5.10
+         BRU     MESSAG
+ERROR1 EAX     ERR1X
+       BRU     MESSAG
+ERROR2 EAX     ERR2X
+       BRU     MESSAG
+ERROR3 EAX     ERR3X
+       BRU     MESSAG
+ERROR4 EAX     ERR4X
+       BRU     MESSAG
+ERROR5 EAX     ERR5X
+       BRU     MESSAG
+$ERROR6  EAX     ERR6X     HB 71.12.21
+       BRU     MESSAG
+ERROR7 EAX     ERR7X
+       BRU     MESSAG
+$ERROR8 EAX     ERR8X
+       BRU     MESSAG
+ERROR9 EAX     ERR9X
+       BRU     MESSAG
+ERR10  EAX     ERR10X
+       BRU     MESSAG
+ERR11  EAX     ERR11X
+       BRU     MESSAG
+$ERR12 EAX     ERR12X
+       SBRM    MESX
+       SBRM    ERRLN
+       LDA     CRCH
+       CIO     ONE
+       LDA     LFCH
+       CIO     ONE
+       BRU     SQRTN
+ERR13  EAX     ERR13X
+       BRU     MESSAG
+ERR14  EAX     ERR14X
+       BRU     MESSAG
+$ERR15 EAX     ERR15X
+       BRU     MESSAG
+ERR18    EAX     ERR18X    <5.10
+         BRU     MESSAG
+ERR19    EAX     ERR19X
+         BRU     MESSAG    >5.10
+IOERR1   EAX     IER1X
+         BRU     MESSAG
+IOERR2   EAX     IER2X     5.10
+         BRU     MESSAG    5.10
+         BRU     MESSAG
+RDER1    EAX     RD1X      HB 71.12.20
+         BRU     MESSAG
+RDER2    EAX     RD2X
+         BRU     MESSAG    HB 71.12.20
+SLENR    EAX     SLENRX    HB 72/02/03
+         BRU     MESSAG    HB 72/02/03
+BSCHER   EAX     BSCHX     5.10
+         BRU     MESSAG    5.10
+ONGERR   EAX     ONGERX    5.10
+         BRU     MESSAG    5.10
+         
+*4BASIC IDENT 3/19/70  POPS II
+*THIS FILE COMPLETELY REVISED 8/14/68 BY T.B.GRAY USING MODIFIED
+*VERSIONS OF FILES S5BAS THRU S9BAS FROM VERSION 3.0.
+*  SIN (COS) - FLOATING POINT SINE AND COSINE
+*REVISED VERSION OF S5BAS-3.0 8/14/68 TBG
+
+
+COS    POPD    10100000B,2
+$POP1  FAD     ATF4
+SIN    POPD    10000000B,2
+$POP0  STB     SNFT
+       RCY     9
+       RSH     15      SIGN-EXTENDED EXPONENT TO A
+       SKG     =-13
+       BRU     SNFX    SMALL ANGLE, RETURN.
+       LDA     =-1
+       STA     FADG2   INITIALIZE FADG2
+       BAC
+       LDB     SNFT    RESTORE REGISTERS
+       FMP     SNF2    2/PI. CONVERT ARGUMENT TO QUADRANT
+       STP     SNFT    MEASURE
+       FAD     SNF3    EXTRACT NO SEMICIRCLES (2*QUADRANT)
+       XAB   
+       SKA     SNF5            ROUND TO NEAREST SEMICERCLE
+       BRU     *+2
+       BRU     SNFC    1ST OR 3RD. ALREADY ROUNDED
+       ADD     SNF5            2ND OR 4TH
+       XAB
+       ADC     SNF4
+       SKA     SNF6         IF ARGUMENT NEGATIVES
+       BRU     *+3             SUBTRACT 1 (2 TO COMPENSATE FOR ADD)
+       XAB
+       BRU     SNFC
+       XAB     
+       SUB     SNF8  
+       XAB
+       SUC     SNF7
+       XAB
+* 
+SNFC   SKA     SNF8         SET FADG2 IF 2ND OR 3RD QUADRANT
+       MIN     FADG2 
+       XAB 
+       FSB     SNF3         FLOAT RESULT (ARG ROUNDED TO 
+*                            NEAREST SEMICIRCLE
+       FSB     SNFT         REDUCED ARGUMENT
+       SKN     FADG2 
+       BRU     *+2          2ND OR 3RD
+       FMP     SNF6            1ST OR 4TH
+       STP     SNFT
+       FMP      SNFT
+       STP     SNFU
+       FMP     ZC15          POYNOMIAL APPROXIMATION
+       FAD     ZC13
+       FMP     SNFU
+       FAD     ZC11 
+       FMP     SNFU
+       FAD     ZC9
+       FMP     SNFU
+       FAD     ZC7
+       FMP     SNFU
+       FAD     ZC5
+       FMP     SNFU
+       FAD     ZC3
+       FMP     SNFU
+       FAD     ATF4
+       FMP     SNFT
+SNFR   BRR     0               *****EXIT
+SNFX   BAC                  SMALL ARGUMENT, RESTORE REGISTERS
+       LDB     SNFT
+       BRR     0               *****EXIT
+SNF2   DATA    24276301B       2/PI
+       DATA    55624000B
+SNF3   DATA    30000000B
+       DATA    00000046B
+SNF4   DATA    0
+SNF5   DATA    01000B
+SNF6   DATA    40000000B
+SNF7   DATA    0
+SNF8   DATA    00002000B
+*
+ZC3     DATA    53250414B       -((PI/2)**3)/3
+       DATA    31665000B
+ZC5     DATA    24315361B       ((PI/2)**5)/5
+       DATA    47353775B
+ZC7     DATA    54645514B       -((PI/2)**7)/7
+       DATA    61472771B
+ZC9     DATA    25017015B       ((PI/2)**9)/9
+       DATA    10375764B
+ZC11    DATA    41637054B       -((PI/2)**11)/11
+       DATA    02057756B
+ZC13    DATA    36436415B       ((PI/2)**13)/13
+       DATA    14733750B
+ZC15    DATA    51027632B       -((PI/2)**15)/15
+       DATA    52021742B
+         
+**   07/31/68-SQUARE-ROOT
+*      SQRT - FLOATING POINT SQUAR ROOT ROUTINE
+SQRT   POPD    10300000B,2
+$POP3  SKA     =-1             EXIT IF ZERO ARG
+       BRU     *+2
+       BRR     0               *****EXIT
+       STA     AH
+       STB     AL
+       SKN     AH           TEST ARG NEG
+       BRU     ARGPOS       NO
+       BRU     ERR12
+$SQRTN LDP     AH              **SHOULD BE ERROR-NEGATIVE
+       FMP     SC4              YES - MAKE POSITIVE
+       STP     AH
+ARGPOS XAB 
+       LCY     4
+       ETR     =00000023B 
+         CAX               INSTEAD OF STORE, LOAD            HB 71.12.23
+       LDA     AH
+       MUL     SC3,2            PERFORM CUBIC FIT
+       ADD     SC2,2
+       MUL     AH 
+       ADD     SC1,2
+       MUL     AH
+       ADD     SC0,2 
+       STA     WKA          WKA = ROOT
+       LDA    AL 
+       ETR     =00000777B
+       SKA     =00000400B
+       MRG     =00001000B
+       ADD     ONE           AE + 1
+       RSH     1 
+         CAX               SAVE EXPONENT IN X                HB 71.12.07
+       STB     WKB
+       LDA     AH
+       LDB     AL
+       SKN     WKB
+       RSH     1
+       RSH     2
+       DIV     WKA          AH,AL/ROOT
+       STA     PQ
+       BAC 
+       DIV     WKA          REMAINDER/ROOT
+         LCY     25        POSITION PROPERLY                 HB 71.12.07
+         LDE               GET EXPONENT FROM X               HB 71.12.07
+       ETR     ONE
+       SKA     ONE           TEST NEG
+       MRG     =-1
+       ADD     WKA
+       ADD     PQ
+       BRR     0               *****EXIT
+SC0     DATA    3571347B     C40
+       DATA    4105632B     C41
+       DATA    4377337B     C42
+       DATA    4653532B     C43
+SC1     DATA    24035556B     C50
+       DATA    22100301B     C51
+       DATA    20524702B     C52
+       DATA    17404074B     C53
+SC2     DATA    64040313B     C60
+       DATA    67137522B       C61
+       DATA    71114033B     C62
+       DATA    72364432B     C63
+SC3     DATA    4201570B     C70
+       DATA    2442454B     C71
+       DATA    1540204B     C72
+       DATA    1133522B     C73
+       DATA    2511007B     C00
+       DATA    2731406B     C01
+       DATA    3134614B     C02
+       DATA    3326443B     C03
+       DATA    16135622B     C10
+       DATA    14642160B     C11
+       DATA    13621520B       C12
+       DATA    12756406B     C13
+       DATA    67436343B     C20
+       DATA    71611227B     C21
+       DATA    73117403B     C22
+       DATA    74060542B     C23
+       DATA    3003710B       C30
+       DATA    1641433B      C31
+       DATA    1143077B     C32
+       DATA    652664B     C33
+SC4     DATA    40000000B
+       DATA    00000000B
+         
+* MODIFIED S7BAS-3.0. 8/14/68 TBG
+*  EXPX - FLOATING POINT BASE 10 EXPONENTIATION
+EXT    POPD    12000000B,1
+$POP20 FMP     LN10            ***BASE 10 EXP 10/8/68 TBG
+       SBRM    EXP1            10/8/68 TBG
+       BRR     0               *****EXIT
+EXP    POPD    10400000B,2
+$POP4  SBRM    EXP1
+       BRR     0               *****EXIT
+LN10   DATA    22327306B
+       DATA    73554002B
+*  EXP - FLOATING POINT EXPONENTIAL
+EXP1   ZRO     RTN1
+       FMP     LOGE         X=X(LOGE)
+       STP     EXF3 
+       RCY     9
+       RSH     15
+       SKG     =8             IS .X.>256
+       BRU     EXFA         NO
+       SKN     EXF3         YES, IS X<0
+       BRU     ERP4        NO, ERROR: X TOO LARGE
+       CLAB                    YES, EXP(X)=0
+       BRU     EXFC 
+EXFA   LDA     LIT
+       STA     MADCH 
+       LDP     EXF3         X/LN2
+       FAD     EXF6         SEPARATE I AND F, ADD 1 TO I
+       STB     MATT2           STORE I+1
+       FSB     EXF6         SUBTRACT 1 FROM I. FLOAT RESULT
+       STP     EXF1
+       LDP     EXF3
+       FSB     EXF1         I+F-I=F
+       STP     EXF1
+       FMP     EXF1
+       STP    EXF3         F SQUARED
+         FAD     EXE       NEW NAME, FEWER CONFLICT.         HB 71.12.07
+       STP     EXF4         FSQ+E
+       LDA     MATT2        I+1 AT 15
+       RSH    9            I+1 AT 23
+       ETR     =00000777B     CLEAR ALL BUT LOW ORDER 9 BITS
+       STA     MATT2         (1/2)*2**(I+1)=2**I
+         LDP     EXD
+       FDV     EXF4         D/(FSQ+E)
+         FAD     EXC
+       FAD     EXF3
+       STP     EXF4         FSQ+C-D/(FSQ+E)
+         LDP     EXB
+       FDV     EXF4 
+       FSB     EXF1 
+         FAD     EXA
+       STA     EXF4
+       CLA
+       RCH     110B
+       SUB     EXF5
+       RCH     104B
+       STB     EXF41           (A-F-B/FSQ+C-D/(FSQ+E)))/2
+       LDP     EXF1
+       FDV     EXF4
+       FAD     LIT
+       FMP     MADCH        MULTIPLY BY 2**I
+EXFC   BRR     RTN1
+ERP4  LDP     LGE
+       BRR     RTN1
+EXF5   DATA    00000001B
+EXF6   DATA    30000000B
+       DATA    00001046B
+LOGE   DATA    27052435B     LOGE
+       DATA    45127001B
+EXA      DATA    25507713B     43.2808512267
+       DATA    56662006B
+EXB      DATA    44717116B
+       DATA    31671017B 
+EXC      DATA    30254757B     778.81042962
+       DATA    02415012B
+EXD      DATA    56676316B     -8769.5960924
+       DATA    63175016B
+EXE      DATA    27656522B
+       DATA    51520007B
+         
+*MODIFIED S8BAS-3.0 LOG   8/14/68 TBG
+*  ALOGX - FLOATING POINT BASE 10 LOGARITHM
+LGT    POPD    12100000B,1
+$POP21 SBRM    ALOG1           *****LOG 10
+       FMP     LTF1
+       BRR     0               *****EXIT
+LOG    POPD    11000000B,2
+$POP10 SBRM    ALOG1
+       BRR     0               *****EXIT
+LTF1   DATA    33626754B
+       DATA    25116777B
+*      ALOG - FLOATING POINT LOGARITHM
+ALOG1  ZRO     RTN1
+       SKG    =0             IS ARGUMENT LESS THAN OR EQUAL TO
+       BRU     ERP21        YES, ERROR EXIT
+       STP     LGF1 
+       LDA     LGF11
+       ETR     =77777000B
+       STA     LGF11
+       LSH     39           MOVE EXP TO LEFT PART OF A
+       SUB     =00040000B       I=2-I/2
+       ROV
+        LDX     =8
+       NOD     8               NORMALIZE INTEGER PART
+       STA     LGF2 
+       STX     LGF22           SAVE INTEGER PART
+       LDP     LGF1
+       FAD     LG1
+       STP     LGF3         (X+LSQ2)
+       FSB     LG2     (X-1/SQ2)
+       FDV    LGF3 
+       STP     LGF3         Y=(X-L/SQ2)/(X+1/SQ2)
+       FMP     LGF3   
+       STP    LGF4         (Y**2)
+         FMP     LC7       LC7*(YSQ)
+         FAD     LC5       LC5+LC7*(YSQ)
+       FMP     LGF4         (C5+C7*(YSQ))YSQ
+         FAD     LC3       LC3+(LC5+LC7*(YSQ))YSQ
+       FMP     LGF4         (C3+(C5+C7*(YSQ))YSQ)YSQ
+         FAD     LC1       (LC1+(LC3+(LC5+LC7(YSQ)YSQ)YSQ))
+       FMP    LGF3         (CL+(C3+(C5+C7(YSQ)YSQ)YSQ)Y)
+       FAD    LGF2         I+LOG(FRAC.PART)
+       FMP     LN2          (I+LOG F)*LN2 = LN(X)
+       BRR     RTN1
+ERP21  CLAB                    RETURN 0
+       BRU     ERR15           ******PRINT LOG OF NUMBER <=0
+LG1    DATA    26501171B     .707106781187
+       DATA    46377000B 
+LG2    DATA    26501171B       1.414213562374 = SQ2
+       DATA    46377001B
+LC1      DATA    27052435B
+       DATA    43752002B
+LC3      DATA    36616111B
+       DATA    44322000B
+LC5      DATA    22346604B
+       DATA    01441000B
+LC7      DATA   33625645B
+       DATA    51342777B
+LN2    DATA    26134413B     .693147180578
+       DATA    76771000B
+         
+*MODIFIED S9BAS - 3.0 ATAN.  8/14/68 TBG
+*  ATAN  (ATAN2) - FLOATING POINT ARCTANGENT SUBROUTINE
+ATAN   POPD    11100000B,2
+$POP11 CLX
+       STA     FADG6        SET FADG6
+       SKA     B00T00     IS Y<0
+       SBRM    BRS21       FASTER, I HOPE!!                  [HB 24.06.71]
+ATFA   STP     ATF1            SAVE/Y/
+       FAD      ATF7             Y-1
+       STA    FADG4         SET FADG 4
+       SKG     =0              IS (1-Y)<0
+       BRU     *+2             NO
+       BRU     ATFC         YES, Y>1
+       LDP     ATF1         (A,B)=U=Y
+       BRU     ATFD
+ATFC    LDP    LIT           (A,B) = 1
+       FDV    ATF1         (A,B)=U=1/Y
+ATFD   STP     ATF1
+       RCY     9
+       RSH     15           SIGN EXTENDED EXPONENT
+       SKG     MFOUR        IS U<1/16
+       BRU     ATFE         YES, DO SERIES APPROXIMATION
+       LDP     ATF1
+       FAD     ATF6         V IN LOW ORDER BITS OF A
+       SKA     ONE
+       ADD     ONE           ROUND V TO NEAREST 1/8
+       STA     ATF2
+       ETR     =00000777B
+       CAX                     SAVE TABLE LOOK UP NUMBER IN INDEX
+       XAB
+       ETR     =00000777B
+       XAB
+       LDA     ATF2
+       FSB     ATF6         NORMALIZE V
+       STP     ATF2         SAVE V
+       FMP     ATF1    (A,B)=UV
+       FAD     LIT          (A,B)=1+UV
+       XMA     ATF1         (A,B)=U, (AFT1)=(1+UV)
+       XAB
+       XMA     ATF11
+       XAB
+       FSB     ATF2         (A,B)=U-V
+       FDV     ATF1    (A,B)=(U-V)/(1+UV)
+       STP     ATF1    SAVE (U-V)/(1+UV)
+ATFE    LDP     ATF1
+       FMP     ATF1
+       STP     ATF2
+*
+*      DO SERIES APPROXIMATION
+*
+       FMP     CC7
+       FAD     CC5
+       FMP     ATF2
+       FAD     CC3
+       FMP     ATF2
+       FAD     LIT
+       FMP     ATF1
+       FAD     ATFT,2         ADD ARCTAN (U-V)
+       SKN     FADG4        IS Y<1
+       BRU     *+2          YES
+       BRU     ATFG         NO
+       STP     ATF1         SAVE THETA
+       LDP     ATF4         PI/1
+       FSB     ATF1         THETA=PI/2-THETA
+ATFG   SKN     FADG6        IS Y<O
+       BRU     *+2
+       SBRM    BRS21       THETA = -THETA                    [HB 29.06.71]
+       BRR     0               *****EXIT
+ATF4   DATA    31103755B     PI/2
+       DATA    24210001B
+$PY    EQU     *
+ATF5   DATA    31103755B      PI
+       DATA    24211002B
+ATF6   DATA    20000000B
+       DATA    00000023B
+ATF7   DATA    40000000B     -1
+       DATA    00000000B
+CC3     DATA    52525252B     1/3
+       DATA    52525777B 
+CC5     DATA    31463146B     1/5
+       DATA    31463776B 
+CC7     DATA    55555555B     1/7
+       DATA    55556776B
+ATFT   DATA    00000000B     ARCTAN(0)
+       DATA    00000000B
+       DATA    37653352B      .124354994547
+       DATA    32531775B
+       DATA    37266727B     .244978663127
+       DATA    71131776B
+       DATA    26754145B     .358770670271
+       DATA    01711777B
+       DATA    35530634B     .463647609001
+       DATA    05304777B
+       DATA    21700056B     .558599315344
+       DATA    53676000B
+       DATA    24457076B     .643501108793
+       DATA    43115000B
+       DATA    27001237B     .718829999622
+       DATA    05361000B
+       DATA    31103755B     .785398163397
+       DATA    24210000B
+         
+*        WRITTEN 71.12.28.  HEB.
+
+DEBUG    EQU     2         1=DEBUGGING, 0=PRODUCTION.
+
+*        ALLOCATE A STRING BLOCK.
+*        RETURN:  BASIC PTRS IN A,B,
+*                 HIGH ADDRESS IN X.
+*
+$SBLOCK  ZRO     RTN4
+         STA     BKLEN     SAVE AWAY THE LENGTH (IN CHARS).
+         ADD     FIVE      ROUND, ALLOW TITLE WORD.          HB 71.12.28
+         MUL     MAGIC     1./3.   CONVERT CHARS TO WORDS.
+         BRM*    BLOCK     GET THE MEMORY.
+         STA     BKLEN
+         LSH     14        LENGTH TO PROPER POS.
+         COPY    BA,XA     MERGE LENGTH WITH SELF POINTER.
+         STA     0,2
+         LDA     BKLEN     ADDRESS OF FIRST WORD.
+         MUL     =3B7
+         LSH     2         CONVERT TO POINTER.
+         SUB     ONE
+         ABC
+         BRR     RTN4
+
+
+*        ALLOCATE A REGULAR BLOCK.
+*        RETURN:  LOWEST IN A.
+*                 HIGHEST IN X.
+*                 LENGTH IN B.
+*
+$BLOCK   ZRO     RTN5
+         COPY    AB,N      -LEN IN A, +LEN IN B.
+         ADD     SCBASE
+         SKG     LLINE     SEE IF GC NEEDED.
+         BRU     BKGC
+BLOCK1   LDX     SCBASE
+         STA     SCBASE    UPDATE SCBASE.
+         ADD     ONE       FOR FIRST WORD POSITION           HB 72/01/10
+         STX     0,2       SET UP SELF POINTER.
+         BRR     RTN5
+BKGC     BSS     0         MUST DOA GARBAGE COLLECT.
+         STB     GCREQ     SAVE LENGTH OF REQUIRED BLOCK.
+GC       BSS     0         DO THE DIRTY WORK.
+         IF      DEBUG=1
+         EAX     STM
+         SBRM    MESX
+         BRS     88        READ TIME OF EXECUTION.
+         LDB     TEN
+         LDX     ONE
+         BRS     36
+         BRU     ESTM
+STM      ASC     '$<GC, T = /'
+ESTM     BSS     0
+         ELSF    DEBUG=0
+ESCBIT   EQU     1B3       BIT TO DISABLE ESCAPES.
+         LDX     MONE
+         BRS     54        READ TTYTBL WORD.
+         MRG     =ESCBIT
+         BRS     55
+         ENDF
+         LDX     ARRTOP    FIRST WORD IN D.S.                HB 72-03-02
+         STX     GCTOP
+         LDA     SCBASE    SAVE AS TEMP
+         STA     GCBOT     BOTTOM OF D.S.
+         COPY    A,X       HB 72/01/25
+         STA     GCFREE    NUMBER OF LOCATIONS RECLAIMED     HB 72/01/10
+*                          SCBASE IS FIRST AVAILABLE WORD IN 
+*                          D.S. (=DYNAMIC STORAGE).
+
+*        PHASE 1.
+
+         EAX     MARKBK    MARK BLOCK ROUTINE.
+         BRM*    GCTRAC    TRACE THROUGH LISTS, MARKING.
+
+*        PHASE 2.  ADJUST THE TITLES.
+
+         CLA
+         STA     DEAD      SET STORAGE IN FLUX MODE
+         LDX     GCTOP
+         COPY    XA,XB     SAVE FOR LATER                          5.10
+         BRU     ADJBT     5.10
+GCADJL   SKN     0,2       IS THE BLOCK MARKED?
+         BRU     ADJFRE    NO, IT IS FRE.
+         LDA     0,2       GET TITLE.
+         ETR     B00T09    GET RID OF OLD SELF POINTER.      HB 72/01/10
+         XXA               NOW MERGE IN NEW SELF POINTER.
+         COPY    XA,BA,AX
+         STA     0,2
+         BRM*    BKSIZE    COMPUTE SIZE OF THIS BLOCK.
+         STA     GCT1
+         COPY    BA,XB     MODIFY PTRB, SAVE PTRA
+         SUB     GCT1
+         COPY    BX,AB
+         BRU     ADJADV    ADVANCE TO NEXT.
+ADJFRE   BRM*    BKSIZE    GET SIZE, AGAIN.
+         ADM     GCFREE
+         STA     GCT1
+ADJADV   CXA               ADVANCE PTRA.
+         SUB     GCT1      TO NEXT BLOCK.
+         CAX
+ADJBT    SKE     SCBASE    SEE IF AT END OF D.S.                   5.10
+         BRU     GCADJL    NO, MORE TO DO.
+         STB     SCBASE    RESET TOP OF FREE STORAGE         HB 72/01/10
+
+*        PHASE 3.  ADJUST ALL POINTERS.
+
+         CLX               HB 72/01/25
+         EAX     ADJP      ADJUST POINTERS ROUTINE.
+         BRM*    GCTRAC
+
+*        PHASE 4.  MOVE THE BLOCKS.
+         LDX     GCTOP
+         BRU     GCMOVN    5.10
+GCMOVL   SKN     0,2       IS THE BLOCK MARKED?
+         BRU     MVFREE    NO, IT IS GARBAGE.
+         BRM*    BKSIZE    GET THE SIZE OF GOOD BLOCK.
+         MRG     B00T00    SET SIGN FOR LEADING SKR.
+         STA     GCT1
+         LDA     0,2       RESET MARKED BIT.
+         EOR     B00T00
+         STA     0,2
+         CAB               SAVE THE TITLE
+GCMOVE   SKR     GCT1      ANYTHING LEFT TO MOVE?
+         BRU     GCMOVN    NO, ADVANCE (MOVE ON).
+         LDA     0,2
+         EAX     -1,2      GET TO NEXT WORD.
+         XXB
+         STA     0,2       MOVE THE WORD TO APPROPRIATE ADDRESS.
+         EAX     -1,2
+         XXB
+         BRU     GCMOVE    TRY FOR MORE.
+
+MVFREE   BRM*    BKSIZE    HERE IF FREE BLOCK ENCOUNTERED IN MOVING.
+         STA     GCT1
+         CXA               MOVE SOURCE POINTER TO NEXT BLOCK.
+         SUB     GCT1      BUT LEAVE DEST. POINTER ALONE.
+         CAX               HB 72/01/10
+         BRU     GCMVT
+
+GCMOVN   CXA               SEE IF AT END OF D.S.
+GCMVT    SKE     GCBOT
+         BRU     GCMOVL    NOT YET, MORE TO DO.
+         LDA     MONE
+         STA     DEAD
+         IF      DEBUG=1
+         EAX     NDM1
+         SBRM    MESX
+         BRS     88
+         LDB     TEN
+         LDX     ONE
+         BRS     36
+         EAX     NDM2
+         SBRM    MESX
+         BRU     ENDM1
+NDM1     ASC     ' GC, T = /'
+NDM2     ASC     '>$/'
+ENDM1    BSS     0
+         ELSF    DEBUG=0
+         LDX     MONE      TURN ESCAPES BACK ON.
+         BRS     54
+         ETR     =(NOT)ESCBIT
+         BRS     55
+         ENDF
+
+*
+*                          END OF THE GARBAGE COLLECTOR PROPER.
+*
+GCDONE   LDB     SCBASE    GET TOP OF FREE STORAGE           HB 72/01/10
+         COPY    BA,BX     SEE IF ENOUGH RECLAIMED.          HB 72/01/10
+         SUB     GCREQ
+         SKG     LLINE
+         BRU     ERROR6
+         LDB     GCREQ     GO ALL THAT IS NECESSARY.
+         BRU     BLOCK1
+
+
+*        HERE ARE THE AUXILLIARY ROUTINES FOR THE GARBAGE COLLECTOR.
+
+*        ROUTINE TO MARK BLOCKS.
+*        INPUT:  X=ADDRESS OF POINTER TO BLOCK.
+*                B=RETURN ADDRESS
+*                  4B7 BIT SET WHEN MARKING STRING.
+*        RETURN: B=POINTER ADDRESS.
+
+MARKBK   SKB     B00T00
+         BRU     MKST
+         LDA*    0,2       GET TITLE WORD.
+         MRG     B00T00    MARK IT.
+         STA*    0,2
+         XXB               AND NOW EXIT.
+         BRU     0,2
+MKST     LDA     0,2       GET BEG POINTER.
+         ETR     LENMSK    HB 72/01/10
+         ADD     1,2       ADD LENGTH
+         STB     GCRTN     SAVE RETURN LOCATION.
+         MUL     MAGIC     1./3.
+         COPY    AX,XB     SAVE POINTER.
+         SKG     LLINE
+         BRU*    GCRTN     HB 72/01/10
+         LDA     1,2
+         MRG     B00T00    MARK THE BLOCK.
+         STA     1,2
+         BRU*    GCRTN     RETURN.
+
+
+*        ADJP, BKSIZE, AND GCTRAC HAVE ALL BEEN MOVED TO
+*        2BAS SO THAT THEY MAY BE USED BY COMPILER PROCEDURES.
+$LLL4    BSS     0         START OF LITERALS.
+
+       NOLIST  EXT,GO
+
+       END

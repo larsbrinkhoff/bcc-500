@@ -1,0 +1,330 @@
+          PROGRAM CHIO'INIT;
+          INCLUDE CHIOD, RESMON;
+          DECLARE I, MTAE, MTCE, NXT, BUFFER, PTR, LDVTE, LB24E, LBTBE;
+          FUNCTION CHIO'INIT();
+
+*  MAIN LINE TABLE INITIALIZATION
+          BSET(MTAS, 0, LMTAE*NCLP);
+*  FOR LOCAL BIT-SCANNED DEVICES
+          FOR I ← 0 TO NLBSD-1 DO;
+              MTAE ← @MTA[FLBSDL/2+I];
+              MTAE.BS ← 3;* BREAK ON EVERYTHING
+              MTAE.WS ← 3;* WAKEUP ON EVERYTHING
+              MTAE.ES ← 0;* NO ECHO
+              MTAE.EBC ← 1;* ECHO BREAK CHARACTERS
+              MTAE.RCNO ← 0;* REMOTE CONCENTRATOR 0
+              MTAE.DTYP ← 2;* MODEL 35 TELETYPE
+              MTAE.QUITC ← 213B;* CONTROL K
+              MTAE.LDVN ← I;
+              MTAE.LFK ← 0;* DON'T USE 'LINE FEED KLUDGE'
+              MTAE.LOK ← 0;* LINKS NOT ALLOWED
+              MTAE.PROC ← 1;* PROCESS 1 AS 'LISTENER'
+          ENDFOR;
+*  FOR LOCAL 2400-BAUD LINES
+          FOR I ← 0 TO NL24D-1 DO;
+              MTAE ← @MTA[FL24DL/2+I];
+              MTAE.ES ← 0;* NO ECHO
+              MTAE.RCNO ← 1;* REMOTE CONCENTRATOR 1
+              MTAE.DTYP ← (4 IF I=M30'LDVN ELSE 0);
+              MTAE.QUITC ← 0;* NO QUIT CHARACTER
+              MTAE.LDVN ← I;
+              MTAE.PROC ← 1;* PROCESS 1
+          ENDFOR;
+
+*  MAIN POINTER TABLE INITIALIZATION
+          BSET(MTCS, 0, LMTCE*2*NCLP);
+*  FOR LOCAL BIT-SCANNED DEVICES
+          FOR I ← FLBSDL BY 2 TO FLBSDL+2*NLBSD-1 DO;
+              MTCE ← @MTC[I];
+              MTCE.XBCNT ← 4;* AT MOST 4 INPUT BUFFERS
+              MTCE.WKCNT ← 72;* WAKEUP WHEN INPUT CCNT = 72
+              MTCE ← MTCE+LMTCE;
+              MTCE.XBCNT ← 4;* AT MOST 4 OUTPUT BUFFERS
+              MTCE.WKCNT ← 21;* WAKE-UP WHEN OUTPUT CCNT = 21
+          ENDFOR;
+*  FOR LOCAL 2400-BAUD LINES
+          FOR I ← FL24DL BY 2 TO FL24DL+2*NL24D-1 DO;
+              MTCE ← @MTC[I];
+              MTCE.XBCNT ← 8;
+              MTCE.WKCNT ← 128;
+              MTCE ← MTCE+LMTCE;
+              MTCE.XBCNT ← 8;
+              MTCE.WKCNT ← 42;
+          ENDFOR;
+
+*  LOW SPEED DEVICE BUFFER TABLE INITIALIZATION
+          BSET(LDVTS, 0, NLBSD*LLDVTE);
+          FOR I ← 0 TO NLBSD-1 DO;
+              LDVTE ← @LDVT[I];
+              LDVTE.CLINE ← FLBSDL+2*I;
+          ENDFOR;
+          BSET(LB24S, 0, NL24D*LLB24E);
+          FOR I ← 0 TO NL24D-1 DO;
+              LB24E ← @LB24[I];
+              LB24E.CLINE ← FL24DL+2*I;
+          ENDFOR;
+
+*  LOCAL DEVICE BIT TABLE INITIALIZATION
+          BSET(LBTBS, 0, (NCDT-1)*LLBTBE);
+*  FOR MODEL 37 TELETYPES
+          LBTBE ← @LBTB[0];
+          LBTBE.NCIP ← 0;
+*  FOR MODEL 35 TELETYPES
+          LBTBE ← @LBTB[1];
+          LBTBE.NCIP ← -1;
+*  FOR IBM 2741 TERMINALS (NOT IN PHASE 1)
+          LBTBE ← @LBTB[2];
+          LBTBE.NCIP ← 0;
+*  CHARACTER BUFFER INITIALIZATION
+        BSET(BUF0S, 0, LBUF0+LCBUF*NCBUF);
+          NXT ← 0;
+          BUFFER ← BUF0S+LBUF0;
+          FOR I ← 0 TO NCBUF-1 DO;
+              BUFFER.NEXT ← NXT;
+              BUFFER ← BUFFER+LCBUF;
+              NXT ← NXT+LCBUF;
+          ENDFOR;
+
+*  DEVICE TABLE INITIALIZATION
+          BSET(DVTBS, 0, NCDT*LDVTBE);
+*  FOR MODEL 37 TELETYPES (DEVICE TYPE 1)
+          PTR ← @DVTB[1];
+          PTR.TABCH ← '&I';* FIX THIS !!
+          PTR.ESCCH ← '&K';* AND THIS !!
+          PTR ← PTR+2;
+          SCT(PTR,60B,71B,0)&SCT(PTR,260B,271B,0);* '0'-'9'
+          SCT(PTR,101B,132B,0)&SCT(PTR,301B,332B,0);* 'A'-'Z' (U.C.)
+          SCT(PTR,141B,172B,0)&SCT(PTR,341B,372B,0);* 'A'-'Z' (L.C.)
+          SCT(PTR,40B,40B,0)&SCT(PTR,240B,240B,0);* SPACE
+          SCT(PTR,41B,57B,1)&SCT(PTR,241B,257B,1);* PUNCTUATION
+          SCT(PTR,72B,100B,1)&SCT(PTR,272B,300B,1);* PUNCTUATION
+          SCT(PTR,133B,140B,1)&SCT(PTR,333B,340B,1);* PUNCTUATION
+          SCT(PTR,173B,176B,1)&SCT(PTR,373B,376B,1);* PUNCTUATION
+          SCT(PTR,0,37B,3)&SCT(PTR,200B,237B,3);* CONTROL CHARACTERS
+          SCT(PTR,177B,177B,3)&SCT(PTR,377B,377B,3);* CONTROL CHARACTERS
+          SCT(PTR,10B,10B,2)&SCT(PTR,210B,210B,2);* BACK SPACE
+          SCT(PTR,12B,12B,2)&SCT(PTR,212B,212B,2);* LINE FEED
+          SCT(PTR,14B,14B,2)&SCT(PTR,214B,214B,2);* FORM FEED
+          SCT(PTR,15B,15B,2)&SCT(PTR,215B,215B,2);* CARRIAGE RETURN
+*  FOR MODEL 35 TELETYPES (DEVICE TYPE 2)
+          PTR ← @DVTB[2];
+          PTR.TABCH ← 1B;* NOTHING
+          PTR.ESCCH ← 1B;* NOTHING
+          PTR ← PTR+2;
+          SCT(PTR,60B,71B,0)&SCT(PTR,260B,271B,0);* '0'-'9'
+          SCT(PTR,101B,132B,0)&SCT(PTR,301B,332B,0);* 'A'-'Z'
+          SCT(PTR,40B,40B,0)&SCT(PTR,240B,240B,0);* SPACE
+          SCT(PTR,41B,57B,1)&SCT(PTR,241B,257B,1);* PUNCTUATION
+          SCT(PTR,72B,100B,1)&SCT(PTR,272B,300B,1);* PUNCTUATION
+          SCT(PTR,133B,137B,1)&SCT(PTR,333B,337B,1);* PUNCTUATION
+          SCT(PTR,0,37B,3)&SCT(PTR,200B,237B,3);* CONTROL CHARACTERS
+          SCT(PTR,140B,177B,3)&SCT(PTR,340B,377B,3);* CONTROL CHARACTERS
+          SCT(PTR,12B,12B,2)&SCT(PTR,212B,212B,2);* LINE FEED
+          SCT(PTR,14B,14B,2)&SCT(PTR,214B,214B,2);* FORM FEED
+          SCT(PTR,15B,15B,2)&SCT(PTR,215B,215B,2);* CARRIAGE RETURN
+*  FOR IBM 2741 TERMINALS (DEVICE TYPE 3) (NOT IN PHASE 1)
+          PTR ← @DVTB[3];
+          PTR.TABCH ← TAB2741;
+          PTR.ESCCH ← ESC2741;
+*  CAN'T DO A VERY GOOD JOB OF DISTINGUISHING CHARACTER TYPES
+          SCT(PTR,14B,17B,3);
+          SCT(PTR,34B,37B,3);
+          SCT(PTR,54B,57B,3);
+          SCT(PTR,74B,74B,3);
+          SCT(PTR,76B,77B,3);
+          SCT(PTR,114B,117B,3);
+          SCT(PTR,134B,134B,3);
+          SCT(PTR,137B,137B,3);
+          SCT(PTR,154B,157B,3);
+          SCT(PTR,174B,177B,3);
+          SCT(PTR,75B,75B,2);* LINE FEED
+          SCT(PTR,135B,136B,2);* NEW LINE, BACKSPACE
+*  FOR IBM 360/30 (DEVICE TYPE 4)
+          PTR ← @DVTB[4];
+          PTR.TABCH ← '&I';* FIX THIS !!
+          PTR.ESCCH ← 263B;
+          PTR ← PTR+2;
+          SCT(PTR, 300B, 377B, 0);
+          SCT(PTR, 0, 277B, 1);
+*
+*  INITIALIZE REAL TIME CLOCK BASE
+*
+          $RTCL ← RTC'BASE;
+
+*  START CHIO
+          BSET(CPUIT, 0, RWEB$FDDISP+1);
+          CPUIT.NFB ← NCBUF;
+          ATTENTION(ATT3);
+*
+          RETURN;
+
+          END;
+
+          PROGRAM INIT'CHT;
+*
+*  CHT INITIALIZATION FUNCTION
+*  HAS TO BE RUN AFTER COMPILATION
+*
+          INCLUDE RESMON,CHTD;
+          DECLARE I,A1,A2;
+          FUNCTION INIT'CHT();
+       $FCL←1B6-1;
+          $NFCL ← 0;
+           $NPAGSW ← CORES-1;
+          CHT[I]←1B6-1 FOR I←0 TO 255;
+        CHT2[I]$CPG←I FOR I←0 TO CORES-1;
+          FOR I←0 TO CORES-1 DO;
+              IF ((A1←CHT2[I]$CUN1) V' (A2←CHT2[I]$CUN2))#0 DO;
+                  A1←A1 E' A2;
+                  A1←(A1 E' (A1 RSH 8) E' (A1 RSH 16) E' 264B) A' 377B;
+                  A2←CHT[A1];
+                  CHT[A1]←@CHT2[I]-RESM;
+                  CHT2[I]$CCPTR←A2;
+              ENDIF;
+              IF CHT2[I]$CDK=0 DO;
+                  PUTQUEU(@CHT2[I],FCL,0,CFCP);
+                  $NFCL ← $NFCL+1;
+              ENDIF;
+              IF CHT2[I]$CPL#0 DO;
+                 $NPAGSW ← $NPAGSW-1;
+              ENDIF;
+          ENDFOR;
+          RETURN;
+
+          END;
+
+       PROGRAM DK'DUMP;
+       INCLUDE RESMON,DKAL,SWPD,CHTD;
+*
+*  DISK OR DRUM DUMP AFTER TAPE START
+*
+       DECLARE I,K,ARRAY AR[6];
+       DECLARE FIELD F1,F2;
+       FUNCTION DK'DUMP();
+       BSET(@AR[0],0,6);
+       K←$SRMEM;
+       IF K$SRTAPE=1 AND K$SRDMP=1 DO;
+       I←0; I$DKNO←K$SRUNIT;
+         IF K$SRTSU>1 DO;
+         I$TSU←K$SRTSU;
+         I$BAND←(K$SRBAND)*14+7;
+         AR[0]$SWRCD←CRDKI; F1←SECT; F2←BAND;
+         ELSE DO;
+         I$DTSU←K$SRTSU;
+         I$DBAND←(K$SRBAND)*4+2;
+         AR[0]$SWRCD←CRDDT; F1←DSECT; F2←DBAND;
+         ENDIF;
+       AR[0]$SWDKA←I;
+       AR[0]$SWWDCNT←11;
+       AR[0]$SWRCVR ← 1;* SET RETRY BIT
+       AR[0]$SWINSTN←10B;
+       FOR I←0 TO 31 DO;
+       AR[0]←CHT2[I]$CUN1; AR[1]←CHT2[I]$CUN2;
+       AR[0]$SWCPA←DMP'AR[I];
+       SWPREQ(AR,0//VALUE PUNT(I):I,K);
+       AR[2]←INCRDK((SECTA-1) IF K$SRTSU>1 ELSE 23,AR[2]);
+       ENDFOR;
+       ENDIF;
+       RETURN;
+
+       END;
+
+       PROGRAM RM'DRDK;
+       INCLUDE RESMON,DRDKPGD,DKAL;
+       DECLARE FIXED FIELD MULTB(0:1,1),DKA(0:2,23);
+       DECLARE I,J,TDK,K;
+*
+*  REMOVE DISK OR DRUM PAGE OUT OF DISK OR DRUM BIT TABLE
+*  IF(DD A' 1)=1 DISK, IF(DD A' 2)=2 THEN DRUM
+*
+       FUNCTION RM'DRDK(DD);
+       IF (DD A' 1)#0 DO;
+          FOR I←0 TO LDKPGAR -1 DO;
+             TDK←DKPGAR[I]; GOTO CAL1 IF TDK$U=0;
+CAL2:        RDKALL(TDK// VALUE PUNT('DKA'));
+             GOTO CAL1 IF DKPGAR[I]$MULTB=0;
+             (I←I+1 & GOTO CAL1) IF TDK$DKA=DKPGAR[I+1]$DKA;
+             INCRDK(SECTA-1,TDK:TDK); GOTO CAL2;
+CAL1:     ENDFOR;
+       ENDIF;
+       IF(DD A' 2)#0 DO;
+          FOR I←0 TO LDRPGAR-1 DO;
+          TDK←DRPGAR[I]; GOTO CAL3 IF TDK$U=0;
+CAL4:     J←DRBT+TDK$DSECT*8+TDK$DKNO*2+TDK$DBAND/24;
+          $J←$J A' N'(4B7 RSH (TDK$DBAND MOD 24));
+          GOTO CAL3 IF DRPGAR[I]$MULTB=0;
+          (I←I+1 & GOTO CAL3) IF TDK$DKA=DRPGAR[I+1]$DKA;
+          INCRDK(23,TDK:TDK); GOTO CAL4;
+CAL3:     ENDFOR;
+       ENDIF; RETURN;
+*  INCREMENT DRUM OR DISK ADDRESS
+       ENTRY INCRDK(K,TDK);
+       IF K<23 DO;
+       (TDK$SECT←0 & TDK$BAND←TDK$BAND+1) IF
+          TDK$SECT=K ELSE TDK$SECT←TDK$SECT+1;
+       (TDK$TRACK←TDK$TRACK+1 & TDK$BAND←0)
+           IF TDK$BAND>BANDA[TDK$DKNO]-1;
+       ELSE DO;
+       (TDK$DSECT←0 & TDK$DBAND←TDK$DBAND+1) IF
+          TDK$DSECT=K ELSE TDK$DSECT←TDK$DSECT+1;
+       ENDIF; RETURN TDK;
+
+       END;
+
+       PROGRAM AMC'INIT;
+*
+*  AMC INITIALIZATION
+*
+       INCLUDE CHTD,ERRD,RESMON,DKAL;
+       DECLARE I,J,K,L,M, LONG N;
+       DECLARE FIXED FIELD SWFRFD(0:6,23);
+       DECLARE LDKWD←N' (-1 RSH ((MAXDK MOD 24)+1));
+       DECLARE LDKAD←DAST+MAXDK/24;
+       DECLARE ARRAY TAR;
+       DECLARE LONG T2←(0,0);
+     FUNCTION AMC'INIT();
+*  INITIALIZE DSRL(DRUM SECTOR READ LIST)
+      $(DSRLST+I)←1B6-1 FOR I←0 BY 2 TO 62;
+      $(DSRLST+I)←DSRLST-RESM-6+I FOR I←1 BY 2 TO 63;
+
+*  INITIALIZE SWAPPER FREE NODE LIST
+       PUTQUEU(I,SWFREL,0,SWFRFD) FOR I←SWFRE
+          BY 6 TO SWFRE+SWFL*6-6;
+*  INITIALIZE FREE DRUM BIT TABLE
+       BSET(DRBT,0,2*4*24-1);
+       $(DRBT+I)←INIT'DRM'BANDS FOR I←0 BY 8 TO 2*4*24-1;
+*  ELIMINATE RESERVED BITS OUT OF DRBT
+*
+        RM'DRDK(2);
+*
+*   NOTE NUMBER OF FREE DRUM PAGES
+*
+       $NDMPG←0;
+       COUNT'DM'BITS(DRBT+I) FOR I←0 BY 2 TO 2*4*24-1;
+*  INITIALIZE DISK CYLINDER QUEUE
+       $(KCQST+I)←1B6-1 FOR I←0 TO TRACKA-1;
+*  INITIALIZE DISK BIT TABLE
+       BSET(DAST,0,MAXDK/24+1);
+       $(DAST+I)←INIT'DSK'BANDS FOR I←5*1 BY 5 TO 5*(TRACKA-1);
+       $LDKAD←LDKWD;
+*  ELIMINATE RESERVED BITS OUT OF DISK BIT TABLE
+       RM'DRDK(1);
+*  INITIALIZE DHT
+       BSET(DHTST,0,DHTL*3);
+       FOR I←0 TO CORES-1 DO;
+          IF(J←CHT2[I]$CDK)#0 DO;
+             J←((J LCY 12) E' J E' 3152B) A' N' 7776B4;
+CAL1:        (J←J-DHTL & GOTO CAL1) IF (J-DHTL)>-1;
+             (J←J+1 & GOTO CAL1) IF DHT1[J]#0;
+             DHT1[J]←CHT2[I]$CDK;
+             DHT2[J]$WD1←WUN+40B;
+          ENDIF;
+       ENDFOR;
+       ATTENTION(ATT1);
+       RETURN;
+
+       FUNCTION COUNT'DM'BITS(FOO);
+       N←$FOO; .COB, CXA, ADM $NDMPG;
+       RETURN;
+
+       END;

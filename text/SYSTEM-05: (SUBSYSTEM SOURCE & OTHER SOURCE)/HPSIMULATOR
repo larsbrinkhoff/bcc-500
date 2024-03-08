@@ -1,0 +1,1071 @@
+DECLARE INTEGER DIV,MPY; * THESE INSTR. NOT IMPLEMENTED
+
+* HP-SIMULATOR PROGRAM FOX - 4/20/76 ORIGIN
+*  XEQ COMPLETELY WRITTEN
+*  SUBSECTIONS FUNCTIONS XASG XEAG XIOG XMREF XSRG
+*   EE-468 HOLMES 211 TTH 1:30 P.M.
+*
+*
+GOTO MAIN;
+DECLARE FIXED STRING ASTR(20);
+DECLARE INTEGER XTESTR←0; *THIS IS THE DEBUG FLAG
+DECLARE FIXED INTEGER PC,AREG,BREG,EREG,OVF,MDR,MAR,MREG,
+       MODE←10B,NULL,BFILE,NEXT,NUM,CIR,SHFT,SREG,
+       INTST,INTSV,PARM1;
+DECLARE FIXED INTEGER HOLD,HOLD1,HOLD2,FLAG,FLAG1,COUNT,PASS;
+DECLARE FIXED INTEGER ARRAY INT[5];
+DECLARE FIXED ARRAY DEV[100B],BUFF[100B],CORE[17777B];
+DECLARE FIELD B0(0:23,23),B1(0:22,22),B2(0:21,21),B3(0:20,20),
+       B4(0:19,19),B5(0:18,18),B6(0:17,17),B7(0:16,16),B8(0:15,15);
+DECLARE FIELD B9(0:14,14),B10(0:13,13),B11(0:12,12),B12(0:11,11),
+       B13(0:10,10),
+       B14(0:9,9),B15(0:8,8),B1412(0:9,11),BIO(0:2,2);
+DECLARE FIELD BMEM(0:14,23),BSC(0:18,23),BSHFT(0:20,23),BWRD(0:8,23),
+       BPAGE(0:9,13),FLG(0:0,0),CON(0:1,1),BL8(0:16,23),
+       B16(0:3,3),BU8(0:8,15),B94(0:14,19),BO(0:7,7),B86(0:15,17);
+FUNCTION COSN(STRING E,INTEGER RAD);
+DECLARE FIXED STRING A(20);
+DECLARE FIXED B,D,C;
+   SETR(ASTR,0);
+   B←0;
+   C←GCI(ASTR:CERR1);
+   C←C-20B;
+   FOR D←0 WHILE C>-1 AND C<10 DO;
+      B←B*RAD+C;
+      C←GCI(ASTR:CERR);
+      C←C-20B;
+      GOTO CO1;
+      CERR: C←11;
+      CO1: ENDFOR;
+   GOTO CO2;
+   CERR1:  CRLF(1); SOUT("ERROR: CONVERSION SUBROUTINE.");
+      CRLF(1); SOUT(">>>  NO CHARACTERS IN ARGUMENT.");
+      CRLF(1);  SOUT(">>>  VALUE ZERO RETURNED.");
+      C←0;
+   CO2: RETURN B;
+*BASIC BINARY LOADER - HP2100 SIMULATOR
+DECLARE FIXED ARRAY CODVEC[3] ←LCODE0,LCODE1,LCODE2;
+DECLARE INTEGER FNO,LCODE, NCOUNT,WCOUNT,CHSUM,
+        PTR,BYTE,LISTC,SUM,WORD;
+DECLARE FIELD PWORD(0:8,23);
+FUNCTION LOAD(FNO);
+*INITIALIZATION
+SOUT("BASIC BINARY LOADER - VERSION 12/10/75");CRLF(1);
+SOUT("LISTING? ");
+LISTC←1 IF CIN(0) = 71B ELSE LISTC←0;CRLF(1);
+
+*DETERMINE LOAD TYPE
+TYPE: SOUT("ENTER LOAD CODE: ");
+LCODE ← IIN(0);
+IF (LCODE#0)AND(LCODE#1)AND(LCODE#2) DO;
+    SOUT(" ?");CRLF(1);
+    GOTO TYPE;
+ENDIF;
+CRLF(1);
+
+*INITIALIZE NULL COUNT FOR LEADER--BLOCKS HAVE
+*LESS THAN 10 GAP NULLS, END OF TAPE IS 10 NULLS
+NCOUNT←1;
+*GET FIRST NON-NULL BYTE - CONTAINS THE RECORD
+*LENGTH
+
+ALOOP: FOR BYTE←CIN(FNO) WHILE BYTE = 0 DO;
+     NCOUNT←NCOUNT + 1;
+     GOTO ENTAPE IF NCOUNT = 0;
+ENDFOR;
+
+WCOUNT←BYTE;
+IF LISTC = 1 DO; SOUT("RECORD LENGTH IS ");
+     IOUT(WCOUNT,1,8);
+     CRLF(1);
+ENDIF;
+BYTE←CIN(FNO); *DISCARD NEXT NULL
+PTR←WGET();*NEXT WORD IS LOAD ADDRESS
+SUM←PTR; *INITIALIZE CHECKSUM WITH LOAD ADDRESS
+*THIS IS THE MAIN LOOP
+CONT: GOTO BOUND IF PTR=17700B; *DON'T OVERRRUN LOADER
+
+WORD←WGET();
+SUM←(SUM+WORD)$PWORD;
+*THE NEXT INSTRUCTION DEPENDS ON THE LOAD TYPE
+
+GOTO $CODVEC[LCODE];
+LCODE0: CORE[PTR] ← WORD; *LOAD OPERATION
+     IF LISTC = 1 DO;
+     PRINT();SOUT(" LOADED");CRLF(1);
+     ENDIF;
+GOTO NEXT1;
+
+LCODE1: GOTO CMPERR IF CORE[PTR] # WORD; *COMPARE CODE
+    IF LISTC = 1 DO;
+        PRINT();SOUT(" OK");CRLF(1);
+    ENDIF;
+GOTO NEXT1;
+
+LCODE2: IF LISTC = 1 DO; * CHECKSUM ONLY
+      PRINT(); SOUT(" SUM= ");IOUT(SUM,1,8);CRLF(1);
+ENDIF;
+NEXT1: PTR ← PTR + 1;
+WCOUNT ← WCOUNT - 1;
+IF WCOUNT=0 DO; *CHECKSUM- LAST WORD READ
+     CHSUM←WGET();
+     IF CHSUM=SUM DO;
+        NCOUNT←-10;
+        GOTO ALOOP;
+     ELSE DO; GOTO CHKERR;
+     ENDIF;
+ENDIF; *OF IF WCOUNT = 0
+GOTO CONT;
+
+ENTAPE: SOUT("SUCCESSFUL LOAD");CRLF(1);
+    RETURN;
+BOUND: SOUT("LOADER IS OVERRUN-BEGINS AT 17700B");
+    CRLF(1);
+    RETURN;
+CMPERR: SOUT("CODE DOES'NT COMPARE");CRLF(1);
+     PRINT(); SOUT("CORE WORD IS "); IOUT(CORE[PTR],1,8);
+     CRLF(1);
+    RETURN;
+CHKERR: SOUT( "CHECKSUM ERROR");CRLF(1);
+    IF LISTC = 1 DO;
+        SOUT("CHECKSUM FROM FILE = ");IOUT(CHSUM,1,8);
+        SOUT("COMPUTED CHECKSUM = ");IOUT(SUM,1,8);
+        CRLF(1);
+    ENDIF;
+RETURN;
+DECLARE INTEGER TWORD,TBYTE;
+FUNCTION WGET();
+TBYTE←CIN(FNO);
+TWORD←TBYTE LSH 8;
+TBYTE←CIN(FNO);
+TWORD←TWORD OR TBYTE;
+RETURN TWORD;
+
+FUNCTION PRINT();
+SOUT("PTR = "); IOUT(PTR,1,8);
+SOUT("  WORD = ");IOUT(WORD,1,8);
+RETURN;
+
+FUNCTION FETCH();
+  IF MREG>17777B DO;
+     CRLF(1); SOUT(" WARNING: >M= ");
+     IOUT(MREG,1,8); MDR←0;
+     ELSE DO;
+       IF MREG=0 DO;
+          MDR←AREG$BWRD;
+          ELSEIF MREG=1 DO;
+          MDR←BREG$BWRD;
+          ELSE DO;
+          MDR←CORE[MREG]$BWRD;
+          ENDIF;
+       ENDIF;
+  RETURN;
+FUNCTION STORE();
+  IF MREG<=17777B DO;
+     HOLD2←MDR$BWRD;
+     IF MREG=0 DO;
+        AREG←HOLD2;
+        ELSEIF MREG=1 DO;
+        BREG←HOLD2;
+        ELSE DO;
+        CORE[MREG]←HOLD2;
+        ENDIF;
+     ENDIF;
+  RETURN;
+FUNCTION ASR(PARM1);
+  FOR HOLD1←1 BY 1 TO PARM1 DO;
+     HOLD←AREG RSH 1;
+     FLAG←BREG RCY 1;
+     FLAG$B15←FLAG$B14;
+     HOLD$B15←FLAG$FLG;
+     AREG$BWRD←HOLD$BWRD;
+     BREG$BWRD←FLAG$BWRD;
+     ENDFOR;
+  RETURN;
+FUNCTION ASL(PARM1);
+  FOR HOLD1←1 BY 1 TO PARM1 DO;
+     HOLD←AREG LCY 1;
+     FLAG←BREG LSH 1;
+     FLAG$B0←HOLD$BO;
+     IF FLAG$B15#FLAG$BO DO;
+        OVF←1;
+        ENDIF;
+     FLAG$B15←FLAG$BO;
+     AREG$BWRD←HOLD$BWRD;
+     BREG$BWRD←FLAG$BWRD;
+     ENDFOR;
+  RETURN;
+FUNCTION XEAG();
+  HOLD2←MAR$B94;
+  IF MAR$B11=1 DO;
+     IF HOLD2=10B DO;
+        FETCH();
+        AREG←MDR;
+        MREG←MREG+1;
+        FETCH();
+        BREG←MDR;
+        ELSEIF HOLD2=20B DO;
+           MDR←AREG;
+           STORE();
+           MREG←MREG+1;
+           MDR←BREG;
+           STORE();
+           ENDIF;
+     ELSEIF HOLD2=10B DO;
+     FETCH();
+     MPY();
+     ELSEIF HOLD2=20B DO;
+     FETCH();
+     DIV();
+     ELSE DO;
+*SHFTS
+        SHFT←MAR$BSHFT;
+        IF SHFT=0 DO; SHFT←16; ENDIF;
+        IF HOLD2=41B DO;
+           OVF←0;
+           ASR(SHFT);
+           ELSEIF HOLD2=1 DO;
+              OVF←0;
+              ASL(SHFT);
+           ELSEIF HOLD2=42B DO;*  LSR INSTR
+                 FOR HOLD1←1 BY 1 TO SHFT DO;
+                    HOLD←AREG RSH 1;
+                    AREG$BWRD←HOLD$BWRD;
+                    HOLD←BREG RCY 1;
+                    BREG$BWRD←HOLD$BWRD;
+                    AREG$B15←HOLD$FLG;
+                    ENDFOR;
+           ELSEIF HOLD2=2 DO;*  LSL INSTR
+                 FOR HOLD1←1 BY 1 TO SHFT DO;
+                    HOLD←BREG LSH 1;
+                    BREG$BWRD←HOLD$BWRD;
+                    HOLD←AREG LCY 1;
+                    AREG$BWRD←HOLD$BWRD;
+                    BREG$B0←HOLD$BO;
+                    AREG$B0←0;
+                    ENDFOR;
+           ELSEIF HOLD2=44B DO;
+                 FOR HOLD1←1 BY 1 TO SHFT DO;
+                    HOLD←AREG RCY 1;
+                    FLAG←BREG RCY 1;
+                    HOLD$B15←FLAG$FLG;
+                    FLAG$B15←HOLD$FLG;
+                    AREG$BWRD←HOLD$BWRD;
+                    BREG$BWRD←FLAG$BWRD;
+                    ENDFOR;
+           ELSEIF HOLD2=4B DO;
+              FOR HOLD1←1 BY 1 TO SHFT DO;
+                 HOLD←AREG LCY 1;
+                 FLAG←BREG LCY 1;
+                 HOLD$B0←FLAG$BO;
+                 FLAG$B0←HOLD$BO;
+                 AREG$BWRD←HOLD$BWRD;
+                 BREG$BWRD←FLAG$BWRD;
+                 ENDFOR;
+           ENDIF;
+        ENDIF;
+   RETURN;
+FUNCTION CLEAN();
+  IF HOLD1>7 AND HOLD1<=77B DO;
+     (DEV[HOLD1])$FLG←0;
+     ENDIF;
+  RETURN;
+FUNCTION SET();
+  IF HOLD1>7B AND HOLD1<=77B DO;
+     (DEV[HOLD1])$FLG←1;
+     ENDIF;
+  RETURN;
+FUNCTION XIOG();
+  HOLD1←MAR$BSC;
+  HOLD←MAR$B86;
+  HOLD2←MAR$B9;
+  IF HOLD=0 DO;*  HLT
+     INT[0]←1;
+     COUT(147B); *BELL
+     IF HOLD2=1 DO;
+        CLEAN();
+        ENDIF;
+     ELSEIF HOLD=1 DO;*  STF
+        IF HOLD1=1 DO;
+           IF HOLD2=0 DO;*  STO
+              OVF←1;
+              ELSE DO;*  CLO
+              OVF←0;
+              ENDIF;
+           ELSE DO;
+              IF HOLD2=0 DO;
+                 IF HOLD1=0 DO;*  STF 00
+                    INTST←1;
+                    ELSE DO;
+                    SET(); ENDIF;
+                 ELSE DO;
+                 IF HOLD1=0 DO;*  CLF 00
+                    INTST←0;
+                    ELSE DO; CLEAN(); ENDIF;
+                 ENDIF;
+           ENDIF;
+     ELSEIF HOLD=2 OR HOLD=3 DO;*  SFC  SFS
+        IF HOLD=2 DO;
+           FLAG1←0;
+           ELSE DO;
+           FLAG1←1;
+           ENDIF;
+        IF HOLD1=0 DO;*  00
+           IF INTST=FLAG1 DO;
+              PC←PC+1;
+              ENDIF;
+           ELSEIF HOLD1=1 DO;
+              IF OVF=FLAG1 DO;*  SOC  SOS
+                 PC←PC+1;
+                 ENDIF;
+              IF HOLD2=1 DO;*  H/C
+                 OVF←0;
+                 ENDIF;
+           ELSEIF HOLD1>7B AND HOLD1<=77B DO;*  H/C FLAG
+              FLAG←DEV[HOLD1];
+              IF FLAG$FLG=FLAG1 DO;
+                 PC←PC+1;
+                 ENDIF;
+              ENDIF;
+     ELSEIF HOLD=5 DO;
+        IF MAR$B11=0 DO;*  LIA
+           IF HOLD1=0 DO;
+              AREG←SREG;
+              ELSEIF HOLD1=4 DO;
+                 AREG←CIR;
+              ELSE DO;
+                 AREG←BUFF[HOLD1];
+              ENDIF;
+           ELSE DO;*  LIB
+           IF HOLD1=1 DO;
+              BREG←SREG;
+              ELSEIF HOLD1=4 DO;
+                 BREG←CIR;
+              ELSE DO;
+                 BREG←BUFF[HOLD1];
+              ENDIF;
+           ENDIF;
+        IF HOLD2=1 DO;*  H/C
+           CLEAN();
+           ENDIF;
+     ELSEIF HOLD=6 DO;*  OT*
+        IF MAR$B11=0 DO;
+           FLAG←@AREG;
+           ELSE DO;
+              FLAG←@BREG;
+           ENDIF;
+        IF HOLD1>7B AND HOLD1<=77B DO;
+           BUFF[HOLD1]←$FLAG;
+           IF HOLD2=1 DO;
+              DEV[HOLD1]$FLG←0;
+           ENDIF;
+           ENDIF;
+     ELSEIF HOLD=7 DO;*  STC  CLC
+        IF MAR$B11=0 DO;
+           DEV[HOLD1]$CON←1;
+           ELSE DO;
+           IF HOLD1=0 DO;
+              FOR FLAG←10B BY 1 TO 77B DO;
+                 DEV[HOLD1]$CON←0;
+                 ENDFOR;
+              ELSE DO;
+              DEV[HOLD1]$CON←0;
+              ENDIF;
+           ENDIF;
+           IF HOLD2=1 DO;
+              CLEAN();
+              ENDIF;
+     ELSEIF HOLD=4 DO;
+        IF MAR$B11=0 DO;*  AREG
+           FLAG←@AREG;*  MIA
+           ELSE DO;
+           FLAG←@BREG;*  MIB
+           ENDIF;
+        IF HOLD1=1 DO;
+           FLAG1←SREG;
+           ELSEIF HOLD1=4 DO;
+              FLAG1←CIR;
+           ELSEIF HOLD1>7B AND HOLD1<=77B DO;
+              FLAG1←BUFF[HOLD1];
+              ENDIF;
+        MERGE();*  CAL EXTRA SUBROUTINE
+     ENDIF;
+     RETURN;
+FUNCTION XMREF();
+ROY2: IF XTESTR=1 DO;SOUT(" XMREF ");CRLF(1);ENDIF;
+  HOLD2←MAR$B1412;
+  HOLD1←MAR$B11;
+  IF HOLD2=7 DO;*  STORE INSTRUCTION
+     IF HOLD1=0 DO;
+     MDR←AREG;
+     ELSE DO; MDR←BREG;
+     ENDIF;
+     STORE();
+     ELSEIF HOLD2=6 DO;
+        FETCH();
+        IF HOLD1=0 DO;* LOAD A
+           AREG←MDR;
+           ELSE DO; BREG←MDR;
+           ENDIF;
+     ELSEIF HOLD2=4 DO;*  AD INSTR.
+        FETCH();
+        IF HOLD1=0 DO;* AREG
+           AREG←ADD(AREG);
+           ELSE DO;*  BREG
+           BREG←ADD(BREG);
+           ENDIF;
+     ELSEIF HOLD2=5 DO;*  CP INTR
+        FETCH();
+        IF HOLD1=0 DO;*  A
+           AREG←AREG$BWRD;
+           IF AREG#MDR DO;
+              PC←PC+1;
+              ENDIF;
+           ELSE DO;* B
+              BREG←BREG$BWRD;
+              IF BREG#MDR DO;
+                 PC←PC+1;
+                 ENDIF;
+           ENDIF;
+     ELSEIF HOLD2=3 DO;
+        IF HOLD1=0 DO;*  IOR
+           FETCH();
+           AREG$BWRD←(AREG OR MDR)$BWRD;
+           ELSE DO;*  ISZ
+              FETCH();
+              MDR←MDR+1;
+              STORE();
+              MDR←MDR$BWRD;
+              IF MDR=0 DO;
+                 PC←PC+1;
+                 ENDIF;
+           ENDIF;
+     ELSEIF HOLD2=2 DO;
+        IF HOLD1=0 DO;* XOR
+           FETCH();
+           AREG$BWRD ← (AREG EOR MDR)$BWRD;
+           ELSE DO;*  JMP
+              PC←MREG;
+           INTST←INTSV;
+           ENDIF;
+     ELSE DO;
+        IF HOLD1=0 DO;*  AND
+           FETCH();
+           AREG$BWRD ← (AREG AND MDR)$BWRD;
+           ELSE DO;*  JSB
+              MDR←PC;
+              STORE();
+              PC←MREG+1;
+              ENDIF;
+        ENDIF;
+  RETURN;
+
+FUNCTION ADD(INTEGER TEMREG); * ADDS TWO WORDS, WITH OVF AND EREG
+       DECLARE FIELD EXBIT(0:7,7);
+       DECLARE INTEGER TEMSUM;
+       TEMSUM ← TEMREG$BWRD + MDR$BWRD;
+       EREG ← 1 IF TEMSUM$EXBIT = 1; * CHECK FOR CARRY FROM B15
+       * CHECK FOR OVERFLOW
+       OVF←1 IF (TEMREG$B15=MDR$B15) AND (MDR$B15 EOR TEMSUM$B15);
+       TEMREG$BWRD ← TEMSUM$BWRD;
+RETURN TEMREG;
+
+FUNCTION MERGE(); *USED FOR MIA AND MIB INSTRUCTIONS
+       ($FLAG)$BWRD ← (FLAG1 OR $FLAG)$BWRD;
+RETURN;
+
+DECLARE FIELD SKIPS(0:18,20),ABIT(0:14,15),EBIT(0:16,17);
+DECLARE FIELD BM1(0:15,17),BM2(0:21,23);
+DECLARE  INTEGER  TEMP, I, N, FAB, REG;
+FUNCTION MCRE(TEMP); * CHECKS MICRO INSTR. WHEN BITS 9 OR 4 ARE 0
+       IF TEMP = 5 DO;
+          EREG ← 1 IF REG$B0;
+          EREG ← 0 IF REG$B0 = 0;
+       ELSEIF TEMP = 6 DO;
+          EREG ← 1 IF REG$B15;
+          EREG ← 0 IF REG$B15 = 0;
+       ELSEIF TEMP > 0 DO;
+          SOUT("<<< INVALID MICRO INSTRUCTION >>>"); CRLF(1);
+       ENDIF;
+RETURN;
+FUNCTION CYC(REG,N,FLAG); * DOES THE CYCLE ROUTINE
+    FOR I = 1 TO N DO;
+       IF FLAG DO; * RIGHT CYCLE
+          REG$BO ← 1 IF REG$B0;
+          REG$B0 ← 0;
+          REG ← REG RCY 1;
+       ELSE DO; * LEFT CYCLE
+          IF REG$B15 DO;
+             REG ← REG LCY 1;
+             REG$B0 ← 1;
+             REG$BO ← 0;
+          ELSE DO;
+             REG ← REG LCY 1;
+          ENDIF;
+       ENDIF;
+    ENDFOR;
+RETURN REG;
+FUNCTION SHFT(REG,N,FLAG); * DOES THE SHIFT ROUTINE
+    FOR I = 1 TO N DO;
+       IF FLAG DO; * RIGHT SHIFT
+          REG ← REG RSH 1;
+          REG$B15 ← REG$B14;
+       ELSE DO; * LEFT SHIFT
+          REG ← REG LSH 1;
+          IF REG$BO DO;
+             REG$B15 ← REG$BO;
+             REG$BO ← 0;
+          ELSE DO;
+             REG$B15 ← 0;
+          ENDIF;
+       ENDIF;
+    ENDFOR;
+RETURN REG;
+FUNCTION MICRO(TEMP); * IMPLEMENT THE MICRO INST.
+DECLARE ARRAY ADDR[8]←LS,RS,RL,RR,LR,ER,EL,LF;
+GOTO $ADDR[TEMP];
+LS:    REG ← SHFT(REG,1,0); * LEFT SHIFT
+       GOTO FINI;
+RS:    REG ← SHFT(REG,1,1); * RIGHT SHIFT
+       GOTO FINI;
+RL:    REG ← CYC(REG,1,0); * ROTATE LEFT
+       GOTO FINI;
+RR:    REG ← CYC(REG,1,1); * ROTATE RIGHT
+       GOTO FINI;
+LR:    REG ← SHFT(REG,1,0); * LEFT SHIFT AND CLEAR SIGN
+       REG$B15 ← 0;
+       GOTO FINI;
+ER:    REG ← CYC(REG,1,1); * ROTATE E RIGHT WITH REG
+       IF REG$B15 DO;
+          REG$B15 ← 0 IF EREG = 0;
+          EREG ← 1;
+       ELSE DO;
+          REG$B15 ← 1 IF EREG;
+          EREG ← 0;
+       ENDIF;
+       GOTO FINI;
+EL:    REG ← CYC(REG,1,0); * ROTATE E LEFT WITH REG
+       IF REG$B0 DO;
+          REG$B0 ← 0 IF EREG = 0;
+          EREG ← 1;
+       ELSE DO;
+          REG$B0 ← 1 IF EREG;
+          EREG ← 0;
+       ENDIF;
+       GOTO FINI;
+LF:    REG ← CYC(REG,4,0); * ROTATE REG LEFT FOUR TIMES
+FINI:  RETURN REG;
+FUNCTION XSRG();
+       GOTO STOP IF MAR = 0; * NOP
+       IF MAR$B11 DO; * B REGISTER
+          FAB ← 0;
+          REG ← BREG;
+       ELSE DO; * A REGISTER
+          FAB ← 1;
+          REG ← AREG;
+       ENDIF;
+       IF MAR$B9 DO; * DO FIRST MICRO INST.
+          REG ← MICRO(MAR$BM1);
+       ELSE DO; * CHECK IF EREG INST. OR NOP
+          MCRE(MAR$BM1);
+       ENDIF;
+       EREG ← 0 IF MAR$B5; * CLEAR E REGISTER
+       PC ← PC + 1 IF (MAR$B3 AND REG$B0=0); *IF MAR$B3 AND REG$B0 = 0
+                                             * SKIP NEXT INST.
+       IF MAR$B4 DO; * DO SECOND MICRO INST.
+          REG ← MICRO(MAR$BM2);
+       ELSE DO; * CHECK IF EREG INST. OR NOP
+          MCRE(MAR$BM2);
+       ENDIF;
+       AREG ← REG IF FAB;
+       BREG ← REG IF FAB = 0;
+STOP:  RETURN;
+DECLARE INTEGER RSSVAL,SKIP,INCR;
+DECLARE FIXED ARRAY ALVEC[4]←SEZ,CL,CM,CC;
+DECLARE FIXED ARRAY EALVEC[4]←SSA,CLE,CME,CCE;
+FUNCTION XASG();
+ALTSKP: IF(MAR$B11=0)DO;* A-REGISTER OPERATION
+               TEMP←AREG;
+       ELSE DO;*B-BEGISTER OPERATION
+               TEMP←BREG;
+       ENDIF;
+
+RSSVAL←MAR$B0;SKIP←0;
+
+GOTO $ALVEC[MAR$ABIT];
+
+CL:TEMP$BWRD←0; *CLEAR REGISTER
+GOTO SEZ;
+
+CM:TEMP$BWRD←NOT(TEMP$BWRD); *COMP. REG.
+GOTO SEZ;
+
+CC:TEMP$BWRD←65535; *CLEAR AND COMP. REG.
+GOTO SEZ;
+
+
+SEZ:   IF (MAR$B5) DO;
+               IF((EREG$B0#0)=RSSVAL) DO;
+                   SKIP←1;
+               ENDIF;
+       ENDIF; *OF SEZ
+
+GOTO $EALVEC[MAR$EBIT];
+
+CLE: EREG$B0←0;
+GOTO SSA;
+
+CME:EREG$B0←NOT(EREG$B0);
+GOTO SSA;
+CCE: EREG$B0←1;
+GOTO SSA;
+
+SSA:  IF SKIP DO; GOTO IN; ENDIF;
+      IF MAR$B3 AND MAR$B4 AND RSSVAL DO;
+         IF TEMP$B15 AND TEMP$B0 DO;
+            SKIP←1;
+         ENDIF; GOTO IN;
+      ELSEIF MAR$B4 DO;
+         IF (TEMP$B15=RSSVAL) DO;
+            SKIP←1;
+         ENDIF;
+      ENDIF; * OF SS TEST
+IF SKIP DO; GOTO IN; ENDIF;
+
+SL:   IF(MAR$B3) DO;
+         IF (TEMP$B0=RSSVAL) DO;
+            SKIP←1;
+         ENDIF;
+      ENDIF; * OF SSL TEST
+
+IN:   IF(MAR$B2) DO;
+
+         INCR←TEMP$BWRD+1;
+         IF(TEMP$B15=0)AND(INCR$B15=1)DO;
+            *OVERFLOW
+            OVF←1;
+         ENDIF;
+         IF (INCR$BO#0) DO; *CARRY-OVER
+            EREG$B0 ←INCR$BO;
+         ENDIF;
+         TEMP$BWRD←INCR$BWRD;
+      ENDIF;* OF IN TEST
+
+IF SKIP DO; GOTO FINISH; ENDIF;
+
+SZ:   IF(MAR$B1) DO;
+         IF((TEMP$BWRD#0)=RSSVAL) DO;
+            SKIP←1;
+         ENDIF;
+      ENDIF; *OF SZ TEST
+
+RSS:  IF SKIP DO; GOTO FINISH; ENDIF;
+      IF(RSSVAL) AND(MAR$SKIPS=0) AND (MAR$B1 =0) DO;
+         SKIP←1;
+      ENDIF;
+FINISH:  IF SKIP DO;
+            PC←PC+1;
+        ENDIF;
+        IF(MAR$B11=0) DO; AREG$BWRD←TEMP$BWRD;
+        ELSE DO; BREG$BWRD←TEMP$BWRD;
+        ENDIF;
+RETURN;
+MAIN:
+  CRLF(1); SOUT("VERSION OF 12/17/75  TYPE %H FOR HELP");
+  CRLF(1); SOUT("FILES?  ");
+  IF CIN(0)= 71B DO;*  YES
+     FLAG←0;
+     FOR NULL←0 WHILE FLAG=0 DO;
+        M5: CRLF(1); SOUT("INPUT FILE:  ");
+        SETS(ASTR,0,0);
+        INNAME(ASTR:M06);
+           HOLD←INFILE(ASTR:M6); SOUT(" 8 BITS? ");
+           IF CIN(0)#71B DO;
+              HOLD$B16←1;  ENDIF;
+           CRLF(1); SOUT("DEVICE NO.  ");
+           HOLD1←IIN(0,8);
+           IF HOLD1>7B AND HOLD1<100B DO;
+              DEV[HOLD1]←HOLD;
+              GOTO M7;
+              ELSE DO; GOTO M6;
+              ENDIF;
+           M06: SOUT(" THRU?  ");
+           IF CIN(0)=71B DO; FLAG←1; GOTO M7;
+              ELSE DO; GOTO M5; ENDIF;
+              M6: CRLF(1); SOUT("  ?"); GOTO M5;
+        M7: ENDFOR;
+        FLAG←0;
+        FOR NULL←0 WHILE FLAG=0 DO;
+           M8: CRLF(1); SOUT("OUTPUT FILE:  ");
+           SETS(ASTR,0,0);
+           OUTNAME(ASTR:M09);
+                 HOLD←OUTFILE(ASTR:M9); SOUT(" 8 BITS? ");
+                 IF CIN(0)#71B DO;  HOLD$B16←1; ENDIF;
+                 CRLF(1); SOUT("DEVICE NO.  ");
+                 HOLD1←IIN(0,8);
+                 HOLD$BIO←1;
+                 IF HOLD1>7B AND HOLD1<100B DO;
+                    DEV[HOLD1]←HOLD;
+                    GOTO M10;
+                    ELSE DO;
+                    GOTO M9;
+                    ENDIF;
+                 M09: SOUT(" THRU?  ");
+                 IF CIN(0)=71B DO; FLAG←1; GOTO M10;
+                    ELSE DO; GOTO M8; ENDIF;
+                    M9:CRLF(1); SOUT("  ?"); GOTO M8;
+           M10: ENDFOR;
+      ENDIF;
+LOOP:
+  CRLF(1); SOUT("<=>"); SETS(ASTR,0,0);
+* BEGIN INPUTTING COMMANDS
+  LOOP1: HOLD←CIN(0);*  READ A CHR
+  IF HOLD=155B  DO; GOTO LOOP;* CR
+     ELSEIF 32B>HOLD AND HOLD>17B DO;* NUMBERS
+     WCI(HOLD,ASTR);
+     ELSEIF HOLD=5 DO; GOTO LOO1;*  %
+     ELSEIF HOLD=32B DO; GOTO LOO2;*  :
+     ELSEIF HOLD=17B DO; GOTO LOO3;*  /
+     ELSEIF HOLD = 36B DO; GOTO LOO10;*  >
+     ELSE DO; SOUT("  ?");*NOT ALLOWED
+        GOTO LOOP;
+     ENDIF;
+     GOTO LOOP1;
+  LOO1: HOLD←CIN(0);*  CHR AFTER A %
+     IF HOLD=57B DO; MODE←10B;*  O
+        ELSEIF HOLD=42B DO; MODE←2;*  B
+        ELSEIF HOLD=44B DO; MODE←10;*  D
+        ELSEIF HOLD=46B DO; SOUT("INISHED");
+           EXIT();
+        ELSEIF HOLD=1 DO;*  !
+           IF LENGTH(ASTR)=0 DO;
+              FOR HOLD←1 BY 1 TO 4 DO;
+                 INT[HOLD]←0;
+                 ENDFOR;
+              ELSE DO;
+              NUM←COSN(ASTR,8);
+              FLAG←0;
+              FOR HOLD←1,HOLD+1 WHILE FLAG=0 DO;
+                 IF INT[HOLD]=NUM DO; INT[HOLD]←0;FLAG←1; ENDIF;
+                 IF HOLD=4 DO; FLAG←1; ENDIF;
+                 ENDFOR;
+              ENDIF;
+        ELSEIF HOLD=50B DO;
+  HELP: CRLF(1);
+     SOUT("THE VARIOUS COMMANDS ARE:"); CRLF(1);
+     SOUT("  %B  DISPLAY IN BINARY"); CRLF(1);
+     SOUT("  %D  DISPLAY IN DECIMAL"); CRLF(1);
+     SOUT("  %F  FINISH"); CRLF(1);
+     SOUT("  %H  INITIATE THIS HELP OUTPUT"); CRLF(1);
+     SOUT("  %L  LOAD FROM BINARY FILE"); CRLF(1);
+     SOUT("  %O  DISPLAY IN OCTAL"); CRLF(1);
+     SOUT("  <ADDR>%!  CLEAR BREAKPOINT AT <ADDR> (DEFAULT: ALL)");
+        CRLF(1);
+     SOUT("  <ADDR>:G START AT ADDR"); CRLF(1);
+     SOUT("  <COUNT>:P PROCEED THRU COUNT NO. OF BREAKPOINTS");
+        CRLF(1);
+     SOUT("        (DEFAULT: ZERO)");
+        CRLF(1);
+     SOUT("  <COUNT>:N PROCEED THRU <COUNT> NO. OF INSTRUC.");
+     SOUT("     (DEFAULT:ONE)");  CRLF(1);
+     SOUT("  <ADDR>:!  SET BRKPT AT ADDR"); CRLF(1);
+     SOUT("  :!  DISPLAY BREAKPOINTS"); CRLF(1);
+     SOUT("  <ADDR>/ <OPT1> <OPT2>"); CRLF(1);
+     SOUT("       <OPT1>=PLACE OCTAL NO. IN ADDR"); CRLF(1);
+     SOUT("       <OPT2>= CARRAIGE RETURN (THRU)");
+        CRLF(1);
+     SOUT("           < (NEXT CELL)"); CRLF(1);
+     SOUT("           ↑  (PREVIOUS CELL)"); CRLF(1);
+     SOUT("  [NUM]>(REGISTER)  DISPLAYS REGISTERS"); CRLF(1);
+     SOUT("      REGISTERS = A,B,CENT. INT.,E,INT. SYS.,M,OVF,P,S,T");
+       CRLF(1);
+     SOUT("      [NUM]= OPTIONAL OCTAL NUMBER PLACED IN REGISTER");
+       CRLF(1);
+     SOUT("      FOR A,B,C,E,I,M,O,P,S REGISTERS"); CRLF(1);
+     SOUT("  TO STOP A PROGRAM AFTER A :G OR :P OR :N COMMAND,"); CRLF(1);
+     SOUT("  HIT CONTROL-K"); CRLF(1);
+     SOUT("  THEN TYPE"); CRLF(1);
+     SOUT(".INT/    1"); CRLF(1);
+     SOUT(";P"); CRLF(1);
+       SOUT("IF YOU WANT A LISTING AS THE PROGRAM IS LOADED");
+       CRLF(1);
+       SOUT("TYPE A 'Y', ELSE TYPE A 'N'.");CRLF(1);
+       SOUT("THERE ARE 3 LOADER OPTIONS: ");CRLF(1);
+       SOUT("  LOAD BINARY FILE - LCODE=0");CRLF(1);
+       SOUT("  COMPARE CORE WITH BINARY FILE - LCODE=1");CRLF(1);
+       SOUT("  CHECKSUM ONLY - LCODE=2");CRLF(1);
+     GOTO LOOP;
+        ELSEIF HOLD=54B DO;*  LOADING
+           SOUT("   ");
+           SETS(ASTR,0,0);
+           INNAME(ASTR:INER);
+           BFILE←INFILE(ASTR:INER);
+           CRLF(1);
+           LOAD(BFILE);
+        ELSE DO;  INER: SOUT("  ?");
+        ENDIF; GOTO LOOP;
+  LOO2: HOLD←CIN(0);*  READ CHR AFTER COLON.
+     IF HOLD=56B DO;*  N
+        COUNT←0;
+        IF LENGTH(ASTR)>0 DO;
+           NEXT←COSN(ASTR,8);
+           ELSE DO; NEXT←1;
+           ENDIF;
+        GOTO XEQ;
+        ELSEIF HOLD=60B DO;*  P
+           NEXT←0;
+           IF LENGTH(ASTR)>0 DO;
+              COUNT←COSN(ASTR,8);
+              ELSE DO; COUNT←0;
+              ENDIF;
+           GOTO XEQ;
+        ELSEIF HOLD=47B DO;*  G
+           NEXT←0; COUNT←0;
+           IF LENGTH(ASTR)>0 DO;
+              PC←COSN(ASTR,8);
+              ELSE DO;
+              PC←0;
+              ENDIF;
+           GOTO XEQ;
+        ELSEIF HOLD=1 DO;*  !
+           IF LENGTH(ASTR)=0 DO;
+              CRLF(1); SOUT(">"); 
+              FOR FLAG←1 BY 1 TO 4 DO;
+                 HOLD1←INT[FLAG];
+                 SOUT("   ");
+                 IF HOLD1=0 DO;
+                    SOUT(" * ");
+                    ELSE DO;
+                       IOUT(HOLD1,1,8);
+                    ENDIF;
+                 ENDFOR;
+              ELSE DO;
+           NUM←COSN(ASTR,8);
+           FLAG←0;
+           FOR HOLD←1,HOLD+1 WHILE FLAG=0 DO;
+              IF INT[HOLD]=0 DO; INT[HOLD]←NUM; FLAG←1; ENDIF;
+              IF HOLD=5 DO; FLAG←2; ENDIF;
+              ENDFOR;
+           IF FLAG=2 DO; SOUT("  BREAKPOINTS USED UP!"); ENDIF;
+           ENDIF;
+           GOTO LOOP;
+        ELSE DO;
+           SOUT("  ?"); GOTO LOOP;
+        ENDIF;
+  LOO3: MREG←COSN(ASTR,8);*  DISPLAYING CORE
+     LOO4: SOUT("   "); MDR←CORE[MREG]; IOUT(MDR,1,MODE);
+     SOUT("   ");
+     HOLD←CIN(0);*  FIND OUT WHAT NEXT
+     LOO5: IF HOLD=155B DO; GOTO LOOP;* CR
+        ELSEIF HOLD=34B DO;*  <
+           MREG←MREG+1;
+           LOO6: CRLF(1); SOUT("<=>"); IOUT(MREG,1,MODE); SOUT("/");
+              GOTO LOO4;
+        ELSEIF HOLD=76B DO;*  ↑
+           MREG←MREG-1;
+           GOTO LOO6;
+        ELSEIF HOLD>17B AND HOLD<32B DO;*  A NUMBER
+           SETS(ASTR,0,0);
+           FOR NULL←0 WHILE HOLD>17B AND HOLD<32B DO;
+              WCI(HOLD,ASTR);
+              HOLD←CIN(0);
+              ENDFOR;
+           IF HOLD=155B OR HOLD=34B OR HOLD=76B DO;
+              MDR←COSN(ASTR,8);
+              CORE[MREG]←MDR$BWRD;
+              GOTO LOO5;
+              ELSE DO; SOUT("  ?");*  UNDECIPHERABLE INPUT
+                 GOTO LOOP;
+                 ENDIF;
+           ELSE DO; SOUT("  ?"); GOTO LOOP;
+           ENDIF;
+  LOO10:
+     HOLD←CIN(0); SOUT("   ");
+     IF LENGTH(ASTR)>0 DO;
+        FLAG1←1; HOLD1←COSN(ASTR,8);
+        HOLD1←HOLD1$BWRD;
+        ELSE DO; FLAG1←0;
+        ENDIF;
+     IF HOLD=41B  DO;*  AREG
+        IF FLAG1=1 DO;
+           AREG←HOLD1;
+           ENDIF;
+        HOLD1←AREG;
+        ELSEIF HOLD=42B DO;*   BREG
+           IF FLAG1=1 DO;
+              BREG←HOLD1;
+              ENDIF;
+           HOLD1←BREG;
+        ELSEIF HOLD=43B DO;*  CIR
+           IF FLAG1=1 DO;
+              CIR←HOLD1;
+              ENDIF;
+           HOLD1←CIR;
+        ELSEIF HOLD=45B DO;*   EREG
+           IF FLAG1=1 DO;
+              EREG←HOLD1;
+              ENDIF;
+           HOLD1←(EREG$B0);
+        ELSEIF HOLD=51B DO;*  INT. SYS.
+           IF FLAG1=1 DO;
+              INTST←HOLD1;
+              ENDIF;
+           HOLD1←INTST$B0;
+        ELSEIF HOLD=55B DO;*  MREG
+           IF FLAG1=1 DO;
+              MREG←HOLD1;
+              ENDIF;
+           HOLD1←MREG;
+        ELSEIF HOLD=57B DO;*  OVF
+           IF FLAG1=1 DO;
+              OVF←HOLD1;
+              ENDIF;
+           HOLD1←(OVF$B0);
+        ELSEIF HOLD=60B DO;*  PC
+           IF FLAG1=1 DO;
+              PC←HOLD1;
+              ENDIF;
+           HOLD1←PC;
+        ELSEIF HOLD=63B DO;*  S REG
+           IF FLAG1=1 DO;
+              SREG←HOLD1;
+              ENDIF;
+           HOLD1←SREG;
+        ELSEIF HOLD=64B DO;*  T REG OR MDR
+           HOLD1←MDR;
+        ELSE DO; SOUT("  ?");  GOTO LOOP;
+        ENDIF;
+     IOUT(HOLD1,1,MODE);
+     GOTO LOOP;
+*   FETCH AND EXECUTE SECTION
+  XEQ:
+     PASS←1; INT[0]←0;
+     RUN:
+     ROY1: IF XTESTR=1 DO;SOUT(" RUN ");CRLF(1);ENDIF;
+        IF INT[0]=1 DO; GOTO LOOP; ENDIF;* CHECK FOR RETURN TO COMMAND
+*                                        SECTION
+        IF PASS=1 DO; PASS←0; ELSE DO;
+           IF NEXT=1 DO; GOTO LOOP;
+              ELSEIF NEXT>1 DO; NEXT←NEXT-1;
+              ENDIF;
+           FLAG1←0;
+           FOR HOLD1←1 BY 1 TO 4 DO;
+              IF INT[HOLD1]=PC DO;
+*              /* **** PATCH BY ROK - 6/21/76 **** */
+                 SOUT("   *** BREAKPOINT AT ");*   PRINT BREAKPOINT
+                 IOUT(PC,1,8);
+                 SOUT(" ***");
+                 CRLF(1);
+*              /* **** END OF PATCH **** */
+                 FLAG1←1; ENDIF;
+              ENDFOR;
+           IF FLAG1=1 DO; COUNT←COUNT-1; ENDIF;
+           ENDIF;
+           IF COUNT<0 DO; GOTO LOOP; ENDIF;
+*  FETCH
+        IF PC>17777B DO;
+           CRLF(1); SOUT(">P= "); IOUT(PC,1,8); GOTO LOOP;
+           ENDIF;
+        MREG←PC;
+        MDR←CORE[MREG];
+        MAR←MDR;
+*  IF JUMP INST TEMPORARILY DISABLE INTERRUPTS
+        IF MAR$B1412=2 AND MAR$B11=1 DO;
+           INTSV←INTST$B0; INTST←0;
+           ENDIF;
+        IF INTST=1 DO;
+* CHECK FLAGS AND CONTROL BITS AND OTHER STUFF
+           FLAG←0;
+           FOR HOLD←10B,HOLD+1 WHILE FLAG=0 DO;
+              HOLD1←DEV[HOLD];
+              IF HOLD1$CON=1 AND HOLD1$FLG=1 DO;* INTERRUPT
+                 IF CIR#HOLD DO;
+                    CIR←HOLD;
+                    MREG←HOLD;
+                    MDR←CORE[MREG];
+                    MAR←MDR;
+                    ENDIF;
+                 ENDIF;
+                 IF HOLD=77B DO;  FLAG←1; ENDIF;* TERM LOOP;
+              ENDFOR;
+           ENDIF;
+        FLAG1←0;
+*  CHECK FOR ANY MEMORY REF
+        IF MAR$B1412#0 DO;
+           FLAG1←1;*  MEMREF
+           MREG←0;
+           IF HOLD$B10=0 DO;
+              MREG$BPAGE=0;
+              ELSE DO;
+              MREG$BPAGE←PC$BPAGE;
+              ENDIF;
+           MREG$BMEM←MAR$BMEM;
+           FLAG←MAR$B15;
+           ELSEIF (MAR$B15=1 AND MAR$B10=0) DO;* XMREF
+              IF MAR$B8=1 OR MAR$B7=1 DO;
+                 FLAG1←1;
+                 PC←PC+1;
+                 MREG←PC;
+                 FETCH();
+                 MREG←MDR;
+                 FLAG←MREG$B15;
+                 MREG$B15←0;
+                 ENDIF;
+              ENDIF;
+       IF FLAG1=1 DO;*  MEM REF  DO ANY INDIRECTION
+           FOR NULL←0 WHILE FLAG=1 DO;
+              FETCH();
+              MREG←MDR;
+              FLAG←MREG$B15;
+              MREG$B15←0;
+              ENDFOR;
+           ENDIF;
+           PC←PC+1;
+*   MAIN DECISION POINT ON INSTRUCTION TYPE
+        IF MAR$B1412#0 DO;
+           XMREF();
+           ELSEIF MAR$B15=0 DO;
+              IF MAR$B10=0 DO;
+                 XSRG();
+                 ELSE DO; XASG();
+                 ENDIF;
+           ELSE DO;
+              IF MAR$B10=1 DO;
+                 XIOG();
+                 ELSE DO;
+                 XEAG();
+                 ENDIF;
+           ENDIF;
+*  INSERT I/O ROUTINE
+        FOR HOLD←10B BY 1 TO 77B DO;
+           HOLD1←DEV[HOLD];*   CHECK STATE OF I/O DEVICE
+           IF HOLD1$CON=1 AND HOLD1$FLG=0 DO;*  NEEDS SERVICING
+              NUM←HOLD1$BSC;*  GET FILE NUMBER
+              IF HOLD1$BIO=0 DO;*  INPUT DEV
+                 FLAG1←0;
+                 FLAG←CIN(NUM)+40B;
+                 IF HOLD1$B16=0 DO;* 8 BITS
+                    FLAG1←FLAG$BL8;
+                    ELSE DO;*  16 BITS
+                    FLAG1$BU8←FLAG$BL8;
+                    FLAG←CIN(NUM)+40B;
+                    FLAG1$BL8←FLAG$BL8;
+                    ENDIF;
+                 BUFF[HOLD]←FLAG1;
+                 ELSE DO;*  OUTPUT DEV
+                 FLAG1←BUFF[HOLD];
+                 IF HOLD1$B16=1 DO;*  16 BITS
+                    HOLD2←FLAG1$BU8;
+                    FLAG←HOLD2-40B;
+                    FLAG←FLAG$BL8;
+                    COUT(FLAG,NUM);
+                    ENDIF;
+                 FLAG←(FLAG1$BL8)-40B;
+                 FLAG←FLAG$BL8;
+                 COUT(FLAG,NUM);
+                 ENDIF;
+              DEV[HOLD]$FLG←1;
+              ENDIF;
+           ENDFOR;
+     GOTO RUN;
+ END;

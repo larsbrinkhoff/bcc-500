@@ -1,0 +1,1137 @@
+       IDENT REPORT;
+
+
+       ****************************************************************
+       *                                                              *
+       *  THIS PROGRAM'S PUPOSE IS TO PRODUCE REPORTS RELATING TO     *
+       *  COMPUTER USE SO WE CAN BILL PEOPLE FOR  $MONEY$ .           *
+       *  IT HAS 2 INPUT FILES. ONE IS CALLED "OLD MASTERFILE" WHICH  *
+       *  IS THE OUTPUT OF THE PROGRAM "UPDATE".  THIS FILE CONTAINS  *
+       *  ALL THE DATA FROM WHICH THE REPORTS ARE PRODUCED, AND IS    *
+       *  SORTED IN ASCENDING USER NUMBERS.  THE FIRST RECORD OF A    *
+       *  USER IS ALWAYS GRAND TOTAL HE HAS USED SINCE THE BEGINNING  *
+       *  OF THE YEAR.  ANYTHING AFTER THAT IS THE INDIVIDUAL         *
+       *  TERMINAL SESSION TOTALS WHICH GETS PROCESSED BY THIS PRO-   *
+       *  GRAM.  THE OTHER OPTIONAL INPUT FILE IS FOR SPECIFYING      *
+       *  FOR WHICH USER WE WANT TO PRINT A BILL FOR.                 *
+       *  THIS PROGRAM HAS 4 OUTPUT FILES.  THEY ARE:                 *
+       *     1)"BILLS"     -ACTUAL BILL SENT TO USERS.  THIS REPORT   *
+       *                    HAS 2 OPTIONS. THEY ARE:                  *
+       *                       A) IF IT IS TO BE PRODUCED             *
+       *                       B) WHICH USERS ARE TO BE BILLED.       *
+       *                          (SPECIFIED BY SPEC FILE WHICH       *
+       *                           MUST CONTAIN 1 USER NUMBER PER     *
+       *                           LINE & END WITH A -1)              *
+       *     2)"STATUS"    -EXACTLY THE SAME AS "BILLS", BUT ALWAYS   *
+       *                    LISTS ALL THE USE COMPLETELY              *
+       *     3)"SUMMARY"   -SUMMARY OF ONLY THE CURRENT TOTALS FOR    *
+       *                    ALL USERS                                 *
+       *                                                              *
+       *  IN ADDITION, THIS PROGRAM ALSO PRODUCES A NEW MASTERFILE    *
+       *  FOR INPUT INTO THE NEXT BILLING PERIOD PROCESSING.          *
+       *                                                              *
+       ****************************************************************
+
+
+       DECLARE INTEGER OMFNO;   *OLD MASTERFILE FILE NUMBER
+       DECLARE INTEGER NMFNO;   *NEW MASTERFILE FILE NUMBER
+       DECLARE INTEGER SPCFNO;  *BILL WHICH USER SPECIFICATION FILE NUMBER
+       DECLARE INTEGER BILFNO;  *BILLS FILE NUMBER
+       DECLARE INTEGER INVFNO;  *INVOICE FILE NUMBER
+       DECLARE INTEGER STFNO;   *STATUS FILE NUMBER
+       DECLARE INTEGER SUMFNO;  *SUMMARY FILE NUMBER
+       DECLARE INTEGER CHAR;    *TEMPORARY CHARACTER STORAGE
+       DECLARE INTEGER I;       *A LOOP COUNTER
+       DECLARE INTEGER IDATE;   *FOR COMPUTING BILLING DATE
+       DECLARE INTEGER LENSTR;  *LENGTH OF A GIVEN STRING
+       DECLARE INTEGER BLWANT;  *FLAGS: SET IF BILLS REPORT IS WANTED
+       DECLARE INTEGER BLPART;  *       SET IF JUST A PORTION OF BILLS WANTED
+       DECLARE INTEGER STWANT;  *       SET IF STATUS REPORT WANTED
+       DECLARE INTEGER SMWANT;  *       SET IF SUMMARY REPORT WANTED
+       DECLARE INTEGER USRNO;   *USER NUMBER OF CURRENT LINE READ FROM OLD MASTERFILE
+       DECLARE INTEGER CURUNO;  *CURRENT USER NUMBER BEING PROCESSED
+       DECLARE INTEGER ALOCAT;  *DOLLAR ALLOCATED TO THE USER
+       DECLARE INTEGER REMAIN;  *REMAINING DOLLAR ALLOCATION
+       DECLARE INTEGER TTYLINE; *TTY LINE NUMBER USED FOR TERMINAL SESSION
+       DECLARE INTEGER SUMLINE; *LINES PRINTED SO FAR ON 1 PAGE OF SUMMARY REPORT
+       DECLARE INTEGER STBLINE; *LINES PRINTED SO FAR ON 1 PAGE OF STATUS AND BILLS REPORT
+       DECLARE INTEGER USRLINE; *LINES PRINTED SO FAR FOR ONE USER
+       DECLARE INTEGER USERPG;  *NUMBER OF PAGES PRINTED FOR USER SO FAR ON STATUS REPORT
+       DECLARE INTEGER BILLPG;  *PAGES PRINTED FOR ONE USER SO FAR OF BILLS REPORT
+       DECLARE INTEGER STATPG;  *PAGES PRINTED SO FAR ON STATUS REPORT
+       DECLARE INTEGER SUMPG;   *PAGES PRINTED SO FAR ON SUMMARY REPORT
+       DECLARE INTEGER OVRFLW;  *TAKES CARE OF OVERFLOW IN SYSTOT[PGFALT]
+
+       DECLARE FIELD MONTH(0:8,15);  *FOR USE WITH BRS 39
+       DECLARE FIELD DAY(0:16,23);   *FOR USE WITH BRS 39
+       DECLARE FIELD YEAR(0:0,7);    *FOR USE WITH BRS 39
+
+       DECLARE STRING TEMP(132);   *TEMPORARY STORAGE STRING
+       DECLARE STRING LINE(500);   *USED TO READ & WRITE LINES TO &FROM
+                                   *ALL THE FILES. A GENERAL WORKING STRING.
+       DECLARE STRING CURADDR(100); *HOLDS MAILING ADDRESS FOR CURRENT USER
+       DECLARE STRING ADDRESS(100); *MAILING ADDRESS JUST READ FROM OLD MASTER
+       DECLARE STRING CURIADD(100); *INVOICE MAILING ADDR FOR CURRENT USER
+       DECLARE STRING INVADDR(100); *INVOICE MAILING ADDR JUST READ
+       DECLARE STRING CURACCT(30);  *HOLDS UH ACCT CODE FOR CURRENT USER
+       DECLARE STRING ACCTCODE(30); *UH ACCT CODE JUST READ FROM OLD MASTER
+       DECLARE STRING PERIOD(50);  *HOLDS HEADING INFO ON BILLING PERIOD
+       DECLARE STRING CURNAME(35); *CURRENT USER NAME BEING PROCESSED
+       DECLARE STRING NAME(30);    *USER NAME JUST READ FROM OLD MASTER
+       DECLARE STRING CURJOB(20);  *JOB NUMBER BEING PROCESSED
+       DECLARE STRING JOBNO(20);   *JOB NUMBER JUST READ FROM OLD MASTER
+       DECLARE STRING MESSAGE(30); *HOLDS COMMENTS FOR SUMMARY REPORT
+       DECLARE STRING INVDATE(12); *BILLING DATE
+       DECLARE STRING DATE(15);    *DATE OF TERMINAL SESSION
+       DECLARE STRING TTYTIM(20);  *LOGIN, LOGOUT TIME OF TERMINAL SESSION
+       DECLARE STRING USER(30);    *OPTIONAL ACCOUNT INFO UPON LOGIN
+       DECLARE STRING SNMFNO(7);   *FILE NAME OF NEW MASTER FILE
+
+       DECLARE STRING ARRAY STMON[13] ← "NULL",
+          "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+          "JUL", "AUG", "SEP", "OCT", "NOV", "DEC";
+
+       DECLARE PARAMETER TTY    ← 0;    *FILE NUMBER OF TTY INPUT
+       DECLARE PARAMETER FALSE  ← 0;    *FALSE FLAG
+       DECLARE PARAMETER EOFCHR ← 137B; *END OF FILE CHARACTER
+       DECLARE PARAMETER MBCHR  ← 135B; *MULTIPLE BLANK CHARACTER
+       DECLARE PARAMETER CRCHR  ← '&M'; *CARRIAGE RETURN CHARACTER
+       DECLARE PARAMETER BLONLY ← 1;    *PRINT ONLY HEADING FOR BILLS
+       DECLARE PARAMETER STONLY ← 2;    *PRINT ONLY HEADING FOR STATUS
+       DECLARE PARAMETER INVONLY ← 3;   *PRINT ONLY HEADING FOR INVOICES
+
+       ****************************************************************
+       *                                                              *
+       *   THE PARAMETERS BELOW ARE INDEXES TO 7 DIFFERENT ARRAYS     *
+       *   THAT STORES A DIFFERENT TYPE OF TOTAL.  HOWEVER, THE 10    *
+       *   SUBCHARGES STORED IN EACH OF THE 7 ARRAYS CONTAIN THE SAME *
+       *   THING.  THIS STRUCTURE WAS USED BECAUSE IT MAKES IT EASY   *
+       *   TO INITIALIZE OR COPY 1 SET OF TOTALS TO ANOTHER.          *
+       *                                                              *
+       ****************************************************************
+
+       DECLARE PARAMETER CNTHR  ← 0;    *CONNECT HOUR
+       DECLARE PARAMETER CNTMIN ← 1;    *CONNECT MINUTES
+       DECLARE PARAMETER CNTSEC ← 2;    *CONNECT SECONDS
+       DECLARE PARAMETER CPUHR  ← 3;    *CPU     HOUR
+       DECLARE PARAMETER CPUMIN ← 4;    *CPU     MINUTES
+       DECLARE PARAMETER CPUSEC ← 5;    *CPU     SECONDS
+       DECLARE PARAMETER PGFALT ← 6;    *PAGE FAULTS
+       DECLARE PARAMETER PAPERU ← 7;    *PAPER USE ON LINE PRINTER
+       DECLARE PARAMETER CHGDLR ← 8;    *DOLLAR CHARGED
+       DECLARE PARAMETER CHGCNT ← 9;    *CENTS  CHARGED
+
+       DECLARE FIXED STRING ARRAY MO[12] ← "JAN", "FEB", "MAR",
+                                           "APR", "MAY", "JUN",
+                                           "JUL", "AUG", "SEP",
+                                           "OCT", "NOV", "DEC";
+       DECLARE FIXED ARRAY SYSPREV[10]; *SYSTEM'S PREVIOUS BALANCE
+       DECLARE FIXED ARRAY PREVBAL[10]; *USER'S PREVIOUS BALANCE
+       DECLARE FIXED ARRAY TERMSES[10]; *TERMINAL SESSION TOTAL
+       DECLARE FIXED ARRAY TOTBIL [10]; *TOTAL OF ALL TERMINAL SESSIONS
+       DECLARE FIXED ARRAY CURBAL [10]; *USER'S CURRENT BALANCE (PREVBAL+TOTBIL)
+       DECLARE FIXED ARRAY SYSTEM [10]; *SYSTEM USE TOTAL FOR 1 BILLING PERIOD
+       DECLARE FIXED ARRAY SYSTOT [10]; *SYSTEM TOTAL USE FOR 1 YEAR.
+       DECLARE FIXED ARRAY BILUSR[129]; *IF ELEMENT SET, WILL PRINT A BILL
+
+
+       SOUT("REPORT WRITER    VERSION 12/1/78"); CRLF(1);
+       IDATE ← BRS(39);
+       CNS(IDATE$DAY,INVDATE); WCI(' ',INVDATE);
+       APPEND(INVDATE,MO[IDATE$MONTH-1]); WCI(' ',INVDATE);
+       CNS(IDATE$YEAR+1900,TEMP);
+       APPEND(INVDATE,TEMP);
+
+       ****************************************************************
+       *                                                              *
+       * OPEN OLD MASTER FILE AND NEW, INITIALIZED MASTERFILE FOR     *
+       * NEXT BILLING PERIOD.                                         *
+       *                                                              *
+       ****************************************************************
+
+OPENCM:CRLF(1);
+       SOUT("OLD MASTERFILE:  ");
+       INNAME(TEMP:OPENCM);
+       OMFNO ← INFILE(TEMP:OPENCM);
+
+OPENNM:CRLF(1);
+       SETS(TEMP,0,0);
+       SOUT("NEW MASTERFILE: ");
+       OUTNAME(TEMP:OPENNM);
+
+       * CHECK FOR RIGHT FORMAT OF NEW MASTERFILE FILE NAME *
+       * FORMAT IS: MONXX    1) MON -3 LETTER ABBREV OF A MONTH
+       *                     2) XX  -NUMERIC DIGITS (LIKE 02 OR 34)
+
+       GCI(TEMP); GCD(TEMP);
+       IF LENGTH(TEMP)-1 # 5 DO;  *LENGTH FUNCTION DOESNT WORK RIGHT.
+          SOUT("  **FILE NAME MUST BE 5 CHARS LONG.");
+          GOTO OPENNM;
+       ENDIF;
+       SETS(LINE,0,0);
+       WCI(GCI(TEMP),LINE) FOR I ← 1 TO 3;
+       FOR I ← 1 TO 12 DO;
+          I ← 100 IF EQSTR(LINE,STMON[I]);
+       ENDFOR;
+       IF I<100 DO;
+          SOUT("  **1ST 3 CHARS MUST BE A MONTH ABBREVIATION.");
+          GOTO OPENNM;
+       ENDIF;
+       SCOPY(LINE,TEMP);
+       FOR I ← 1 TO 2 DO;
+          CHAR ← GCI(LINE);
+          IF CHAR<'0' OR CHAR>'9' DO;
+             SOUT("  **LAST 2 CHARS MUST BE NUMERIC DIGITS.");
+             GOTO OPENNM;
+          ENDIF;
+       ENDFOR;
+
+       SETR(TEMP,0); SETW(TEMP,7);
+       SCOPY(SNMFNO,TEMP);
+       NMFNO ← OUTFILE(TEMP,3B6:OPENNM);
+       CRLF(2);
+
+       ****************************************************************
+       *                                                              *
+       *           DETERMINE WHICH OF THE REPORTS ARE DESIRED         *
+       *                                                              *
+       ****************************************************************
+
+       IF ASK("NORMAL PROCESSING DESIRED? ") DO;
+          BLWANT←1;  BLPART←1;
+          STWANT  ←1;
+          SMWANT ←1;
+       ELSE DO;
+          SOUT("   ENTER PARAMETERS FOR REPORTS:");  CRLF(1);
+          IF ASK("   BILLS WANTED?   ") DO;
+             BLWANT ← 1;
+             BLPART ← 1 IF ASK("   BILL ONLY CERTAIN USERS? ") ELSE BLPART ← 0;
+          ELSE DO;
+             BLWANT ← 0;
+             BLPART ← 0;
+          ENDIF;
+
+          STWANT ← 1 IF ASK("   STATUS  WANTED? ") ELSE STWANT ← 0;
+          SMWANT ← 1 IF ASK("   SUMMARY WANTED? ") ELSE SMWANT ← 0;
+       ENDIF;
+
+       ****************************************************************
+       *                                                              *
+       *                   OPEN ALL ASKED FOR FILES                   *
+       *                                                              *
+       ****************************************************************
+
+       BILFNO ← OUTFIL("BILLS",3B6:FAILED) IF BLWANT;
+       INVFNO ← OUTFIL("INVOICES",3B6:FAILED) IF BLWANT;
+       IF BLPART DO;
+SPECFL:   SOUT("BILL CERTAIN USERS SPECFILE: ");
+          SETS(TEMP,0,0);
+          INNAME(TEMP:SPECFL);
+          CRLF(1);
+          SPCFNO ← INFILE(TEMP:SPECFL);
+          * READ FILE INTO USER NUMBER ARRAY *
+          USRNO ← IIN(SPCFNO);
+          WHILE USRNO # -1 DO;     * SPECFILE MUST END WITH A -1 *
+             IF (USRNO>=1 AND USRNO<=128) DO;
+                IF BILUSR[USRNO]=1 DO;
+                   SOUT("*USER #"); IOUT(USRNO); SOUT(" DUPLICATED IN SPECFILE&M&J");
+                ELSE DO;
+                   BILUSR[USRNO] ← 1;
+                ENDIF;
+             ELSE DO;
+                SOUT("*USER #"); IOUT(USRNO); SOUT(" OUT OF RANGE&M&J");
+             ENDIF;
+             CIN(SPCFNO);   *BYPASS LINEFEED CHARACTER
+             USRNO ← IIN(SPCFNO);
+          ENDFOR;
+          CLOSE(SPCFNO);
+       ELSEIF BLWANT DO;
+          FOR I ← 1 TO 128 DO;
+             BILUSR[I] ← 1;
+          ENDFOR;
+       ENDIF;
+
+       STFNO ← OUTFIL("STATUS", 3B6:FAILED) IF STWANT;
+       SUMFNO← OUTFIL("SUMMARY",3B6:FAILED) IF SMWANT;
+
+       ****************************************************************
+       *                                                              *
+       *                       INITIALIZATION                         *
+       *                                                              *
+       ****************************************************************
+
+GETPRD:SOUT("&M&JBILLING PERIOD FOR: ");
+       * READ IN THE BILLING PERIOD STRING CHARACTER BY CHARACTER *
+       CHAR ← CIN(TTY);
+       WHILE CHAR#'.' AND CHAR#CRCHR DO;
+          IF CHAR # '&A' DO;
+             WCI(CHAR,PERIOD);
+          ELSE DO;
+             COUT('↑');
+             GCD(PERIOD:GETPRD);
+          ENDIF;
+          IF CHAR = '&Q' DO;
+             SETS(PERIOD,0,0);
+             COUT('←');
+             GOTO GETPRD;
+          ENDIF;
+          CHAR ← CIN(TTY);
+       ENDFOR;
+       CRLF(1);
+
+       BILLPG ← -1;
+       STATPG ← SUMPG  ← 0;             *INITIALIZE PAGES PRINTED TO ZERO
+       FOR I ← 0 TO 9 DO;               *DO THE SAME FOR TOTAL TERM SESSION
+          TOTBIL[I] ← 0;
+       ENDFOR;
+       OVRFLW ← CURUNO ← 0;
+       SUMHDR();
+
+
+
+
+       ****************************************************************
+       *                                                              *
+       *                    MAIN PROCESSING LOOP                      *
+       *                                                              *
+       ****************************************************************
+
+       WHILE 1 DO;
+
+          RDLINE(:EOF);
+          IF CURUNO # USRNO DO;  *1ST RECORD OF USER # CONTAINS CUMULATIVE TOTALS
+             TOTCHG() IF CURUNO#0;
+             * SAVE THE OLD BALANCE SO CAN ADD TO IT *
+             CURUNO ← USRNO;
+             SCOPY(CURNAME,NAME);
+             SCOPY(CURJOB,JOBNO);
+             SCOPY(CURADDR,ADDRESS);
+             SCOPY(CURIADD,INVADDR);
+             SCOPY(CURACCT,ACCTCODE);
+             FOR I ← 0 TO 9 DO;
+                PREVBAL[I] ← TERMSES[I];
+             ENDFOR;
+             * OPTIONAL ACCOUNT INFO OF 1ST RECORD ALWAYS
+             * CONTAINS DOLLAR ALLOCATION FOR THE USER
+             GCD(USER); GCD(USER);
+             ALOCAT ← CSN(USER);
+             APPEND(USER, "&M&J");
+             IF EQSTR(CURNAME,"-----")=FALSE DO;
+                BGNBAL(INVONLY);
+                BGNBAL(BLONLY);
+             ENDIF;
+             STBLINE ← USRLINE ← 0;
+          ELSE DO;
+             IF EQSTR(CURNAME,NAME)=FALSE DO;
+                IF EQSTR(CURNAME,"-----") DO;
+                   SCOPY(CURNAME,NAME);
+                   SCOPY(MESSAGE,"INITIALIZED");
+                   SOUT("NEW USER "); SOUT(CURNAME); SOUT("... ENTER DOLLAR ALLOCATION: ");
+                   ALOCAT ← IIN(TTY); CRLF(1);
+                   RDJOB();
+                   SCOPY(CURJOB,JOBNO);
+                   SCOPY(CURADDR,ADDRESS);
+                   SCOPY(CURIADD,INVADDR);
+                   SCOPY(CURACCT,ACCTCODE);
+                   BGNBAL(INVONLY);
+                   BGNBAL(BLONLY);
+                ELSE DO;
+                   SOUT("DIFFERENT USER NAMES... ");
+                   SOUT(CURNAME); SOUT(" <---> "); SOUT(NAME);
+                   IF ASK("    SAME USER? ") DO;
+                      SCOPY(MESSAGE,"NEW NAME  (WAS ");
+                      APPEND(MESSAGE,CURNAME);
+                      APPEND(MESSAGE,")");
+                      SCOPY(CURNAME,NAME);
+                   ELSE DO;
+                      SCOPY(MESSAGE,"ACCOUNT CLOSED");
+                      TOTCHG();
+                      SCOPY(CURNAME,NAME);
+                      SOUT("   IS USER "); SOUT(NAME); COUT(' ');
+                      IF ASK("PREVIOUSLY KNOWN TO THE SYSTEM? ") DO;
+                         SOUT("   ENTER USER'S PREVIOUS BALANCE:"); CRLF(1);
+                         SOUT("      CONNECT TIME:");
+                            SOUT("    HOUR: "); PREVBAL[CNTHR]  ← IIN(TTY);
+                            SOUT("    MIN: ");  PREVBAL[CNTMIN] ← IIN(TTY);
+                            SOUT("    SEC: ");  PREVBAL[CNTSEC] ← IIN(TTY);
+                         SOUT("&M&J      CPU TIME:    ");
+                            SOUT("    HOUR: "); PREVBAL[CPUHR]  ← IIN(TTY);
+                            SOUT("    MIN: ");  PREVBAL[CPUMIN] ← IIN(TTY);
+                            SOUT("    SEC: ");  PREVBAL[CPUSEC] ← IIN(TTY); CRLF(1);
+                         SOUT("      PAGE FAULTS: "); PREVBAL[PGFALT] ← IIN(TTY);
+                         SOUT("     PAPER USED: ");  PREVBAL[PAPERU] ← IIN(TTY); CRLF(1);
+                         SOUT("      DOLLAR CHG: ");  PREVBAL[CHGDLR] ← IIN(TTY);
+                         SOUT("    CENTS CHG: ");   PREVBAL[CHGCNT] ← IIN(TTY);
+                         SCOPY(MESSAGE, "RE-INSTALLED"); CRLF(1);
+                      ELSE DO;
+                         FOR I ← 0 TO 9 DO;
+                            PREVBAL[I] ← 0;
+                         ENDFOR;
+                         SCOPY(MESSAGE,"NEW USER");
+                      ENDIF;
+                      SOUT("      DOLLAR ALLOCATION: ");
+                      ALOCAT ← IIN(TTY);
+                      CRLF(1);
+                      RDJOB();
+                      SCOPY(CURJOB,JOBNO);
+                      SCOPY(CURADDR,ADDRESS);
+                      SCOPY(CURIADD,INVADDR);
+                      SCOPY(CURACCT,ACCTCODE);
+                      BGNBAL(INVONLY);
+                      BGNBAL(BLONLY);
+                      STBLINE ← USRLINE ← 0;
+                   ENDIF;
+                ENDIF;
+             ENDIF;
+
+             **********************************************************
+             *                                                        *
+             *                   ACCUMULATE CHARGES                   *
+             *                                                        *
+             **********************************************************
+
+             FOR I ← 0 TO 9 DO;
+                TOTBIL[I] ← TOTBIL[I]+TERMSES[I];
+             ENDFOR;
+             WRLINE();
+          ENDIF;
+
+       ENDFOR;
+
+       ****************************************************************
+       *                                                              *
+       *   END OF MASTERFILE REACHED. CLEAN THINGS UP AND CLOSE ALL   *
+       *                                                              *
+       ****************************************************************
+
+EOF:   TOTCHG();
+
+       * PRINT SUMMARY TOTAL *
+       IF SMWANT DO;
+          SCOPY(LINE,"                   ** TOTAL **     ");
+          WRPARM(SYSTEM);
+          CRLF(2,SUMFNO);
+          SOUT(LINE,SUMFNO);
+
+          SCOPY(LINE,"            FROM LAST BILLING      ");
+          WRPARM(SYSPREV);
+          CRLF(4,SUMFNO);
+          SOUT(LINE,SUMFNO);
+
+          SCOPY(LINE,"            FROM THIS BILLING      ");
+          WRPARM(SYSTEM);
+          CRLF(2,SUMFNO);
+          SOUT(LINE,SUMFNO);
+
+          SCOPY(LINE,"            YEAR TO DATE           ");
+          WRPARM(SYSTOT);
+          CRLF(2,SUMFNO);
+          SOUT(LINE,SUMFNO);
+       ENDIF;
+
+       COUT(EOFCHR,NMFNO);
+       COUT(EOFCHR,BILFNO) IF BLWANT;
+       COUT(EOFCHR,INVFNO) IF BLWANT;
+       COUT(EOFCHR,STFNO) IF STWANT;
+       COUT(EOFCHR,SUMFNO) IF SMWANT;
+       CLOSALL();
+
+       CRLF(2);
+       SOUT("PROCESSING COMPLETE.  SAVE ");
+       SOUT(SNMFNO);
+       SOUT(" ON PFS!");
+       EXIT();
+
+FAILED:SOUT("FAILED!!");
+       HALT();
+
+       FUNCTION STBHDR(INTEGER WCHONE);
+
+* THIS FUNCTION PRODUCES THE HEADINGS FOR THE 2 REPORTS: "BILLS" AND
+* "STATUS", WHICH ARE BOTH EXACTLY ALIKE EXCEPT FOR THE PAGE NUMBERINGS.
+* THE PARAMETER WCHONE (WHICH ONE) DETERMINES WHICH REPORT THE HEADING GOES.
+
+       DECLARE STRING
+          ADSTR1(30),
+          ADSTR2(30),
+          ADSTR3(30),
+          ADSTR4(30),
+          TEMPSTR(100),
+          RUNOFF ← "**RUNOFF&M&J&L&M&J",
+          HEDR0  ← "&L&M&J",
+          HEDR1  ← "&135OSTATEMENT OF USE",
+          HEDR2  ← "&135KPAGE ",
+          HEDR3  ← "&M&J&J&135OBCC 500  SYSTEM",
+          HEDR4  ← "&M&J&135O491 HOLMES HALL",
+          HEDR5  ← "&M&J&135MUNIVERSITY OF HAWAII",
+          HEDR6  ← "&M&J&J&JDATE:    ",
+          HEDR6A ← "UH ACCT CODE: ",
+          HEDR6B ← "MAIL TO: ",
+          HEDR7  ← "&M&JUSER:    ",
+          HEDR8  ← "&M&JJOB NO:  ",
+          HEDR9  ← "&M&JPERIOD:  ",
+          HEDR10 ← "&M&J&J&135%DATE&135(LINE&135$LOGIN&135$LOGOUT&135'CONNECT",
+          HEDR11 ← "       CPU&135'PAGE&135#PAPER&135#CHARGES&135'ACCOUNT (IF ANY)",
+          HEDR12 ← "&M&J&1359TIME      TIME          TIME        TIME&135%FAULTS   USE&M&J&J",
+          HEDR13 ← "&135TINVOICE",
+          HEDR14 ← "&M&J&J&135)&135,&135)&135*&135'CONNECT",
+          HEDR15 ← "       CPU&135'PAGE&135#PAPER&135#CHARGES",
+          HEDR16 ← "&M&J&1359                        TIME        TIME&135%FAULTS   USE&M&J&J";
+
+       IF BLWANT AND BILUSR[CURUNO] AND WCHONE=BLONLY DO;
+          SOUT(RUNOFF,BILFNO) IF BILLPG =-1;  *PREVENTS REGULAR HEADING
+          SOUT(HEDR0,BILFNO) IF BILLPG # -1;
+          BILLPG ← 0 IF BILLPG = -1;
+          BILLPG ← BILLPG + 1;
+          SOUT(HEDR1,BILFNO); SOUT(HEDR2,BILFNO); IOUT(BILLPG,BILFNO);
+          SOUT(HEDR3,BILFNO); SOUT(HEDR4,BILFNO); SOUT(HEDR5,BILFNO);
+          NEXTLINE(CURADDR);
+          SOUT(HEDR6,BILFNO); SOUT(INVDATE,BILFNO);
+          COUT(' ',BILFNO) FOR I←1 TO (30-LENGTH(INVDATE));
+          SOUT(HEDR6A,BILFNO); SOUT(CURACCT,BILFNO);
+          COUT(' ',BILFNO) FOR I←1 TO (24-LENGTH(CURACCT));
+          SOUT(HEDR6B,BILFNO); SOUT(ADSTR1,BILFNO);
+          SOUT(HEDR7,BILFNO); SOUT(NAME,BILFNO);
+          COUT(' ',BILFNO) FOR I←1 TO (77-LENGTH(NAME));
+          SOUT(ADSTR2,BILFNO);
+          SOUT(HEDR8,BILFNO); SOUT(CURJOB,BILFNO);
+          COUT(' ',BILFNO) FOR I←1 TO (77-LENGTH(CURJOB));
+          SOUT(ADSTR3,BILFNO);
+          SOUT(HEDR9,BILFNO); SOUT(PERIOD,BILFNO);
+          COUT(' ',BILFNO) FOR I←1 TO (77-LENGTH(PERIOD));
+          SOUT(ADSTR4,BILFNO);
+          SOUT(HEDR10,BILFNO); SOUT(HEDR11,BILFNO); SOUT(HEDR12,BILFNO);
+          STBLINE ← 0;
+       ENDIF;
+
+       IF BLWANT AND BILUSR[CURUNO] AND WCHONE=INVONLY DO;
+          SOUT(RUNOFF,INVFNO) IF BILLPG =-1 ELSE SOUT(HEDR0,INVFNO);
+          SOUT(HEDR13,INVFNO);
+          SOUT(HEDR3,INVFNO); SOUT(HEDR4,INVFNO); SOUT(HEDR5,INVFNO);
+          NEXTLINE(CURIADD);
+          SOUT(HEDR6,INVFNO); SOUT(INVDATE,INVFNO);
+          COUT(' ',INVFNO) FOR I←1 TO (30-LENGTH(INVDATE));
+          SOUT(HEDR6A,INVFNO); SOUT(CURACCT,INVFNO);
+          COUT(' ',INVFNO) FOR I←1 TO (24-LENGTH(CURACCT));
+          SOUT(HEDR6B,INVFNO); SOUT(ADSTR1,INVFNO);
+          SOUT(HEDR7,INVFNO); SOUT(NAME,INVFNO);
+          COUT(' ',INVFNO) FOR I←1 TO (77-LENGTH(NAME));
+          SOUT(ADSTR2,INVFNO);
+          SOUT(HEDR8,INVFNO); SOUT(CURJOB,INVFNO);
+          COUT(' ',INVFNO) FOR I←1 TO (77-LENGTH(CURJOB));
+          SOUT(ADSTR3,INVFNO);
+          SOUT(HEDR9,INVFNO); SOUT(PERIOD,INVFNO);
+          COUT(' ',INVFNO) FOR I←1 TO (77-LENGTH(PERIOD));
+          SOUT(ADSTR4,INVFNO);
+          SOUT(HEDR14,INVFNO); SOUT(HEDR15,INVFNO); SOUT(HEDR16,INVFNO);
+       ENDIF;
+
+       IF STWANT AND WCHONE=STONLY DO;
+          SOUT(RUNOFF,STFNO) IF STATPG=0;
+          SOUT(HEDR0,STFNO) IF STATPG#0;
+          STATPG ← STATPG+1;
+          SOUT(HEDR1,STFNO); SOUT(HEDR2,STFNO); IOUT(STATPG,STFNO);
+          SOUT(HEDR3,STFNO); SOUT(HEDR4,STFNO); SOUT(HEDR5,STFNO);
+          NEXTLINE(CURADDR);
+          SOUT(HEDR6,STFNO); SOUT(INVDATE,STFNO);
+          COUT(' ',STFNO) FOR I←1 TO (30-LENGTH(INVDATE));
+          SOUT(HEDR6A,STFNO); SOUT(CURACCT,STFNO);
+          COUT(' ',STFNO) FOR I←1 TO (24-LENGTH(CURACCT));
+          SOUT(HEDR6B,STFNO); SOUT(ADSTR1,STFNO);
+          SOUT(HEDR7,STFNO); SOUT(NAME,STFNO);
+          COUT(' ',STFNO) FOR I←1 TO (77-LENGTH(NAME));
+          SOUT(ADSTR2,STFNO);
+          SOUT(HEDR8,STFNO); SOUT(CURJOB,STFNO);
+          COUT(' ',STFNO) FOR I←1 TO (77-LENGTH(CURJOB));
+          SOUT(ADSTR3,STFNO);
+          SOUT(HEDR9,STFNO); SOUT(PERIOD,STFNO);
+          COUT(' ',STFNO) FOR I←1 TO (77-LENGTH(PERIOD));
+          SOUT(ADSTR4,STFNO);
+          SOUT(HEDR10,STFNO); SOUT(HEDR11,STFNO); SOUT(HEDR12,STFNO);
+          STBLINE ← 0;
+          USERPG ← USERPG+1;
+       ENDIF;
+
+
+       RETURN;
+
+
+
+       FUNCTION NEXTLINE(INTEGER STRPTR);
+
+* THIS FUNCTION BREAKS UP A MAILING ADDRESS STRING INTO FOUR SEPARATE
+* STRINGS...ONE FOR EACH PRINT LINE.
+
+       SETS(ADSTR1,0,0); SETS(ADSTR2,0,0);
+       SETS(ADSTR3,0,0); SETS(ADSTR4,0,0);
+       SCOPY(TEMPSTR,STRPTR);
+       WCI(CHAR,ADSTR1) WHILE (CHAR←GCI(TEMPSTR:NXTL1)) # CRCHR;
+          GCI(TEMPSTR);
+       WCI(CHAR,ADSTR2) WHILE (CHAR←GCI(TEMPSTR:NXTL1)) # CRCHR;
+          GCI(TEMPSTR);
+       WCI(CHAR,ADSTR3) WHILE (CHAR←GCI(TEMPSTR:NXTL1)) # CRCHR;
+          GCI(TEMPSTR);
+       WCI(CHAR,ADSTR4) WHILE (CHAR←GCI(TEMPSTR:NXTL1)) # CRCHR;
+          GCI(TEMPSTR);
+NXTL1: RETURN;
+
+       FUNCTION SUMHDR();
+
+* THIS FUNCTION PRODUCES THE HEADINGS FOR THE "SUMMARY" REPORT.
+
+       DECLARE STRING
+          SUMHD1 ← "&135OSUMMARY BALANCES&135FPAGE ",
+          SUMHD2 ← "&M&J&135OOF CURRENT USERS&M&J&JPERIOD: ",
+          SUMHD3 ← "&M&J&J&J&135+USER  BILLED&135#USER&135)CONNECT&135'CPU&135'PAGE&135#PAPER",
+          SUMHD4 ← "&135$CHARGES&135'COMMENTS&M&J&135*NUMBER&135*NAME&135+TIME&135(TIME&135%FAULTS   USE&M&J&J";
+
+       RETURN IF SMWANT=FALSE;
+
+       SOUT(RUNOFF,SUMFNO) IF SUMPG = 0;  *PREVENTS REGULAR HEADING
+       SOUT(HEDR0,SUMFNO) IF SUMPG #0;
+       SUMPG ← SUMPG+1;
+
+       SOUT(SUMHD1,SUMFNO); IOUT(SUMPG,SUMFNO);
+       SOUT(SUMHD2,SUMFNO); SOUT(PERIOD,SUMFNO);
+       SOUT(SUMHD3,SUMFNO); SOUT(SUMHD4,SUMFNO);
+
+       SUMLINE ← 0;
+
+       RETURN;
+
+       FUNCTION BGNBAL(INTEGER WCHRPT);
+
+* THIS FUNCTION PRINTS THE BEGINNING BALANCE READ FROM THE OLD MASTERFILE
+* ONTO EITHER THE "STATUS" AND "BILLS" REPORTS, DEPENDING ON WCHRPT (WHICH REPORT)
+
+       DECLARE STRING DETUSE ← "&135%DETAILED USE DURING PERIOD...&M&J";
+
+       BILLPG ← 0 IF (BILLPG # -1 AND WCHRPT = BLONLY);
+       STBHDR(WCHRPT);
+       SCOPY(LINE,"&135%CUMULATIVE USE TO BEGINNING OF PERIOD");
+       WRPARM(PREVBAL);
+
+       IF BLWANT AND BILUSR[CURUNO] AND WCHRPT=BLONLY DO;
+          SOUT(LINE,BILFNO);
+          CRLF(2,BILFNO);
+          SOUT(DETUSE,BILFNO);
+       ENDIF;
+
+       IF BLWANT AND BILUSR[CURUNO] AND WCHRPT=INVONLY DO;
+          SOUT(LINE,INVFNO);
+          CRLF(2,INVFNO);
+       ENDIF;
+
+       IF STWANT AND WCHRPT=STONLY DO;
+          SOUT(LINE,STFNO);
+          CRLF(2,STFNO);
+          SOUT(DETUSE,STFNO);
+       ENDIF;
+
+       RETURN;
+
+       FUNCTION RDJOB();
+
+* THIS FUNCTION READS A BCC JOB NUMBER FROM THE TERMINAL AND PUTS
+* IT IN THE STRING JOBNO.  IT ALSO READS THE MAILING ADDRESS AND
+* UH ACCT CODE FOR THE BILLING.
+
+GETJOB:SOUT("&M&JENTER JOB NUMBER: ");
+       RDSTRG(JOBNO,155B:GETJOB);
+GETADR:SOUT("&M&JMAILING ADDRESS FOR USE STATEMENT (CTRL-D):&M&J");
+       RDSTRG(ADDRESS,'&D':GETADR);
+GETIAD:SOUT("&M&JMAILING ADDRESS FOR INVOICE (CTRL-D):&M&J");
+       RDSTRG(INVADDR,'&D':GETIAD);
+GETACT:SOUT("&M&JENTER UH ACCT CODE: ");
+       RDSTRG(ACCTCODE,155B:GETACT);
+
+       CRLF(1);
+       RETURN;
+
+
+
+       FUNCTION RDSTRG(SPTR,TRMCHR);
+
+* THIS FUNCTION COLLECTS THE STRING FROM THE TERMINAL.
+
+       SETS(SPTR,0,0);
+       IF TRMCHR # '&D' DO;
+          WHILE (CHAR←CIN(TTY))#'.' AND CHAR#TRMCHR DO;
+             IF CHAR # '&A' DO;
+                WCI(CHAR,SPTR);
+                WCI(152B,SPTR) IF CHAR = 155B;
+             ELSE DO;
+                COUT('↑');
+                GCD(SPTR:RDNX1);
+RDNX1:       ENDIF;
+             IF CHAR = '&Q' DO;
+                COUT('←');
+                RETURN;
+             ENDIF;
+          ENDFOR;
+       ELSE DO;
+          WHILE (CHAR←CIN(TTY))#TRMCHR DO;
+             IF CHAR # '&A' DO;
+                WCI(CHAR,SPTR);
+                WCI(152B,SPTR) IF CHAR = 155B;
+             ELSE DO;
+                COUT('↑');
+                GCD(SPTR:RDNX2);
+RDNX2:       ENDIF;
+             IF CHAR = '&Q' DO;
+                COUT('←');
+                RETURN;
+             ENDIF;
+          ENDFOR;
+       ENDIF;
+
+       SRETURN SPTR;
+
+       FUNCTION RDLINE();
+
+* THIS FUNCTION READS ONE LINE FROM THE OLD MASTER FILE INTO A STRING
+* CALLED "LINE" AND THEN SEPARATES THE INDIVIDUAL ELEMENTS OF LINE
+* INTO THE GLOBAL VARIABLES, EITHER STRING OR INTEGER AS THE CASE MAY BE.
+
+       DECLARE INTEGER NUMBLK;  *NUMBER OF BLANKS FOUND
+
+       SETS(LINE,0,0);
+
+       WHILE 1 DO;
+
+          RETURN IF (CHAR←CIN(OMFNO)) = EOFCHR;
+          IF CHAR = MBCHR DO;
+             NUMBLK ← CIN(OMFNO);
+             FOR I ← 1 TO NUMBLK DO;
+                WCI(' ',LINE);
+             ENDFOR;
+          ELSEIF CHAR = '[' DO;
+             WCI(CHAR,LINE);
+             WHILE (CHAR←CIN(OMFNO)) # ']' DO;
+                RETURN IF CHAR = EOFCHR;
+                IF CHAR = MBCHR DO;
+                   NUMBLK ← CIN(OMFNO);
+                   FOR I ← 1 TO NUMBLK DO;
+                      WCI(' ',LINE);
+                   ENDFOR;
+                ELSE DO;
+                   WCI(CHAR,LINE);
+                ENDIF;
+             ENDFOR;
+             WCI(CHAR,LINE);
+          ELSEIF CHAR = CRCHR DO;
+             WCI(CRCHR,LINE);
+             WCI(CIN(OMFNO),LINE);
+             GOTO PARSE;
+          ELSE DO;
+             WCI(CHAR,LINE);
+          ENDIF;
+
+       ENDFOR;
+
+
+PARSE: SETS(TEMP,0,0);
+       WCI(GCI(LINE),TEMP) FOR I ← 1 TO 3;
+       USRNO ← CSN(TEMP);
+
+       GCI(LINE); GCI(LINE);
+       SETS(NAME,0,0);  SETS(JOBNO,0,0);
+       SETS(ADDRESS,0,0); SETS(ACCTCODE,0,0);
+       SETS(INVADDR,0,0);
+       WCI(CHAR,NAME) WHILE ((CHAR←GCI(LINE)) # ' ' AND CHAR # '[');
+       IF CHAR = '[' DO;
+          WCI(CHAR,JOBNO) WHILE ((CHAR←GCI(LINE)) # ']' AND CHAR # ':');
+          IF CHAR = ':' DO;
+             WCI(CHAR,ADDRESS) WHILE ((CHAR←GCI(LINE)) # ':');
+             WCI(CHAR,INVADDR) WHILE ((CHAR←GCI(LINE)) # ':');
+             WCI(CHAR,ACCTCODE) WHILE ((CHAR←GCI(LINE)) # ']');
+          ENDIF;
+          GCI(LINE);
+       ENDIF;
+
+       GCI(LINE);
+       SETS(DATE,0,0);
+       WCI(GCI(LINE),DATE) FOR I ← 1 TO 15;
+
+       SETS(TEMP,0,0);
+       WCI(GCI(LINE),TEMP) FOR I ← 1 TO 4;
+       TTYLIN ← CSN(TEMP);
+
+       SETS(TTYTIM,0,0);
+       WCI(GCI(LINE),TTYTIM) FOR I ← 1 TO 20;
+
+       SETS(TEMP,0,0);
+       CHAR ← GCI(LINE);
+       WHILE (CHAR # ':') DO;
+          WCI(CHAR,TEMP);
+          CHAR ← GCI(LINE);
+       ENDFOR;
+       TERMSES[CNTHR] ← CSN(TEMP);
+
+       SETS(TEMP,0,0);
+       WCI(GCI(LINE),TEMP) FOR I ← 1 TO 2;
+       TERMSES[CNTMIN] ← CSN(TEMP);
+
+       GCI(LINE);
+       SETS(TEMP,0,0);
+       WCI(GCI(LINE),TEMP) FOR I ← 1 TO 2;
+       TERMSES[CNTSEC] ← CSN(TEMP);
+
+       SETS(TEMP,0,0);
+       CHAR ← GCI(LINE);
+       WHILE (CHAR # ':') DO;
+          WCI(CHAR,TEMP);
+          CHAR ← GCI(LINE);
+       ENDFOR;
+       TERMSES[CPUHR] ← CSN(TEMP);
+
+       SETS(TEMP,0,0);
+       WCI(GCI(LINE),TEMP) FOR I ← 1 TO 2;
+       TERMSES[CPUMIN] ← CSN(TEMP);
+
+       GCI(LINE);
+       SETS(TEMP,0,0);
+       WCI(GCI(LINE),TEMP) FOR I ← 1 TO 2;
+       TERMSES[CPUSEC] ← CSN(TEMP);
+
+       SETS(TEMP,0,0);
+       WCI(GCI(LINE),TEMP) FOR I ← 1 TO 9;
+       TERMSES[PGFALT] ← CSN(TEMP);
+
+       SETS(TEMP,0,0);
+       WCI(GCI(LINE),TEMP) FOR I ← 1 TO 6;
+       TERMSES[PAPERU] ← CSN(TEMP);
+
+       SETS(TEMP,0,0);
+       WHILE (CHAR←GCI(LINE) # '$') DO;
+       ENDFOR;
+       CHAR ← GCI(LINE);
+       WHILE (CHAR # '.') DO;
+          WCI(CHAR,TEMP);
+          CHAR ← GCI(LINE);
+       ENDFOR;
+       TERMSES[CHGDLR] ← CSN(TEMP);
+
+       SETS(TEMP,0,0);
+       WCI(GCI(LINE),TEMP) FOR I ← 1 TO 2;
+       TERMSES[CHGCNT] ← CSN(TEMP);
+
+       SETS(USER,0,0);
+       GCI(LINE:CONTNU); GCI(LINE:CONTNU);
+       WHILE 1 DO;
+          WCI(GCI(LINE:CONTNU),USER);
+       ENDFOR;
+
+CONTNU:SETR(LINE,0);
+       SRETURN;
+
+       FUNCTION WRLINE();
+
+* THIS FUNCTION PRINTS ONE TERMINAL SESSION TOTAL OBTAINED FROM OLD MASTER
+* AND PRINTS THEM ON "BILLS" AND "STATUS".
+
+
+       BGNBAL(STONLY) IF (STBLINE=0 AND USERPG=0 AND EQSTR(CURNAME,"-----")=FALSE);
+       SCOPY(LINE,DATE);
+       CNS(TTYLINE,TEMP,10,5);
+       APPEND(LINE,TEMP);
+       APPEND(LINE," ");
+       APPEND(LINE,TTYTIM);
+       APPEND(LINE," ");
+       WRPARM(TERMSES);
+       APPEND(LINE,"   ");
+       APPEND(LINE,USER);
+
+       * READY TO PRINT *
+       IF STWANT DO;
+          SOUT(LINE,STFNO);
+       ENDIF;
+
+       IF BLWANT AND BILUSR[CURUNO] DO;
+          SOUT(LINE,BILFNO);
+       ENDIF;
+
+       STBLINE ← STBLINE +1;
+       USRLINE ← USRLINE +1;
+       IF STBLINE>31 DO;
+          STBHDR(BLONLY);
+          STBHDR(STONLY);
+       ENDIF;
+
+       RETURN;
+
+       FUNCTION TOTCHG();
+
+* THIS FUNCTION PRINTS THE TOTAL CHARGES ACCUMULATED DURING THE BILLING
+* PERIOD, AND ALSO THE BALANCE TO DATE FOR THE CURRENT USER BEING
+* PROCESSED.  IT DOES OTHER THINGS, ALSO.  SUMMARIZED, THEY ARE:
+*    1) PRINTS THE TOTAL BALANCE FOR THE BILLING PERIOD ON "BILLS" & "STATUS"
+*    2) PRINTS THE BALANCE TO DATE ON "BILLS", "STATUS" & "SUMMARY"
+*    3) RETURNS IN STRING "LINE" THE SAME INFORMATION AS ABOVE THAT MUST
+*       BE WRITTEN OUT ON "NEW MASTER"
+*    4) ACCUMULATES THE SYSTEM TOTAL BALANCE ALSO FROM ABOVE INFORMATION
+*    5) ZEROES OUT THE TOTAL FOR THE NEXT USER
+
+       * OBTAIN CURRENT BALANCE BY ADDING OLDMASTER & TERMINAL SESSION *
+       FOR I ← 0 TO 9 DO;
+          CURBAL[I] ← PREVBAL[I]+TOTBIL[I];
+       ENDFOR;
+
+       IF (BLWANT AND BILUSR[CURUNO] AND EQSTR(CURNAME,"-----")=FALSE) DO;
+          SCOPY(LINE,"&135%CUMULATIVE USE TO END OF PERIOD  &135$");
+          WRPARM(CURBAL);
+          SOUT(LINE,INVFNO);
+          SCOPY(LINE,"&135%TOTAL USE DURING PERIOD  &135,");
+          WRPARM(TOTBIL);
+          CRLF(1,BILFNO);
+          SOUT(LINE,BILFNO);
+          CRLF(5,INVFNO);
+          SOUT(LINE,INVFNO);
+          SCOPY(LINE,"&135%CUMULATIVE USE TO END OF PERIOD  &135$");
+          WRPARM(CURBAL);
+          CRLF(2,BILFNO);
+          SOUT(LINE,BILFNO);
+       ENDIF;
+       IF STWANT AND EQSTR(CURNAME,"-----")=FALSE AND USRLINE#0 DO;
+          SCOPY(LINE,"&135%TOTAL USE DURING PERIOD  &135,");
+          WRPARM(TOTBIL);
+          CRLF(1,STFNO);
+          SOUT(LINE,STFNO);
+          SCOPY(LINE,"&135%CUMULATIVE USE TO END OF PERIOD  &135$");
+          WRPARM(CURBAL);
+          CRLF(2,STFNO);
+          SOUT(LINE,STFNO);
+       ENDIF;
+
+       SCOPY(LINE,"&M&J&J&J&J&J&135FINITIAL ALLOCATION");
+       CNS(ALOCAT,TEMP);  LENSTR ← LENGTH(TEMP);
+       FOR I ← 1 TO 10-LENSTR DO;
+          WCI(' ',LINE);
+       ENDFOR;
+       WCI('$',LINE); APPEND(LINE,TEMP);
+       APPEND(LINE,".00&M&J&135FLESS AMOUNT TO DATE");
+       CNS(CURBAL[CHGDLR],TEMP);  LENSTR ← LENGTH(TEMP);
+       FOR I ← 1 TO 9-LENSTR DO;
+          WCI(' ',LINE);
+       ENDFOR;
+       WCI(' ',LINE); APPEND(LINE,TEMP);  WCI('.',LINE);
+       WCI('0',LINE) IF CURBAL[CHGCNT] < 10;
+       CNS(CURBAL[CHGCNT],TEMP);
+       APPEND(LINE,TEMP);
+       APPEND(LINE,"&M&J&135FREMAINING ALLOCATION");
+       * SUBTRACTION......  THE HARD WAY
+       IF CURBAL[CHGDLR] >= ALOCAT DO;   *NEGATIVE BALANCE...  USER OVER ALLOCATION
+          I ← CURBAL[CHGCNT];
+          REMAIN ← ALOCAT;
+       ELSEIF CURBAL[CHGCNT] = 0 DO;
+          I ← 0;
+          REMAIN ← ALOCAT;
+       ELSE DO;
+          I ← 100-CURBAL[CHGCNT];
+          REMAIN ← ALOCAT-1;
+       ENDIF;
+       REMAIN ← REMAIN - CURBAL[CHGDLR];
+       CNS(REMAIN,TEMP);  LENSTR ← LENGTH(TEMP);
+       FOR I ← 1 TO 8-LENSTR DO;
+          WCI(' ',LINE);
+       ENDFOR;
+       WCI('$',LINE); APPEND(LINE,TEMP); WCI('.',LINE);
+       WCI('0',LINE) IF I < 10;
+       CNS(I,TEMP);
+       APPEND(LINE,TEMP);
+       APPEND(LINE,"&M&J");
+
+       IF (BLWANT AND BILUSR[CURUNO] AND EQSTR(CURNAME,"-----")=FALSE) DO;
+          SOUT(LINE,BILFNO);
+          SOUT(LINE,INVFNO);
+       ENDIF;
+
+       IF (STWANT AND EQSTR(CURNAME,"-----")=FALSE AND USRLINE#0) DO;
+          SOUT(LINE,STFNO);
+       ENDIF;
+
+       * PUT IN "LINE" THE DATA TO BE WRITTEN ON "NEW MASTER" ONLY IF USER'S ACCOUNT HAS NOT BEEN CLOSED *
+       IF EQSTR(MESSAGE,"ACCOUNT CLOSED")=FALSE DO;
+          CNS(CURUNO,LINE,10,3);
+          APPEND(LINE,"  ");
+          APPEND(LINE,CURNAME);
+          IF LENGTH(CURJOB)>0 DO;
+             WCI('[',LINE);
+             APPEND(LINE,CURJOB);
+             IF LENGTH(CURADDR)>0 DO;
+                WCI(':',LINE);
+                APPEND(LINE,CURADDR);
+                WCI(':',LINE);
+                APPEND(LINE,CURIADD);
+                WCI(':',LINE);
+                APPEND(LINE,CURACCT);
+             ENDIF;
+             WCI(']',LINE);
+          ENDIF;
+          APPEND(LINE,"  ");
+          APPEND(LINE,DATE);
+          APPEND(LINE,"   0   0:00:00   0:00:00");
+          WRPARM(CURBAL);
+          CNS(ALOCAT,TEMP,10,6);  APPEND(LINE,TEMP);
+          SOUT(LINE,NMFNO);  CRLF(1,NMFNO);
+       ENDIF;
+
+       * WRITE SAME INFORMATION ON  "SUMMARY" IF IT IS DESIRED *
+       * DON'T PRINT USERS #1 THRU #4 AS THEY ARE SYSTEM USERS *
+       IF SMWANT AND CURUNO#1 AND CURUNO#2 AND CURUNO#3 AND CURUNO#4 DO;
+          CNS(CURUNO,LINE,10,14);
+          APPEND(LINE,"    ");
+          IF BILUSR[CURUNO] DO;
+             APPEND(LINE,"-->");
+          ELSE DO;
+             APPEND(LINE,"   ");
+          ENDIF;
+          APPEND(LINE,"   ");
+          APPEND(LINE,CURNAME);
+          LENSTR ← LENGTH(CURNAME);
+          FOR I ← 1 TO 11-LENSTR DO;
+             WCI(' ',LINE);
+          ENDFOR;
+          WRPARM(TOTBIL);
+          ** FLAG NEGATIVE BALANCES **
+          IF (CURBAL[CHGDLR]*100)+(CURBAL[CHGCNT]) > (ALOCAT*100) DO;
+             APPEND(LINE,"***   ");
+          ELSE DO;
+             APPEND(LINE,"      ");
+          ENDIF;
+          APPEND(LINE,MESSAGE);
+          APPEND(LINE,"&M&J");
+          SOUT(LINE,SUMFNO);
+          SUMLINE ← SUMLINE + 1;
+          SUMHDR() IF SUMLINE > 45;
+       ENDIF;
+
+       * ACCUMULATE SYSTEM TOTALS *
+       FOR I ← 0 TO 9 DO;
+          SYSPREV[I] ← SYSPREV[I]+PREVBAL[I];
+          SYSTEM [I] ← SYSTEM [I]+TOTBIL [I];
+          SYSTOT [I] ← SYSTOT [I]+CURBAL [I];
+       ENDFOR;
+
+       * FOR SYSTOT[PGFALT], WE HAVE TO WATCH OUT FOR OVERFLOWS, SINCE
+       * THERE IS A DISTINCT POSSIBILITY THAT IT MIGHT GO OVER 2↑23.
+       * (8 MILLION)  SO WE IMPLEMENT HERE A KLUDGY DOUBLE PRECISION.
+       IF SYSTOT[PGFALT] > 999999 DO;   *PGFALT CONTAINS ONLY LOWER 6 DIGITS
+          CNS(SYSTOT[PGFALT],TEMP);    *DROP THE LOWER 6 DIGITS
+          GCD(TEMP) FOR I ← 1 TO 6;
+          I ← CSN(TEMP);
+          SYSTOT[PGFALT] ← SYSTOT[PGFALT]-(I*1000000);
+          OVRFLW ← OVRFLW+I;
+       ENDIF;
+
+       * PREPARE FOR THE NEXT USER BY ZEROING OUT THE CURRENT BALANCE *
+       FOR I ← 0 TO 9 DO;
+          TOTBIL[I] ← 0;
+          CURBAL[I] ← 0;
+       ENDFOR;
+       SETS(MESSAGE,0,0);
+       USERPG ← 0;
+
+       RETURN;
+
+       FUNCTION WRPARM(ARRAY WHICH);
+
+* THIS FUNCTION CONSTRUCTS A NICELY SPACED STRING "LINE" OF THE MAJOR CHARGES
+* SUCH AS CPU TIME, PAGE FAULTS AND OF COURSE (HEE! HEE!) DOLLAR CHARGES.
+* THE PARAMETER "WHICH" SPECIFIES WHICH SET OF 10 SUBCHARGES TO MAKE A STRING
+* WITH.  IT CAN BE THE ACCUMULATED CHARGES FROM THE OLD MASTER, CURRENT
+* TERMINAL SESSION, TOTAL FOR THE CURRENT USER, OR EVEN THE ENTIRE SYSTEM
+* TOTAL CHARGES.  THE STRING THAT GETS MADE IS INTENDED FOR PRINTING ON
+* VARIOUS REPORTS.
+
+
+       * TAKE CARE OF ANY OVERFLOWS IN THE SUBCHARGES WHERE NECESSARY *
+       FOR I ← CPUSEC BY -1 TO CNTMIN DO;
+          IF I # CPUHR DO;   *DONT WANT CPUHR TO OVERFLOW INTO CNTSEC *
+             WHILE WHICH[I] > 59 DO;
+                WHICH[I] ← WHICH[I]-60;
+                WHICH[I-1] ← WHICH[I-1]+1;
+             ENDFOR;
+          ENDIF;
+       ENDFOR;
+       WHILE WHICH[CHGCNT] >99 DO;
+          WHICH[CHGCNT] ← WHICH[CHGCNT]-100;
+          WHICH[CHGDLR] ← WHICH[CHGDLR]+1;
+       ENDFOR;
+       CNS(WHICH[CNTHR],TEMP,10,6);  APPEND(LINE,TEMP);  WCI(':',LINE);
+       WCI('0',LINE) IF WHICH[CNTMIN]<10;
+       CNS(WHICH[CNTMIN],TEMP);  APPEND(LINE,TEMP);    WCI(':',LINE);
+       WCI('0',LINE) IF WHICH[CNTSEC]<10;
+       CNS(WHICH[CNTSEC],TEMP);  APPEND(LINE,TEMP);
+
+       CNS(WHICH[CPUHR],TEMP,10,6);  APPEND(LINE,TEMP);  WCI(':',LINE);
+       WCI('0',LINE) IF WHICH[CPUMIN]<10;
+       CNS(WHICH[CPUMIN],TEMP);  APPEND(LINE,TEMP);   WCI(':',LINE);
+       WCI('0',LINE) IF WHICH[CPUSEC]<10;
+       CNS(WHICH[CPUSEC],TEMP);  APPEND(LINE,TEMP);
+
+       IF WHICH=SYSTOT DO;
+          CNS(OVRFLW,TEMP,10,3) IF OVRFLW # 0 ELSE SCOPY(TEMP,"   ");
+          APPEND(LINE,TEMP);
+          CNS(SYSTOT[PGFALT],TEMP,10,6); APPEND(LINE,TEMP);
+       ELSE DO;
+          CNS(WHICH[PGFALT],TEMP,10,9);  APPEND(LINE,TEMP);
+       ENDIF;
+       CNS(WHICH[PAPERU],TEMP,10,6);  APPEND(LINE,TEMP);
+       CNS(WHICH[CHGDLR],TEMP);   LENSTR ← LENGTH(TEMP);
+       FOR I ← 1 TO 8-LENSTR DO;
+          WCI(' ',LINE);
+       ENDFOR;
+       WCI('$',LINE); APPEND(LINE,TEMP);
+       WCI('.',LINE);  WCI('0',LINE) IF WHICH[CHGCNT]<10;  CNS(WHICH[CHGCNT],TEMP);
+       APPEND(LINE,TEMP);
+
+       RETURN;
+
+       FUNCTION ASK(STRING QUESTN);
+
+* THIS FUNCTION PRINTS THE QUESTION PASSED TO IT AS A PARAMETER AND
+* RETURNS A 1 IF THE ANSWER TO THE QUESTION WAS A 'YES' OR ELSE A 0
+* IF THE ANSWER WAS 'NO'.  IF NEITHER ANSWER IS GIVEN, IT PRINTS AN 
+* ERROR MESSAGE AND ASKS THE QUESTION AGAIN.
+
+       WHILE 1 DO;
+
+          SOUT(QUESTN);
+          CHAR ← CIN(TTY);
+
+          IF CHAR = 'Y' DO;
+             SOUT("ES"); CRLF(1);
+             RETURN 1;
+          ELSEIF CHAR = 'N' DO;
+             SOUT("O"); CRLF(1);
+             RETURN 0;
+          ELSE DO;
+             SOUT("  TYPE 'Y' OR 'N', PLEASE."); CRLF(1);
+          ENDIF;
+
+       ENDFOR;
+
+       FUNCTION EQSTR(STRING LINE1, STRING LINE2);
+
+* FUNCTION TO COMPARE TWO STRINGS.  WILL RETURN A 1 IF EQUAL, OTHERWISE
+* RETURNS A 0.
+
+       DECLARE INTEGER COUNT;  *A SIMPLE COUNTER
+
+
+       LENSTR ← LENGTH(LINE1);
+       RETURN 0 IF LENSTR # LENGTH(LINE2);
+
+       FOR COUNT ← 1 TO LENSTR DO;
+          IF GCI(LINE1) # GCI(LINE2) DO;
+             SETR(LINE1,0); SETR(LINE2,0);
+             RETURN 0;
+          ENDIF;
+       ENDFOR;
+
+       SETR(LINE1,0); SETR(LINE2,0);
+       RETURN 1;
+
+
+       END;

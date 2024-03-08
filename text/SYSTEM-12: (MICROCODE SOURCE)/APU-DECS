@@ -1,0 +1,109 @@
+@      NOLIST EXT
+       MACRO DP←DEFINE PARAMETER;
+       MACRO DE←DEFINE REGISTER;
+       MACRO SC←DEFINE SCONDITION;
+       MACRO BC←DEFINE BCONDITION;
+
+
+
+       MACRO NOP←.VCY←0;
+* MACROS FOR READING DATA WORDS.  THE PREVIOUS INSTRUCTION SHOULD
+* READ
+* Z←ADDRESS, ALERT
+* AND THE MACRO US USED THUS:
+* M←READ
+* WHERE ANY REGISTER WHICH CAN BBE LOADED FROM Y CAN BE USED
+* IN PLACE OF M
+       MACRO READ←E2, PIN, .VCY;
+
+
+
+* REGISTER DEFINITIONS
+       DE SK1 AS BOUND;
+       DE SK2 AS REL;
+       DE SK3 AS P;
+       DE SK4 AS CSTK;
+       DE SK5 AS AR;
+       DE SK6 AS BR;
+       DE SK7 AS XR;
+       DE SK8 AS SR0;
+       DE SK9 AS SR1;
+       DE SK10 AS SR2;
+       DE SK11 AS SR3;
+       DE SK12 AS SR4;     
+       DE SK13 AS SR5;
+       DE SK14 AS FA0;
+
+       DE R0 AS MAR;
+
+
+* BRANCH CONDITIONS
+       BC R0<0,BR0NEG←11B,(SKN R0),NOVCY;
+       BC R0>=0,BR0POS←12B,(SKP R0),NOVCY;
+       BC NULLPTR←14B,();
+       BC NNPTR←15B,();
+       BC Z>=0,BZPOS←16B,(SKP Z),NOVCY;
+       BC Z<0,BZNEG←17B,(SKN Z),NOVCY;
+       BC Y.7=0,YA7IS0←21B,();
+       BC LB=0,BLBEQ0←22B,(),NOVCY;
+       BC LB#0,BLBNE0←23B,(),NOVCY;
+       BC BL=0,BLBEQ0←22B,(),NOVCY;
+       BC BL#0,BLBNE0←23B,(),NOVCY;
+       BC YEVEN←24B,();
+       BC YODD←25B,();
+       BC AT1OFF←26B,(),NOVCY;
+       BC NOREQ←27B,();
+       BC PRONEX←30B,();
+       BC NOCRASH←31B,(),NOVCY;
+       BC ASET←33B,(),NOVCY;
+       BC ACLEAR←32B,(),NOVCY;
+       BC AT2OFF←34B,(),NOVCY;
+       BC AT3OFF←35B,(),NOVCY;
+       BC AT1ON←36B,(),NOVCY;
+
+
+* SPECIAL CONDITIONS
+       SC ALERT←14B,();
+       SC POT←15B,(),NOVCY;
+       SC PIN←16B,();
+       SC STROBE←17B,();
+       SC CLRPRO←20B,();
+       SC LMPRI←22B,(),NOVCY;
+       SC CLSTROBE←23B,(),NOVCY;
+       SC CLRCM←24B,(),NOVCY;
+       SC SETPRO←25B,();
+       SC RESETTSU←26B,(),NOVCY;
+       SC SETA←30B,(),NOVCY;
+       SC CLRA←31B,(),NOVCY;
+       SC CLEARMAP←62B,(MIN NCLMAP);
+       SC BREAKSC←27B,(QCALL BREAKF);
+
+                               
+* INTEGRAL TEST PROCESSOR
+
+* HOLDING REGISTERS FOR ITP
+         DE R1 AS ABSP;
+         DE R2 AS R;
+         DE R3 AS T2;
+         DE R4 AS T1;
+         DE R5 AS T;
+       DE R6 AS STKP;
+
+
+* PARAMETERS FOR ITP
+         DP ADMASK←7774B4;
+         DP OPMASK←77B5;
+         DP IABIT←4B4;
+         DP RCHMASK←7400B;
+         DP SCMASK←77B;
+         DP SHOPMSK←3400B;
+         DP MAXSHOP←4;
+         DP WDLNG←24;
+         DP IOPTR←10B;
+         DP IOINT←40B;
+         DP BRMINS←13B5+IABIT;
+         DP LONGAD←77B6;
+       DP NMBIT ← 12;
+       DP BNDCSTK ← 100B;
+
+       END;

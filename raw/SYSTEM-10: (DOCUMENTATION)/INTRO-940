@@ -1,0 +1,764 @@
+**RUNOFF 
+                                                               Page  1
+
+
+         1.0  INTRODUCTION
+
+
+              The XDS 940 is a medium-sized, general purpose computer
+         accessed  from terminals in a time-sharing mode.  The 940 is
+         a good machine for a study of assembly-language  programming
+         techniques  and  machine  organization.   It is sufficiently
+         large that a user does not  have  to  confuse  himself  with
+         various tricks required to avoid the hardware limitations of
+         typical minicomputers; yet it is simple enough that the user
+         can  write,  assemble,  load and run a small program without
+         having to learn a huge number of details.  (This is not true
+         of the IBM 370, for example.)
+
+              The 940 is at the upper  end  of  a  family  of  "midi"
+         computers built beginning in 1961 by Scientific Data Systems
+         (SDS), which later became Xerox  Data  Systems  (XDS).   The
+         family,  not  produced  since 1968, consists of the 910, the
+         920, the 930, and the  940.   These  machines  are  made  of
+         discrete components and are thus physically large and expen-
+         sive compared to their capability (and with  machines  which
+         are  being  built  today.)   Several  hundred were built and
+         marketed over a ten-year period, however, and many are still
+         in use.
+
+              In terms of computing  power,  the  machines  are  very
+         little  better,  if any, than present-day minicomputers.  In
+         fact, it would be no problem to make them today as  minicom-
+         puters  and  sell  them  at  competitive prices.  Where they
+         differ from the minis, however,  is  in  their  longer  word
+         length  (50%  longer than the standard 16 bits).  This shows
+         up not just in terms  of  numerical  precision  and  storage
+         efficiency,  but  in certain simplicities in the instruction
+         set and addressing modes which result from instructions  not
+         having to be encoded into shorter lengths.
+
+              The 940 is a time-shared version of  the  930.   It  is
+         equipped with a special operating system (hardware and soft-
+         ware) which provides to  several  users  simultaneously  the
+         services of a virtual machine.  A virtual machine appears to                       ``````` ```````
+         the user to be a complete machine over  which  he  has  full
+         control,  even  though  he  is in fact time-sharing slightly
+         different hardware with other users.  The user may load  the
+         virtual  machine,  examine its state, start it, stop it, and
+         do any operation he could do  if  he  had  his  hands  on  a
+         physical equivalent.         ````````
+                                                               Page  2
+
+
+              The means by  which  the  user  communicates  with  the
+         machine  and  exercises his control over it is a Teletype or
+         similar on-line terminal.  The  terminal  may  be  used  for
+         input  and  output when the user's programs are running; and
+         it is used for the inspection of memory locations,  register
+         contents,  etc.  which on an actual machine usually involves
+         lights or indicators.  The  terminal  permits  the  user  to
+         reset  or clear his (virtual) machine, start it at a certain
+         location, stop it, etc.  Instead of pushing  actual  buttons
+         and  switches, the user types special commands on his termi-
+         nal.  The terminal may also be used to prepare input  for  a
+         program  in advance of its operation, much like the use of a
+         keypunch when preparing program source language or data; and
+         it  can display (perhaps selected portions of) the program's
+         output after its termination.   The  terminal,  then,  is  a
+         multi-use  device  and  assumes different roles at different
+         times and in different contexts.
+
+              Aside from its virtues of simplicity  and  straightfor-
+         wardness,  we use the 940 in this course because the BCC 500
+         system, as a special feature, emulates the 940  system  with                                       ````````
+         reasonable  efficiency.   We  can  thus  provide a number of
+         students the opportunity to use an on-line system  simultan-
+         eously.   This  is  advantageous to the students not only in
+         terms of how much work can be done  but  also  in  providing
+         some experience in on-line computing.
+
+
+
+
+         2.0  940 ORGANIZATION
+
+
+              From his BCC 500 terminal, the user (if he wishes) sees
+         a 940 system, i.e., a complete computer system consisting of
+         memory, processor,  input/output  device(s),  and  operating
+         controls  and  indicators.   Figure  1  is  a diagram of the
+         machine, with emphasis on its registers and data paths.
+
+
+         2.1  Memory
+
+              The memory contains 16384 addressable  cells  in  which
+         information  consisting  of  instructions  or  data  can  be
+         stored.  (16384 is often referred to as "16K,"  where  1K  =
+         1024.)   Each  cell contains 24 bits -- binary zeros or ones
+         -- of storage.  It is up to the user to determine  where  in
+         the memory and in what form the information is to be stored.
+         There are essentially no restrictions as to how  the  memory
+         may be used (although there are some conventions).
+                                                               Page  3
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                          FIGURE 1.  940 Processor.
+
+
+         Figure 2 gives the format of and bit naming conventions  for
+         a  memory  cell in the machine.  Each location is identified
+         by a unique address,  which  is  a  number  ranging  from  0                     ```````
+         through  16383.   As  seen in the figure, the bits in a cell
+         are numbered from the most significant to the  least  begin-
+         ning with 0.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                        FIGURE 2.  Memory Cell Format.
+                                                               Page  4
+
+
+         Since one octal digit  is  readily  convertible  into  three
+         bits,  octal notation is used to represent the contents of a
+         cell.  Where it might otherwise  be  ambiguous  we  use  the
+         convention  of identifying octal numbers by terminating them
+         with the letter "B."  A cell whose contents are as follow:
+
+
+
+
+
+
+
+
+
+
+         is said to contain 30563672B.
+
+              The memory permits both  storing  into  and  retrieving
+         information from any of its cells.  Storing involves copying
+         a new value into the cell;  retrieving  copies  the  current
+         contents  out  without modifying the contents (i.e., non-de-
+         structively).  Either of these operations is called a memory                                                               ``````
+         reference  or  a memory access.  In undergoing such a refer-         `````````        `````` ``````
+         ence the memory must be provided with an address and with  a
+         store  or a fetch command, as shown in Figure 3.  The memory         `````       `````
+         is designed to operate rapidly, at speeds matching those  of
+         the  processor.   The operating speed, or memory cycle time,                                                   `````` ````` ````
+         is independent of the address; and so the memory  is  termed
+         random  access memory (RAM).  The (strictly hardware) memory         ``````  `````` ``````
+         commands are prepared and issued  by  the  in  its  role  of
+         executing  the  user's  program.   The  user, then, is never
+         explicitly concerned with operating the memory,  but  it  is
+         important  for  each  user  at  the very outset to correctly
+         visualize the memory, the appearance of  its  contents,  and
+         the way it works.
+                                                               Page  5
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                  FIGURE 3.  Detail of Memory Organization.
+
+
+         2.2  Processor
+
+              The processor is the entity which  performs  the  oper-
+         ations  required  to  execute  the  program.  It fetches the
+         machine-language program steps  (called  operations  or  in-                                                                  ``
+         structions)  from memory and performs the indicated actions,         ```````````
+         which include further fetching or the storing  of  operands.                                                            ````````
+         The  processor  is  thus  divided  into two parts called the
+         control section and the  arithmetic  section.   The  control
+         section iteratively:
+
+              1) fetches the next instruction,
+              2) interprets and executes it, (hands over control
+                   to the arithmetic section)
+              3) determines the location of  the  next  instruc-
+                   tion.
+
+         The arithmetic section:
+
+              1) determines the address of any operand(s),
+              2) performs an operation on it (them).
+                                                               Page  6
+
+
+              From the user's point of view the control section  per-
+         forms  its  work  with  no  specific attention other than an
+         awareness on the user's part from time to time of  the  con-
+         tents  of  a  register called the program register or P.  (A                       ````````            ``````` ````````
+         register is identical in structure to the memory  cell,  ex-
+         cept  that  it is a constituent of the processor and plays a
+         specific role  in  the  processor's  operation.   Since  the
+         register  is dedicated to certain functions it does not have
+         to be addressed in the since of the many "registers" of  the
+         memory.)   P  is used to hold the address of the instruction
+         currently being executed; at the end of the current instruc-
+         tion  P  will be modified to contain the address of the next
+         instruction.  P may be thought of as a roving pointer  which
+         ranges  over  the  program  as  it executes and shows at any
+         point of interruption the instruction  address  to  be  next
+         executed.   P thus provides the address required by the con-
+         trol section when it goes to the memory to fetch an instruc-
+         tion.
+
+              940 instructions each occupy one memory  cell  and  are
+         connected  together  in sequence by the obvious expedient of
+         placing sequences of instructions into sequences  of  cells,
+         i.e.,  cells with numerically increasing addresses.  Since P
+         most often increments in content value as the program  runs,
+         it  is  frequently  referred  to  as the "P counter."  (This                                                     ```````
+         counting action may be overridden by the use  of  branch  or                                                           ``````
+         control  transfer  instructions  which  serve  to change the
+         contents of P altogether).  As instructions can  be  fetched
+         only  from  the 16K memory, P is only a 14-bit register.  If
+         the machine should attempt to fetch an  instruction  located
+         in  the  next cell from 16383, P will overflow and the fetch
+         will be made from location 0 instead.
+
+
+         2.3  Instruction Format
+
+              The format of an  instruction  is  shown  below.   Each
+         instruction  is  divided  into  portions called fields which                                                         ``````
+         indicate various aspects of the instruction.
+                                                               Page  7
+
+
+         The fields are:
+
+               - Bit 0:  System Call.                         `````` ````
+                   If Bit 0 = 1 and Bit 2 = 1, the  instruction
+                   is  a  system call, i.e., a type of instruc-
+                   tion which causes a branch into  a  specific
+                   entry  point  in  the  operating system (see                                          ````````` ``````
+                   Section 2.9).  Input/output, for example, is
+                   performed  by means of system calls.  If Bit
+                   2 = 0, the Bit 0 field  is  meaningless;  it
+                   may have either value.
+
+               - Bit 1:  Index Designator.                         ````` ``````````
+                   If Bit 1 = 1, the address calculation  known
+                   as  indexing  is  to  be  done.  Indexing is                       ````````
+                   described later.  It is applicable  only  to
+                   certain instructions.
+
+               - Bit 2:  Programmed Operator Designator.                         `````````` ```````` ``````````
+                   If Bit 0 = 0 and Bit 2 = 1, the  instruction
+                   is  of  a special type known as a programmed                                                     ``````````
+                   operator.  This is described in Section 2.8.                   ````````
+
+               - Bits 3 - 8:  Operation Code.                              ````````` ````
+                   This field holds a six-bit number  designat-
+                   ing  one  of  64 possible instructions.  The
+                   940 does not use all of these  combinations.
+                   A  few are thus termed illegal instructions.                                          ``````` ````````````
+                   The field is also used in  conjunction  with
+                   programmed  operators to designate which one
+                   of 64 possible operators is being invoked.
+
+               - Bit 9:  Indirect Address Designator.                         ```````` ``````` ``````````
+                   If Bit 9 = 1, a different mode of addressing
+                   called  indirect addressing, or indirection,
+                   is invoked.
+
+               - Bits 10 - 23:  Operand Field.                                ``````` `````
+                   This field contains 14 bits and, like the  P
+                   counter, is capable of naming any one of the
+                   16K memory locations.   The  field  is  most
+                   frequently  used  to refer to the address of
+                   an operand in  memory.   Some  instructions,
+                   however,  use it to hold the operand itself;
+                   and some do not use it at all.
+                                                               Page  8
+
+
+         2.4  Processor Registers
+
+              The arithmetic section of the processor contains  three
+         registers  labeled A, B, and X.  These registers play unique
+         roles in the processor and are addressed implicitly  in  the
+         instructions.   The  user  must  maintain awareness of their
+         contents, however, since it is he who  manages  the  use  of
+         these registers within the program.
+
+              A is called the accumulator.  It is used by almost  all                              ```````````
+         the  arithmetic  and  logical instructions and is central to
+         the operation of any program.  B is the auxiliary  accumula-                                                 `````````  ````````
+         tor,  used  with  A  in a few arithmetic instructions and in         ```
+         shifting.  The X register is called the index  register  and                                                 `````  ````````
+         is used to hold a quantity--termed the index--for offsetting
+         the operand address.  Although the indexing operation is  an
+         address  calculation--a  calculation on a 14-bit quantity--X
+         also contains 24 bits.
+
+
+         2.5  Overflow Indicator
+
+              The overflow indicator  in  the  computer  permits  the
+         ready  detection  and signaling of overflow conditions which
+         might otherwise go undetected or require additional software
+         overhead  to detect during arithmetic operations in the exe-
+         cution of a program.  The overflow indicator  is  set  to  1
+         (turned on) if any of the following occurs:
+
+              1.  A sum or difference resulting from an addition
+                    or  subtraction  cannot  be contained within
+                    the A register.
+
+              2.  Multiplication of 40000000B (also written 4B7)
+                    by  itself.   (The  A and B registers cannot
+                    contain this product.)
+
+              3.  A division with  the  absolute  value  of  the
+                    numerator equal to or greater than the abso-
+                    lute value  off  the  denominator.   (The  A
+                    register cannot contain this quotient.)
+
+              4.  An arithmetic left shift changes the value  of
+                    the bit in the sign position of the A regis-
+                    ter.
+
+              5.  Bit 14 of the index register is not  equal  to
+                    Bit  15  of  the index register when the in-
+                    struction RECORD EXPONENT OVERFLOW (ROV)  is
+                    executed.
+                                                               Page  9
+
+
+         The 940 instruction  set  contains  instructions  to  reset,
+         test,  or test and reset the state of the overflow indicator
+         (see Section 3, "Overflow Instructions").
+
+
+         2.6  Data Formats
+
+              The 940 has various instructions which are designed  to
+         work on data assumed to be in different formats as follow:
+
+         2.6.1  Integers                ````````
+
+              Integers are represented as 2^24's  complement  numbers
+         having the format:
+
+
+
+
+
+
+
+
+
+
+         Bit 0 indicates the sign of  the  number,  negative  numbers
+         having  a  1 bit and positive numbers having a 0 bit in this
+         position.  The assumed binary point is to the right  of  Bit
+         23,  the  least  significant bit.  In this form the range of
+         representation is from -2^23, or -8,388,608, to +2^23-1,  or
+         8,388,607.  All of the arithmetic instructions except multi-
+         ply (MUL) and divide (DIV) can be used  on  integer  quanti-
+         ties.
+
+         2.6.2  Fixed-point Fractions                ``````````` `````````
+
+              The arithmetic instructions are designed  primarily  to
+         operate  on  fixed-point fractions haveing the following ap-
+         pearance:
+                                                              Page  10
+
+
+         The assumed binary point is between Bits 0 and 1 at the more
+         significant  end.   Negative  numbers are handled as comple-
+         ments with respect to 2 (two's complements).  The  range  of
+         representation  is  from  -1.0 to +1-2^(-23).  These numbers
+         have the equivalent of more than 6  decimal  digits  of  ac-
+         curacy.   Fixed-point  scaling (a forgotten programming art)
+         is used in working with such numbers during computation.
+
+         2.6.3  Extended-precision Fixed-point Numbers                `````````````````` ``````````` ```````
+
+              Several instructions  greatly  facilitate  the  use  of
+         multiple  precision  data.   None,  however, operate on such
+         data directly.  A double-precision  fraction,  for  example,
+         would look like:
+
+
+
+
+
+
+
+
+
+
+         In memory such a datum would be stored  in  two  consecutive
+         memory locations.
+
+         2.6.4  Floating-point (Real) Numbers                `````````````` `````` ```````
+
+              While not having true floating-point instructions,  the
+         940  has  several  (rather  odd)  instructions  designed  to
+         greatly reduce the software overhead of subroutines to  per-
+         form  calculations  on reals.  These instructions assume the                                `````
+         following real-number format:
+
+
+
+
+
+
+
+
+
+
+         The mantissa  is  a  39-bit,  two's  complement,  normalized
+         fixed-point  fraction  (giving  about  11  decimal digits of
+         accuracy).  The exponent is a 9-bit, 512's complement  inte-
+         ger,  permitting  an  exponent  range of 2^-256 to 2^255, or
+         about 10^-77.  In memory, the real number is stored  in  two
+         consecutive  memory locations and is addressed by the former
+         (i.e., smaller) address.  The virtual  940  (the  basic  in-
+                                                              Page  11
+
+
+         struction  set augmented by system calls -- see Section 2.9)
+         does have arithmetic "instructions" which deal directly with
+         reals.
+
+         2.6.5  Character Strings                ````````` ```````
+
+              The virtual machine adds other capabilities  not  found
+         in  the  hardware  instruction set.  An important one is the
+         ability to fetch and store individual 8-bit bytes from  mem-
+         ory, according to the following format:
+
+
+
+
+
+
+
+
+
+
+         This ability makes the machine  well  suited  to  deal  with
+         character  strings  --  variable  length sequences of bytes.
+         For this purpose it is imagined that all of  memory  can  be
+         byte  addressed, as well as word addressed.  Since there are
+         three bytes/word, the byte address is roughly three times in
+         value  the  address  of the word in which it is stored.  The
+         precise correspondence is
+
+
+
+
+
+         and the byte position within the word is
+
+
+
+
+
+         Byte memory thus looks like the following:         ```` ``````
+                                                              Page  12
+
+
+         2.7  Address Modification Rules
+
+              Most machines provide some means for modifying at  exe-
+         cution  time  the  effective  address of an instruction from
+         that which it actually contains.  This is done  a) to reduce
+         the  run-time  overhead of programs dealing with simple data
+         structures and/or  b) to avoid the program's having to  mod-
+         ify  itself.   The  940  provides  indexing  and indirection              ``````                        ````````      ```````````
+         (indirect, or deferred, addressing) for these purposes.  The
+         two  features  may  be  used  jointly  or singly in the same
+         instruction.
+
+         2.7.1  Indexing                ````````
+
+              The machine contains an index register (X register) for
+         address  modification,  the  use  of which does not increase
+         execution time.  If Bit 1 in an instruction which  addresses
+         memory  (some don't) is 1, the 940 adds Bits 10-23 of  the X
+         register to the address field of the instruction to  produce
+         a  different  effective address (the address actually refer-                       ````````` ```````
+         enced).  The addition is done  strictly  modulo  2^14,  com-
+         pletely ignoring any overflows which may occur.  If Bit 1 is
+         a zero the X register is not added; the effective address is
+         merely the address found in the instruction.
+
+              The instruction set provides instructions for modifying
+         and testing the X register.
+
+         2.7.2  Indirection                ```````````
+
+              When Bit 9 of an instruction (which permits it)  is  1,
+         indirection is invoked.  The machine fetches the contents of
+         the address found in the instruction (or the address  offset
+         by  Bits  10-23  of the X register if the instruction word's
+         Bit 1 = 1) and begins the entire address modification  cycle
+         again  using Bits 1 and 9 of the newly-fetched location as a
+         guide to further  action.   This  process  can  repeat  many
+         times, depending on the contents of memory.
+
+         2.7.3  Simultaneous Indexing and Indirection                ```````````` ```````` ``` ```````````
+
+              It is correct to say that for each instruction executed
+         an  effective  address is always calculated, the results de-
+         pending on the X and  I  bits  according  to  the  following
+         algorithm executed by the hardware:
+
+              In the following, P is the 14-bit program  register,  S
+         the 14-bit memory address register, M the 24-bit memory data
+         register, I the 24-bit instruction  register,  O  the  6-bit
+         operation  code  register,  and X the 24-bit index register.
+                                                              Page  13
+
+
+         The algorithm is expressed in terms of an informal  program-
+         ming language.
+
+
+         *  940 EFFECTIVE ADDRESS CALCULATION:
+         *  FIRST WE HAVE TO FETCH THE INSTRUCTION.
+
+         START: S-P & FETCH;
+
+         *  AT THE END OF THE MEMORY CYCLE THE FETCHED DATA IS IN M.
+
+                O-M(3,8);          /*CAPTURE THE OP CODE BITS*/
+                FOREVER DO;
+                   I-M;            /*ADDRESS CALC BEGINS HERE*/
+                   I-(I+X)MOD 2^14 IF I(1)=1;
+                   GOTO DONE IF I(9)=0;
+                   S-I(10,23) & FETCH;  /*DO INDIRECT STEP*
+                ENDFOR;
+
+         DONE:  Q-I(10,23);        /*Q IS THE EFFECTIVE ADDR*/
+
+
+         (The reader will note that this  algorithm  accurately  des-
+         cribes the behavior of the machine for all four combinations
+         of the X and I bits.)
+
+
+         2.8  Programmed Operators
+
+              Most arithmetic machine instructions  require  in  some
+         way  three  addresses: those of two operands and that of the
+         result.  The 940, like most one-address machines,  addresses
+         the  A register by implication for the first operand and for
+         the result.  Its instructions, then, explicitly address only
+         the second operand.
+
+              It is not infrequent that a similar situation  develops
+         when a programmer is designing a subroutine:  the subroutine
+         is to perform some operation on two  24-bit  quantities  and
+         return a single result.  The problem is how to convey to the
+         subroutine the two arguments and receive  the  result.   The
+         obvious  choice  for  a machine of this type is to use A for
+         the first operand and for the result.  But the address field
+         of  the  subroutine  call  instruction  is occupied with the
+         address of the subroutine, forcing some other  choice  (such
+         as  the  use of B, perhaps).  This is not really bad, but it
+         makes the use of the subroutine a little awkward, especially
+         if we would like to apply address modification to the second
+         operand.
+                                                              Page  14
+
+
+              The 940 Programmed Operator  (POP)  feature  permits  a
+         programmer  to  pack  into  a  single instruction both which
+         subroutine is to be entered  and  a  14-bit  address  of  an
+         operand.   The subroutine can with great efficiency and ease
+         retrieve this address and apply the same  address  modifica-                               ``` ````` ``` ````  ```````  ````````
+         tion  rules  as  the  bare hardware uses. This makes the POP         ````  `````  ``  ```  ```` ```````` `````
+         subroutine look for all subsequent programming purposes very                                                                 ````
+         much like a machine instruction.         ```` ```` ` ``````` ````````````
+
+              The basis of the POP is as follows:  An instruction  is
+         either  a  POP,  or  it  is  not.  Therefore only one bit is
+         required in the instruction  word  to  specify  whether  the
+         feature  is to be used.  Bit 2 = 1 is used for this purpose.
+         The remaining 6 bits of the operation code field are used to
+         specify  the  subroutine  entry  point.   6  bits cannot, of
+         course, directly point to an arbitrary 14-bit address.   But
+         the  field  can  direct the machine to an arbitrary location
+         through a 64-word linkage table.
+
+              When the 940 fetches a new instruction and detects a  1
+         in Bit 2 of that instruction (and a 0 in Bit 0), it does not
+         interpret Bits 3-8 as an opcode.  Instead it:
+
+              1.  Stores current value of overflow indicator  in
+                    Bit 0 of memory location 0.
+
+              2.  Resets the overflow indicator.
+
+              3.  Stores zeros in Bits 1-8 of memory location  0
+                    and a 1 in Bit 9.
+
+              4.  Stores current contents  of  P  register  into
+                    Bits 10-23 of memory location 0.
+
+              5.  Loads Bits 2-8 of the instruction word into  P
+                    register.
+
+         The machine does not apply the address modification rules to                          ```
+         a  POP,  nor does it refer to Bits 10-23 of the POP instruc-
+         tion.
+
+              The effect of the steps just outlined  is  to  store  a
+         normal  (except  that Bit 9 is always set) subroutine return
+         link (see BRM instruction in Section 3) in memory location 0
+         and  to  transfer  control  to a memory address in the range
+         100B - 177B.  There it is expected that the programmer  will
+         have  placed an unconditional control transfer to the actual
+         subroutine entry point.  A given program may include  up  to
+         64 (100B) such subroutines.
+                                                              Page  15
+
+
+              The subroutine can access the operand specified back in
+         the  POP  instruction,  along  with any address modification
+         specified in the POP, merely by referring to memory location
+         0  indirectly.   Because  of  Bit 9's previously having been
+         set, the indirect reference is propagated one more level and
+         the  effective address is then formed as if the POP had been
+         a machine instruction.  This means  that  any  POP  can  use
+         indexing and/or indirection for any meaningful purposes.
+
+
+         2.9  System Calls
+
+              An  operating  system  such   as   that   required   in
+         time-sharing  cannot  permit  the  user to execute every in-                                                            `````
+         struction known to the hardware.  Some instructions, such as
+         I/O  instructions for example, would bring the (independent)
+         users into serious conflict with each  other  and  with  the
+         system.   Instead  the  system  must  perform the I/O on the
+         user's behalf with due regard for checking his authorization
+         for  such  I/O,  for scheduling considerations, device allo-
+         cation, etc.  The user communicates his wishes to the system
+         (obtains/gives  data  from/to the system in the case of I/O)
+         by means of system calls, transfers of control through care-                     `````` `````
+         fully protected entry points of the system software.
+
+              The system software is placed in a  different  area  of
+         memory  from  that  addressable  by  the user.  This is made
+         possible by the 940 virtual memory features,  not  discussed
+         here.   Since  the user cannot address this memory, there is
+         no way he can fetch improper information  (such  as  someone
+         else's  password)  or  store  data into it, thereby possibly
+         destroying or altering the system.  All he can do  is  enter                                                                `````
+         it, and then only at known locations with valid parameters.
+
+              The POP mechanism is ideal for this  purpose  since  it
+         provides  for  protected  entry  (e.g., only through the POP
+         transfer vector, or linkage table) and makes  parameter  re-
+         trieval  so  natural.  If the 940 detects a 1 in Bit 2 of an
+         instruction word and also sees a 1 in  Bit  0,  then  before                          ``` ```` ```` ` ` ``  ```  `
+         proceeding  to  perform  the  steps  detailed in Section 2.8
+         above it first shifts memory addressing to include the  sys-
+         tem  code.   When  the  link  return word is saved in memory
+         location 0, it is placed in the  system's  location  0;  and                                          ````````
+         when the branch is made to the POP transfer vector in 100B -
+         177B, it is to the system's transfer vector in the  system's                            ````````                         ````````
+         100B  -  177B.   POPs with Bit 0 set to 1 thus all branch to
+         memory invisible to the user and are termed SYSPOPs.
+                                                              Page  16
+
+
+              Because of their great resemblance to machine  instruc-
+         tions  (now  not  even requiring the loading of a subroutine
+         into visible memory and the placing of  the  correct  branch
+         into  the  visible  transfer  vector),  SYSPOPs  are  indis-                                                               `````
+         tinguishable from machine instructions, except that they may         ````````````
+         take a little longer to execute.  In effect there are 64 new
+         "instructions" now available to a user.
+
+              Through this means all of  the  instructions  denied  a
+         user  because  their  execution  might bring him in conflict
+         with someone else (the priviledged instructions)  have  been                                ```````````
+         replaced.   In addition, a great number of subroutines which
+         might be called frequently by a typical programmer have been
+         installed  in  the  system and are immediately available via
+         SYSPOPs.  This reduces considerably the necessity for a user
+         to  have to retrieve a simple library subroutine and install
+         it in his program.  It is already there (in  system  space);
+         all he has to do is call it.
+
+              Of the various system calls, many fall into  the  cate-
+         gory  ideally  suited  to  the  POP: a single parameter (and
+         possibly the A  register)  is  involved.   Accordingly  such
+         SYSPOPs  look  like normal machine instructions, and each is
+         assigned its own position in the transfer vector and has its
+         own  mnemonic  code for use with assembly language.  Others,
+         however, either take no parameter or  take  several.   These
+         cases  all use the same SYSPOP code, BRS (branch to system);                                              ```
+         and use the address field to further specify which action to
+         take.  Hence it is possible to have many more than 64 system
+         calls.
+

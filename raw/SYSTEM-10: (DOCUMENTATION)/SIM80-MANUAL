@@ -1,0 +1,498 @@
+**RUNOFF 
+
+
+
+
+
+
+
+
+                                     SIMU
+
+
+
+
+                             A Simulator Program
+
+                         For the 8080 Microprocessor
+
+
+
+
+
+                            System Implemented By
+
+
+                                Kent Kuriyama
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                         Issued Spring Semester 1978
+                              BCC 8080 SIMULATOR
+
+
+
+              The BCC 8080 SIMULATOR subsystem can be used  to  debug
+         and  execute  8080  machine  code.  The simulator allows the
+         user to:
+
+
+                 1)   Load object files produced by the 8080
+                      cross-assembler.
+                 2)   Load the symbol table produced by the as-
+                      sembler so that locations may be refer-
+                      enced symbolically.
+                 3)   Dump and change memory locations, regis-
+                      ters, bits.
+                 4)   Disassemble machine code.
+                 5)   Interactively enter assembly source pro-
+                      grams.
+                 6)   Set break-points.
+                 7)   Trace execution.
+
+              Together with the 8080  cross-assembler  the  two  sub-
+         systems  form  a convenient microprocessor software develop-
+         ment system.  To access  the  subsystem  simply  enter  SIMU
+         followed by a carriage return (CR).
+
+
+         COMMAND STRUCTURE
+
+              After entering the subsystem the program does two line-
+         feeds.   Like  "DDT"  there  is no herald.  All commands are
+         given by special characters.  Anything that is not a special
+         character  is  taken as part of an expression which is to be
+         terminated by a command  character.   Expressions  and  file
+         names  may be corrected by the use of CONTROL-A as a charac-
+         ter delete.
+
+
+         LOADING FILES
+
+              To load type an asterisk followed by:
+
+                 1)   A 'L' to load an object file.
+                 2)   A 'T' to load a symbol table file.
+
+              The simulator  will  request  appropriate  file  names.
+         Terminate them with a period.
+
+
+         SETTING DISPLAY AND INPUT MODES
+              The simulator can evaluate  octal,  hex,  decimal,  and
+         binary  numbers  in  simple  expressions  involving plus and
+         minus operators only.  Parenthesis are not allowed.  So long
+         as  each  number is suffixed with a letter to indicate radix
+         all goes well.  This can be a pain however if you only  want
+         to  work  in  one  radix,  say  hex for example.  To set the
+         simulator to evaluate numbers you enter as  base  16  simply
+         enter:
+
+
+         %H
+
+              Similarly for octal & decimal:
+
+         %O
+         %D
+
+         respectively.
+
+              These mode setting commands not only affect  input  but
+         also affect the radix of any number outputted.  The command:
+
+         %M
+
+         sets the mode such that on output the data will be displayed
+         as  an  instruction mnemonic.  If no such instruction exists
+         the data will be printed out in hex.
+
+
+         DISPLAYING AND ALTERING REGISTERS
+
+
+              To display a register, simply type a semicolon  follwed
+         by  the  register  letter.   The  contents will then be dis-
+         played.  If you wish to alter the  contents type an  expres-
+         sion followed by a carriage return or command character (eg.
+         "%").  To leave as is simply  enter  carriage  return.   For
+         example:
+
+
+         ;A  0  100H (terminate with CR)
+
+         enters 100 hex into register a.
+
+              The double registers B, D, H, S may be likewise altered
+         by  entering  a  colon  follwed by the register-pair letter.
+         For the stack pointer simply enter S.  The  program  counter
+         can be accessed by entering a "P" after the colon.
+
+              Similarly the condition bits may be  examined  and  al-
+         tered by:
+
+
+                 &C   Carry bit
+                 &A   Auxilarry carry bit
+                 &Z   Zero bit
+                 &P   Parity bit
+                 &S   Sign bit
+
+
+         EXPRESSION COMMANDS
+
+              If the first character entered is not recognized as any
+         of  the  above commands characters the command processor in-
+         terprets this to mean that this is the first character of an
+         expression  and begins to look for a command symbol.  When a
+         command symbol is finally entered the expression  is  evalu-
+         ated and its value applied to the command.
+
+         NOTE:  In the explanations below "<   >"  denotes  a  simple
+         expression.   Any  predefined  symbols  and constants may be
+         used.
+
+
+               <   >/   Print & open (current mode)
+               <   >]   Print & open (octal mode)
+               <   >[   Print & open (decimal mode)
+               <   >)   Print & open (hexidecimal mode)
+               <   >(   Print & open (mnemonic mode)
+
+
+         NOTE:
+
+               1.       Mnemonics will not be accepted as input
+                        for an open cell.
+               2.       That the multiple data dump with form:
+
+               <   >,<   >(command symbol) May be applied to any one
+                                           the above commands.
+
+               <   >\   Just open a cell
+               <   >=   Print value of the expression
+               <   >!   Set a break point
+               <   >#   Start execution
+               <   >$   Kill break point
+
+
+         DUMPING AND ENTERING DATA
+
+
+
+              To change the contents of an open cell enter an expres-
+         sion.   To  leave  as  is terminate either with a line-feed,
+         carriage return, "^", or any other command character.
+
+
+                 1)   A CR returns you to the command processor.
+                 2)   A line-feed closes the current cell and
+                      proceeds to the next cell.
+                 3)   A "^" behaves exactly like LF except that
+                      the preceeding cell is opened.
+
+
+              If you wish to change the contents of the cell enter an
+         expression  then terminate it with anyone of the above char-
+         acters.  When a cell is opened it is  possible  to  enter  a
+         non-expression command (i.e. "%", ";", ":" . . . etc.) to be
+         executed.  If you should enter an  expression  type  command
+         however  the  contents  of  the  opened cell will be changed
+         unpredictably.  Beware.
+
+              To dump several cells at a time all the  above  commads
+         except "\" may take on the form:
+
+
+             <   >,<   >(command)
+
+
+         where the first thru second expressions are applied  to  the
+         command  character.  The command "(" is affected differently
+         as might be expcted.  Instead of simply decoding  each  byte
+         as  an instruction the following occurs.  The byte addressed
+         by the first expression is printed as a mnemonic.  Depending
+         on  whether the instruction is a 1, 2, or 3 byte instruction
+         the 0, 1, or 2 bytes following this instruction are  decoded
+         as operands of the instrucion.
+
+
+         BREAK-POINT COMMANDS
+
+              To set and kill break-points the following commands:
+
+         <    >!
+         <    >$
+
+         may be used respectively.  When control encounters a  break-
+         -point  a  message is printed out giving the location of the
+         break and control is returned to the user.  To proceed  from
+         a break you type:
+
+         %P
+
+         and execution continues.   NOTE:   The  break-point  is  not
+         cleared.   A listing of break-points may be obtained by typ-
+         ing:
+
+         %L
+
+              You can set a mode on the simulator to break only  upon
+         the  execution of a control-type instruction (eg. CALL, JMP,
+         RET, PCHL, RST).  To set the control break mode enter:                                      ```````
+         %V
+         and
+         %W   to turn off this feature.
+
+              To continue from a control break enter:                                 ```````
+
+         %C
+
+              Note the differentiation between a control break and  a                                                 ```````
+         regular  break.   Regular break-points are explicitly set by         ```````
+         the user.  Control breaks occur only when the  control  mode                                                        ```````
+         is turned on.
+
+              If you simply wish to observe program  flow  the  trace
+         mode  may  be  turned on.  In this mode the execution of any
+         control instruction will cause a messagnge to be printed out
+         at  each  instruction changing the flow of control.  To turn
+         the trace mode on, enter:
+
+         %T
+         %U  turns the trace off
+
+
+         AUTOMATIC DUMPING OF REGISTERS
+
+              At each break the simulator can be  directed  to  auto-
+         matically dump registers.  Only registers which have changed
+         since the last dump will be displayed.  Hence:
+
+         %R turns the mode on
+         and
+         %S turns it off
+
+              To dump all registers immediately enter:
+
+         %A
+
+
+         MISCELLANEOUS COMMANDS
+
+              At times it is convenient  to  single-step  thru  code.
+         The command:
+
+         %N
+
+         causes the simulator to break at the end  of  each  instruc-
+         tion.  Execution starts at whatever the value of the program
+         counter is.
+
+              To exit the simulator enter:
+
+         %F
+         MNEMONIC ENTRY COMMANDS
+
+              It is possible to enter  assembly  language  statements
+         and have them translated while in the simulator.  Since each
+         statement is translated a line at a  time  forward  symbolic
+         references are not allowed.  The definition and redefinition
+         of sysbols is permitted.  The expression type command:
+
+         <    >>
+
+         opens a cell and is ready to accept  as  input  an  assembly
+         language  statement.   To  define  a symbol at this location
+         simply begin typing this symbol at the first character loca-
+         tion.   Statements  containing  no label should begin with a
+         blank.  Standard INTEL mnemonics are to be  entered  in  the
+         opcode field.  For example the command entering the assembly
+         language statement:
+
+         1000>bMOVbA,B
+
+         although the A,B is actually in  the  operand  field,  these
+         predfined symbol must be used.  The command:
+
+         1000>bMOVb7,0
+
+         which should produce identical code is unrecognizable to the
+         simulator's  translator.   Other  instruction  such  as STA,
+         LHLD, OUT . . . etc. which have  non-specific  operands  are
+         not  restricted  like the MOV instructions.  These non-spec-
+         ific operands may contain any  simply  expression  involving
+         defined symbols and constants.
+
+              Mnemonic entry  commands  when  terminated  with  a  CR
+         simply translate the statement, store the code in memory and
+         then return control to the command processor.  When termina-
+         ted  with  a  LF  the  next  cell  (depending on instruction
+         length) is opened and the command character applied to  this
+         address.   Thus  several lines of assembly source statements
+         may be conveniently entered.  As aluded to earlier the  com-
+         mand:
+
+         <    >>
+
+         opens a cell and accepts assembly statements as input.   The
+         companion command:
+
+         <    ><
+
+         opens the cell and displays the instruction you are about to
+         change.
+              In both of the above cases one may retain the  contents
+         of  the  opened  cell by typing nothing and terminating with
+         either a CR or LF.  When redefining a symbol, the  simulator
+         will  ask  that you confirm the change.  Confirm with a per-
+         iod, deny the redefinition by entering any other character.
+
+
+         EXECUTION DETAILS
+
+              Certaninly all the features of an 8080 chip  could  not
+         be  simulated.  In particular interrupts are non-existent on
+         this simulator.  Hence the instructions EI and  DI  are  ig-
+         nored.   To  allow  a crude form of TTY IO the following in-
+         structions may be used.  OUT to port 2 will print a  charac-
+         ter  on  the user's terminal.  Similarly IN 2 will collect a
+         character.  On input echoing is turned off.   An  IN  3  for
+         status  checking  will  always  result in all ones being re-
+         turned in the accumulator.  Execution of an  IN  or  OUT  to
+         port  numbers  other  than  2 or 3 will cause an instruction
+         trap.  Execution of a HLT instruction will return control to
+         the user.
+
+              The simulator presents a full 64K bytes  of  memory  to
+         the user.
+
+              When the simulator is initially entered the  modes  are
+         set as follows:
+
+                 1)   No dumps a breaks
+                 2)   No control trace or break
+                 3)   Hex mode
+                 4)   All registers zeroed out
+                 5)   All break-points cleared
+
+              If for some reason you are kicked out of the simulator,
+         or  you  accidentaly exited with "%f", all is not loss.  You
+         can use the "CONTINUE" command to return to  the  simulator.
+         All variables, registers, etc. will still be intact.
+         COMMAND SUMMARY
+
+
+         Single Register Commands
+
+               ;A       Dumps & opens A-register
+               ;B       Dumps & opens B-register
+               ;C       Dumps & opens C-register
+               ;D       Dumps & opens D-register
+               ;E       Dumps & opens E-register
+               ;H       Dumps & opens H-register
+               ;L       Dumps & opens L-register
+               ;M       Dumps & opens memory pointed by H & L
+
+
+         Double Register Commands
+
+               :B       Dumps & opens B & C
+               :D       Dumps & opens D & E
+               :H       Dumps & opens H & L
+               :S       Dumps & opens stack pointer
+               :P       Dumps & opens program counter
+
+
+         Status Bit Commands
+
+               &C       Dumps & opens carry bit
+               &A       Dumps & opens auxillary carry bit
+               &S       Dumps & opens sign bit
+               &Z       Dumps & opens zero bit
+               &P       Dumps & opens parity bit
+
+
+         I/O Commands
+
+
+               *L       Loads an IMSAI object file
+               *T       Loads the 8080 cross-assembler's symbol
+                        table
+
+
+         Expression Commands
+
+               <   >/   Print & open (current mode)
+               <   >]   Print & open (octal mode)
+               <   >[   Print & open (decimal mode)
+               <   >)   Print & open (hexidecimal mode)
+               <   >(   Print & open (mnemonic mode)
+
+
+         NOTE:
+
+               1.       Mnemonics will not be accepted as input
+                        for an open cell.
+               2.       That the multiple data dump with form:
+
+               <   >,<   >(command symbol) May be applied to any one
+                                           the above commands.
+
+
+               <   >\   Just open a cell
+               <   >=   Print value of the expression
+               <   >!   Set a break point
+               <   >#   Start execution
+               <   >$   Kill break point
+
+
+         Mnemonic Entry Commands
+
+
+               <   >>   Enter mnemonics but don't print the con-
+                        tents of the cell
+               <   ><   As above but print out the contents of the
+                        cell
+
+         Miscellaneous Commands
+
+
+               %P       Proceed after a break point
+               %F       Return to executive
+               %O       Set to octal mode
+               %D       Set to decimal mode
+               %H       Set to hex mode
+               %M       Set to mnemonic mode
+               %N       Single step thru
+               %R       Dump registers at breaks
+               %S       Stop dumping registers at breaks
+               %T       Turn on control trace feature
+               %U       Turn off control trace
+               %V       Turn on control break
+               %W       Turn off control break
+               %A       Dump all register contents immediately
+               %C       Continue from a control break
+

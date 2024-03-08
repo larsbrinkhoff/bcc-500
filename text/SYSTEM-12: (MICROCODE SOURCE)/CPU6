@@ -1,0 +1,295 @@
+           ORG 2400B;
+*
+*
+*  OPR TABLE:
+*   THIS TABLE IS INDEXED BY A POSITIVE OPR OPERAND.
+*   IF IT IS GREATER OR EQUAL THAN MAXOPR, THE OPR
+*   IS PRIVILEGED.
+*   Z=AR, Q=BR, M=XR IF NOT PRIVILEGED
+*
+BASEOPR:   BR←Z, Z←P←P+1, SETBA, GOTO NX2;        * CAB
+           BR←Z;                                  * XAB
+CBA:       RES←AR←Q, SETBA, GOTO NX1;             * CBA
+CBX:       XR←Q, Z←P←P+1, SETBA, GOTO NX2;        * CBX
+           XR←Q;                                  * XXB
+           BR←M, Z←P←P+1, SETBA, GOTO NX2;        * CXB
+           XR←Z, Z←P←P+1, SETBA, GOTO NX2;        * CAX
+           XR←Z;                                  * XXA
+CXA:       RES←AR←M, SETBA, GOTO NX1;             * CXA
+           RES←AR←NOT Z+1, SETBA, GOTO NX1;       * CNA
+           XR←NOT M+1, Z←P←P+1, SETBA, GOTO NX2;  * CNX
+           RES←AR←0, SETBA, GOTO NX1;             * ZOA
+           AR←0, GOTO ZAB1;                       * ZAB
+           BR←0, Z←P←P+1, SETBA, GOTO NX2;        * ZOB
+           Q←GR, GOTO CBA;                        * CGA
+           Q←GR, GOTO XGA1;                       * XGA
+           Q←LR, GOTO CBA;                        * CLA
+           Q←LR, GOTO XLA1;                       * XLA
+           GOTO CSA1;                             * CSA
+           GOTO XSA1;                             * XSA
+           Z←ITR, ALERT, GOTO CTA1;               * CTA
+           Z←CTCR, ALERT, GOTO CTA1;              * CCA
+NOP:       Z←P←P+1, SETBA, GOTO NX2;              * NOP
+           R0←Q-M, GOTO MVB1, SETA;               * MVB
+           R0←0, GOTO MVB1;                       * MVC
+           SETBA, GOTO TI;     *ILLEGAL MICROINSTRUCTION
+           SETBA, GOTO TI;                        * CPS
+           M←NOT Q LCY 4 MRG 1774B, GOTO CLS1;    * CLS
+           Z←R6, S←M←Z, GOTO ASP1;                * ASP
+LLT:       M←Z, GOTO LLT1;                        * LLT
+           M←Q, R0←0, SETA, GOTO COB1;            * COB
+          SETBA, GOTO TI;      *ILLEGAL MICROINSTRUCTION [GRET]
+           SETBA, GOTO TI;                        * [GRETN]
+           IR←SR, GOTO LODS1;                     * LOADS
+           GOTO STRS1;                            * STORS
+           GOTO LSC1;                             * LSC
+           S←Z, GOTO FIX1;                        * FIX
+           M←BR←0, GOTO FLOAT1;                   * FLOAT
+           BR←NOT Q+1, HROV, GOTO FNA1;           * FNA
+           R0←2406B+CPUNO, SETBA, GOTO BREAK;
+       ALL;
+       ALL;
+       ALL;
+          SETBA, GOTO TI;      *ILLEGAL MICROINSTRUCTION
+           SETBA, GOTO TI;
+*                                                   MAXOPR
+           X23LCK, Q←1, GOTO SLOK1;               * SLOK
+           X23LCK, Z←4, GOTO UNPRO;               * RLOK
+           R0←XR, FETCH, GOTO CXA;                * ALD
+           R0←XR, M←Z, STORE, GOTO NOP;           * AST
+           R0←XR, GOTO AAX1;                      * AAX
+           Z, RES←0, PROTECT, DGOTO NOP;          * PRO
+           Z, RES←4B7, GOTO 1705B IF NPROTECT, SETBA; *
+UNPRO:     Z, UNPROTECT, GOTO NOP;                * UNPRO
+           Z, STROBE, GOTO NOP;                   * ATTN
+           S←Z, SETA, GOTO USCL1;                 * USCL
+           CLEARMAP, GOTO NOP;                    * CMAP
+           CMAPS, GOTO NOP;                       * CMAPS
+           Z← ITL, ALERT, GOTO CAT1;              * CAT
+           Z← CTCL, ALERT, GOTO CAT1;             * CAC
+           Z← UNLS, ALERT, GOTO RUN1;             * RUN
+           Z, STOP, Z←P←P+1, GOTO NOP;            * HLT
+          SETBA, GOTO TI;      *ILLEGAL MICROINSTRUCTION
+           R0←XR, GOTO LDM1, SETBA;
+           SETBA, GOTO TI;
+*
+*
+OPR1:      Q←BR, ABCD0, GOTO OPR2 IF R0>=0;
+           M←R6←XR, DGOTO M MRG BASEOPR;
+           Z←AR;
+SYSCLL:    M←R0←Q LCY 12, Z←377B;
+           IR←Q AND Z, Z←600000B, SETC;
+           NEWG←Z, Z←R0←S←604000B, DGOTO SYSC1 IF R0[2];
+           K←M LCY 3 MRG 30000240B;
+           Z←R0←S←403016B;
+UCAL1:     NEWG←403000B;
+SYSC1:     SSOURCE;
+           ILIM←0, SETBA, CALL IA;
+           R6←R0, DGOTO BLL1;
+           Z←K, Q←77B6, CALL BLODX;
+*
+XGA1:      GR←Z, GOTO CBA;
+XLA1:      LR←Z, GOTO CBA;
+ZAB1:      BR←0, DGOTO NX2, SETBA;
+           ER←0, Z←P←P+1;
+*
+*
+CLSMULT:   M←M+Z;
+           M←M+Z;
+           M←M+Z;
+           Q←Q LCY 4;
+           R6←Q LCY 2, Q←AR;
+           Q←Q LCY 4;
+           Q←Q LCY 2, Z←3B;
+           R6←Q AND Z, Q←R6;
+           Q←Q AND Z, Z←R6;
+           Q←Q-Z, Z←P←P+1, SETBA, DGOTO NX2;
+           RES←AR←M+Q;
+*
+CLS1:      Q←NOT Q MRG 77B6;
+           Z←NOT Z MRG 77B6;
+           DGOTO NOT M+1 MRG 2520B;
+           M←Z←NOT Q-NOT Z, Q←BR;
+BMACCQ: R0←Q, SETBA, GOTO BMACC1;
+*
+*
+*  ASP, M=AR, Z=XR, IR=M
+*
+ASPDIV:    M←Z←3, DGOTO ASP4;           *  6 BIT CHARS
+           M←Q AND NOT M LCY 2;
+           Z←Q LCY 2, DGOTO ASP9, M←74B6; *8 BIT CHARS
+           M←Q AND NOT M + Z;
+           M←Z←1, DGOTO ASP4;           * 12 BIT CHARS
+           M←Q AND NOT M LCY 3;
+           M←Q LCY 4, Z←0;              * 24 BIT CHARS
+ASP4:      M←M LCY 20;
+ASP5:      Q←Z AND Q, Z←S, DGOTO ASP8 IF A;
+*
+*  ASPX CAN BE CALLED AS A SUBROUTINE, TO ASP Q<CSIZE
+*   INT0 Z.  M=0, C SET.
+ASPX:      Q←Q LCY 16;
+           Z←Z+M;
+ASPX1:     M←Q LCY 2, Q←3B6;
+           R6←M+Q AND Z;
+           Q←Z;
+           Q←Q LCY 20, M←6B5;
+           Q←M AND Q LCY 2, M←4B6;
+           Q←Q-M, M←R6, DGOTO ASP6;
+           R6←M+Q, Q←3B6, GOTO *+1 IF X>=0;
+           Z←Z+1, M←R6, GOTO ASP6;
+ASP6:      Z←M AND Q ! Z AND NOT Q, RETURN IF C;
+           XR←Z, SETBA, GOTO NX1;
+ASP8:      Z←Z-M;
+           M←Q LCY 2, Q←3B6;
+           M←Q AND Z-M, GOTO ASP6 IF X>=0;
+           R6←Q←Z-1, Z←4B6;
+           Q←Q LCY 20;
+           M←M+Z;
+           Z←Q LCY 2, Q←3B6, DGOTO ASP6;
+           M←M-Z AND Q, Z←R6;
+*  DIVIDE Q BY 3 (MULTIPLY BY .25252...B)
+ASP9:      Z←Q LCY 4, Q←3B;
+           IR←Z←M+Z, M←R6;
+ASP10:     M←M AND NOT Q LCY 20, Q←IR, GOTO ASP11 IF LB=0;
+           M←M LCY 2, Q←3, DGOTO ASP10;
+           IR←Z←M+Z;
+ASP11:     Q←NOT Q LCY 16 MRG 176B5;
+           IR←Q←NOT Q LCY 2;
+           Z←Q LCY 1;
+           Z←Q+Z, M←R6;
+           Q←M-Z, Z←3;
+ASP12:     R0←Q-Z, M←IR, GOTO ASP5 IF X<0;
+           M←IR←M+1, Q←R0, GOTO ASP5;
+*
+CSA1:      SETBA, CALL GETSR;
+           GOTO CXA;
+XSA1:      R6←Z, SETBA, CALL GETSR;
+           AR←M, M←R6, SETBA, CALL LOADSR;
+           Z←P←P+1, SETBA, GOTO NX2;
+*
+CTA1:      PIN, Q←E2, GOTO CBA;
+*
+*  MOVE BLOCK OR CONSTANT (IF A IS NOT SET)
+*
+MVB1:      GOTO MVB2 IF R0<0;
+           Q←Q+Z;
+*  MOVE TOP CELL FIRST
+           M←M+Z, SETBA, GOTO TI IF Z<0;
+MVB3:      K←Q←Q-1, SETBA, GOTO NX1 IF Z=0;
+           S←R0←M-1, M←XR, CALL BLODX IF A;
+           R0←K, CALL BSTR1;
+           AR←Z←Z-1, M←S, DGOTO MVB3;
+           SETBA, GOTO TOSP IF INTRPT1;
+*
+*  MOVE BOTTOM CELL FIRST
+MVB2:      S←R0←M, SETBA, GOTO NX1 IF Z=0;
+           K←Q, CALL BLODX IF Z>=0;
+           R0←K, CALL BSTR1 IF Z>=0;
+           BR←Q←Q+1, M←S, SETBA, GOTO TI IF Z<0;
+           AR←Z←Z-1, DGOTO MVB2;
+           XR←M←M+1, SETBA, GOTO TOSP IF INTRPT1;
+*
+*  LOCATE LEADING TRANSITION IN AB
+*   (RETURN IF C IS SET)
+LLT1:      M, R0←0, GOTO LLT3 IF LB=0;
+           NOT M, GOTO LLT3 IF LB=0;
+LLT2:      DGOTO *+1;
+           M←M LCY 1, Z←R0←R0+1, DGOTO * IF M[0]=M[1];
+           Z←Z-1, GOTO LLT5;
+LLT3:      M←M EOR Q, Z←0, GOTO LLT5 IF LB=0;
+           M, Z←24, GOTO LLT5 IF X<0;
+           R0←Z, GOTO LLT2;
+LLT5:      Q←K, RETURN IF C;                      * K USED IN NORM
+           RES←XR←Z, SETBA, GOTO NX1;
+*
+*  LOAD STRING CONSTANT
+LSC1:      Q←S←R0←M, CALL BLODX;
+           Z←CR←M+Q;
+           DR←Z, Q←14B6;
+           Q←NOT M AND Q LCY 20;
+           Z←Q LCY 2, Q←74B6;
+           M←M AND Q ! Z, Q←S;
+           AR←M OR Q, SETBA, DGOTO NX2;
+           BR←M OR Q, Z←P←P+1;
+*
+*  START OF ASP IS ALMOST HERE (AT ASP1)
+*
+ASP2:      Z←NOT Q+1, Q←3, SETA, GOTO ASP3;
+ASP1:      M←M LCY 4, Q←3;
+ASP3:      DGOTO M AND Q LCY 1 MRG ASPDIV;
+           R6←Q←Z, GOTO ASP2 IF Z<0;
+*
+*
+*  COUNT ONE BITS IN AB
+*
+COB1:      Q←Z-1, GOTO COB2 IF Z=0;
+           Z←Q AND Z, R0←R0+1, GOTO COB1;
+COB2:      Q←R0, Z←M, CLEARA, GOTO COB1 IF A;
+           RES←XR←Q, SETBA, GOTO NX1;
+*
+*  LOAD STATE, IR CONTAINS XMONT,XUTILT BITS
+*
+LODS1:     S←M, SETBA, CALL LSTATE;
+           Z←R0←Q, Q←XX, SETA, DGOTO BMACC;
+           MAP, R0←E1, .VCY, DGOTO *+1;
+           SSOURCE, R0←P;
+           MAP, R0←E1, .VCY, XR←Q;
+           R0←M←Z, CALL MEXIT IF R0[1];
+           Z←R0←P←M, SETBA, DGOTO NX5 IF A;
+           ABCD0;
+           Q←0, SETBA, GOTO FIXTRP;
+STRS1:     K←M-1, SETBA, CALL SSTATE;
+           Z←P←P+1, SETBA, GOTO NX2;
+*
+*  TEST FOR PRIVILEGED OPR-S
+OPR2:      Z←MAXPRIV;
+           M-Z, Q←6B5, SETBA, GOTO TI IF X>=0;
+           M←P, DGOTO M MRG BASEOPR;
+           NOT M AND Q, Z←AR, SETBA, GOTO TI IF LB#0;
+*
+AAX1:      MAP, .VCY, Q←E1, GOTO CBX;
+*
+SLOK1:     4, PROTECT, GOTO * IF NPROTECT;
+           Z←P←P+1, SETBA, GOTO NX2;
+*
+CAT1:      Z←AR, POT, GOTO NOP;
+RUN1:      Q←E2, .VCY, PIN, DGOTO CTA1;
+           BR←Q, Z←UNMS, ALERT;
+*
+USCL1:     P←P+1, SETBA, GOTO TOSP2;
+*
+*
+*
+EAC1:      Z←M AND Q LCY 4 MRG BASEAD, CALL BLL48;
+           Z←RES←0, M←R0, GOTO EAC4 IF D;
+EAC2:      Q←77B6, IR←SHIFT, GOTO EAC5 IF A;
+           MAP, .VCY, R0←E1, GOTO EAC6 IF B;
+BMACC:     SETBA, GOTO BMACC1 IF R0[1];
+EAC3:      XR←M AND NOT Q ! Z AND Q, SETBA, Z←P←P+1, GOTO NX2;
+EAC4:      Z←RES←2B6, M←0, GOTO EAC2;
+EAC5:      AR←M, Z←RES←1B6, GOTO EAC3;
+EAC6:      Z←MASK;
+           AR←Z, Z←IR, DGOTO BMACC;
+           BR←Z, Z←RES←3B6;
+*
+*  Q = Z = R0 = BITS,
+MON:       Z←IR←SR, DGOTO CLL IF R0[2];
+           R0←M, M←1;
+MEXIT:     Q←P, 4, UNPROTECT;
+           Q←Q LCY 12, M←R0;
+           Q←Q LCY 2, Z←IR;
+           Z←Q AND Z, Q←100B;
+           Z←Q AND Z, X23LCK, DRETURN IF NZ[16];
+           IR←8, GOTO XTRP IF Z#0;                *  XMON
+           IR←9, GOTO XTRP;                       *  XUTIL
+*
+CLL:       Q AND M, Q←60B, DRETURN IF LB=0;
+           M←R0, SR←NOT Q AND Z;
+           4, PROTECT, GOTO * IF NPROTECT;
+           1, X23LCK, RETURN;
+*
+XTRP:      CLEARA, RETURN;
+*
+*
+           SETBA, CALL 1776B;  *ILLEGAL MICROINSTRUCTION
+           END;

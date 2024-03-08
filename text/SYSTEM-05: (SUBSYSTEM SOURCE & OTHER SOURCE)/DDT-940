@@ -1,0 +1,6860 @@
+* INSTRUCTIONS FOR ASSEMBLING & LOADING 940 DDT:
+
+* THERE ARE 5 SOURCE PACKAGES IN THE FOLLOWING, EACH SEPARATED BY &L'S.
+*    LOCATE THEM AND WRITE ONTO FILES NAMED
+*      STEMP, SMAIN, SBREAK, SLOAD, AND SNEW.
+
+* ASSEMBLE STEMP ONTO BTEMP.  CONTINUE-ASSEMBLE EACH OF THE OTHERS ONTO
+*      BMAIN, BBREAK, BLOAD, AND BNEW.
+
+* ENTER DDT AND TYPE THE FOLLOWING:
+*      ;TBTEMP.
+*      30000;TBMAIN.
+*      ;F<6E:
+*      DD2;G.
+*      34000;TBLOAD.
+*      ;F<5E:
+*      DD1;G.DD4;G.
+*      34000;TBNEW.
+*      ;F<7E:
+*      DD1;G.DD4;G.
+*      34000;TBBREAK.
+*      ;F<4E:
+*      DD1;GDD3;G
+*      %R      (XX000000  YYUUVVWW)
+*      0,YYUUVVWW;R
+*      240;F
+*      CLEAR;U
+*      BRS 16D;U
+*      "XDDT:9SUB".
+*      10\3
+*      14001\5
+*      14005\20012002
+*      14006\20032004
+*      14054\30000
+*      24000;A
+*      14000;X
+*      BIO 10;U
+*      BRS 17D;U
+*      ;F
+
+* XDDT:9SUB IS A 940 SUBSYSTEM FILE AND MUST HAVE A LINK TO THE
+*    EMULATOR SET UP BEFORE IT CAN BE RUN.
+
+DTEMP  IDENT   (LOAD AT 240B)
+       NOLIST EXT
+BKPT   OPD     533B5
+TCF    OPD     10000000B
+TMF    OPD     10100000B
+C      OPD     10200000B
+WOF    OPD     10300000B
+R1     MACRO
+       BRU     R1
+       ENDM
+R2     MACRO
+       BRU     R2
+       ENDM
+W      EQU     24000B
+W7     EQU     34000B
+NBP    EQU     4               NUMBER OF BREAKPOINTS
+NPD    EQU     20              LENGTH OF STACK
+       FRGT    NBP,NPD
+       FREEZE
+       DELSYM
+X      EQU     *-240B
+
+$BN    BSS     64              BLOCK NAMES
+$BN1   EQU     BN+1
+$EBN   BSS     0
+$EBN1   EQU     EBN+1
+$LBT   BSS     64              LITERAL BOUNDS TABLE
+$ELBT  EQU     *
+$ELBT1 EQU     ELBT+1
+
+$PC    ZRO
+$AR    ZRO
+$BR    ZRO
+$XR    ZRO
+$EAR   EQU     *
+$URL1  ZRO
+$URL2  ZRO
+$UMI   ZRO
+$IWD   ZRO
+
+$BLOCK ZRO     0               CURRENT BLOCK MASK
+$BPT   BSS     NBP             BREAKPOINT LOCATIONS
+$BPTE  BSS     0
+$CBF   ZRO     0               CONDITIONAL BREAK FLAG
+$DRLB  ZRO     0               SECOND DDT RELABELLING BYTE
+$ECHTB ZRO     0               USER ECHO TABLE
+$LL    ZRO     0               LOWER SEARCH LIMIT
+$MASK  DATA    -1              SEARCH MASK
+$ORG   DATA    240B            LOWER LIMIT FOR SYMBOLIC PRINT
+$PFM   ZRO     0               PRINT FORMAT MASK
+$PFD   ZRO     0               PRINT FORMAT DESCRIPTOR
+$PIF   ZRO     0               PRINT NEXT INSTRUCTION FLAG
+$PPCF  ZRO     0               SUPPRESS P-COUNTER PRINT FLAG
+$PRAD  DATA    8               PRINTOUT RADIX
+$PCTT  ZRO     0               TEMP PC DURING SEMI U
+$SSP   BSS     4               STRING BUFFER POINTER
+$SSP1  EQU     SSP+1
+$TPF   ZRO     0               TRACE POPS FLAG
+$TSF   ZRO     0               TRACE SUBROUTINES FLAG
+$UL    DATA    37777B          UPPER SEARCH LIMIT
+$VRLB  ZRO     0               P-R BYTE FOR POLISH STRING
+$VSE   ZRO     0               END OF POLISH STRING
+$VSW   BSS     3               WCH TABLE FOR POLISH STRING
+$VSW1   EQU     VSW+1
+$VSW2   EQU     VSW+2
+
+$UNDEF ZRO
+$GLOB  ZRO
+$LOCAL ZRO
+$ESYM  ZRO
+$ESTP  ZRO
+$UPRL  ZRO
+$NRL   ZRO     0               NEW PAGE RELABELING
+$LRL   ZRO
+$UBT   BSS     4               UNDEFINED BIT TABLE
+$UBT2  EQU     UBT+2
+$PBT   BSS     4               POLISH BIT TABLE
+$PBT2  EQU     PBT+2
+$AMD   ZRO     0               ADDRESS PRINT ROUTINE
+$RMD   ZRO     0               WORD PRINT ROUTINE
+$XMD   ZRO     0               TEXT PRINT MODE SWITCH
+$PBSF  ZRO     0               SUPRESS BLOCK NIME FLAG
+$PSSF  ZRO     0               SUPRESS SYMBOL PRINT FLAG
+$PON   ZRO     0               PROGRAMMED OPERATOR NUMBER
+$MRL   ZRO     0               MAIN PAGE RELABELING
+$HSHFLG ZRO    0               -1 IF SYMTAB IS IN HASHED STATE
+       BSS     12
+
+*   OVERLAPPED TEMP STORAGE
+
+$LCN   BSS     16              LOCATION COUNTERS
+$BASE  BSS     16              BASE REGISTERS
+$LCS   BSS     16              LOC CNT SYMBOLS
+$ELCS  EQU     *
+$LCSA  BSS     16
+$ELCSA EQU     *
+$LCNA  ZRO     0               ALT LOC CNT
+$LCNC  ZRO     0               CURRENT LOC CNT
+$LNC   ZRO     0               NUMBER CURRENT LOC CNT
+$LNA   ZRO     0               NUMBER ALT LOC CNT
+$BASEA ZRO     0               AL\ BASE REGISTER
+$BASEC ZRO     0               CURRENT BASE REGISTER
+$OTV   BSS     64
+$EOTV  EQU     *
+$OTV1  EQU     OTV-100B
+BTS    EQU     LCN+1
+$PFPP  EQU     3*BTS-1         FLT. PT. BUFFER POINTER
+       BSS     BTS-*
+$EEA   ZRO     0               WORD ADDRESS IN STRING
+$EEB   ZRO     0               SAVE (B)
+$EEF   ZRO     0               POLISH EVALUATE, PRINT FLAG
+$EEP   ZRO     0               STACK POINTER
+$EET   ZRO
+$EES   BSS     21              STACK
+       BSS     BTS-*
+$BPW   BSS     NBP             BREAKPOINT WORDS
+$BPWE  BSS     0
+$LEP   ZRO     0               NEXT UNUSED CELL
+$LEO   ZRO     0               ARITHMETIC RELATION CODE
+$LEA   ZRO     0               FALSE BRANCH CHAIN POINTER
+$LEE   ZRO     0               DOUBLE CHARACTER RELATIONAL FLAG
+$LEC   ZRO     0               OPERAND COUNTER
+$LES   ZRO     0               ALPHANUMERIC COUNTER
+$LEI   ZRO     0               LITERAL FLAG
+$LEF   ZRO     0               NEXT INSTRUCTION OPCODE
+$LED   ZRO     0               FALSE BRANCH ACTION
+$LER   ZRO     0               =1 LITERAL CHAIN POINTER
+$LEN   ZRO     0               LITERAL NUMBER
+$LEQT  BSS     24              LITERALS FOR RELOCATION
+$LEQL  BSS     24              LITERAL PATCHUP ADDRESSES
+       BSS     BTS-*
+$SJ    BSS     24              STACK FOR JBOT
+$SI    BSS     24              STACK FRO JTOP
+$SB    BSS     24              STACK FOR I
+$S     BSS     1               STACK INDEX
+$I     BSS     1               CURRENT BIT NUMBER
+$IX    BSS     1               WORD TO EXU
+$JTOP  BSS     1               BOTTOM OF CURRENT REGION
+$JBOT  BSS     1               TOP OF CURRENT REGION
+$ITOP  BSS     1               UPWARD SWEEP POINTER
+$IBOT  BSS     1               DOWNWARD SWEEP POINTER
+$L5A   BSS     4
+$L5    BSS     4
+$L10   BSS     7
+$ELL   EQU     *
+$SORTE ZRO     0               SORT EXECUTE WORD
+$SORTS ZRO     0               SORT SWITCH FOR FIRST BIT
+
+$SS    BSS     0               STRING BUFFER STORAGE
+* DEBUGGING ROUTINE
+       BRU     D
+DT     BRS     116
+       BRS     117
+DR     LDP     URL1
+       STP     URL1
+DC1    DATA    -20000B
+DC3    DATA    DT-DR
+DC4    DATA    77B
+DC5    DATA    D11
+D      LDX     DC1
+D1     LDA     0,2
+       CXB
+       LDX     DC3
+D2     SKE     DR,2
+       BRU     D3
+       LDA     DC1,2
+D4     CBX
+       STA     0,2
+       BRX     D1
+       CLAB
+       STP     URL1
+       BRS     10
+D3     BRX     D2
+       BRU     D4
+$DD1   BRS 43; CBA; ETR DC4; STA* DC5; MIN DC5; BRS 10
+$DD2   BRS 43; STP D44; BRS 10
+$DD3   CLB; LDA D33; LSH 6; ADD D11; LSH 12; ADD D22; ADD D55
+       CAB; LDA D44; BRS 44; BRS 10
+$DD4   LDP D44; BRS 44; BRS 10
+D11    ZRO
+D22    ZRO
+D33    ZRO
+D44    ZRO
+D55    ZRO
+DE     EQU     *
+       BSS     X+1100B-DE
+$ESS   BSS     0
+$NCSS   EQU     ESS-SS+ESS-SS+ESS-SS
+
+$DAR   ZRO
+$DBR   ZRO
+$DXR   ZRO
+$EDAR  EQU     *
+$FI    ZRO
+$FO    ZRO
+$FR    ZRO
+
+
+$ARG   ZRO
+$ARI   ZRO
+$BCEAX ZRO     0               EAX 5,2 OR 7,2 FOR BCI
+$BITSS ZRO
+$BLNF  ZRO     0               BLOCK NAME INDICATOR
+$CBUFP BSS     2               CHARACTER BUFFER POINTER
+$CBUFP1 EQU    CBUFP+1
+$BUFC  EQU     CBUFP1          BUFFER COUNTER
+$BUFP  EQU     CBUFP           BUFFER POINTER
+$CAA   ZRO     0               CONTROL A SEMI PERCENT FLAG
+$CAP   BSS     2               CONTROL A BUFFER POINTER
+$CAP1  EQU     CAP+1
+$CABUF BSS     25              CONTROL A BUFFER
+$CAPTR EQU     3*CABUF-1
+$CAPT  BSS     2               SAVE USED CHARACTERS BUFFER
+$CAPT1 EQU     CAPT+1
+$CAPTBF BSS    20
+$CAPTP EQU     3*CAPTBF-1
+$CBI   ZRO     0               CONDITIONAL BREAK INDICATOR
+$CHC   ZRO
+$CP    ZRO
+$DP    ZRO
+$EFFI  ZRO
+$EQI   ZRO
+$ERX   ZRO
+$EWC   ZRO     0               CHAR. COUNT FOR WRITING CONSTANT
+$EWV   ZRO     0               CONSTANT BEING WRITTEN
+$EXF   ZRO
+$FCNT  ZRO     0               STORE REGISTER FORMATED COUNT
+$FDEX  ZRO
+$FIELD ZRO
+$FPF   ZRO     0               FLT. PT. FLAG
+$FPS   ZRO     0               2ND WORD OF FLT. PT. #
+$HASHRL        ZRO
+$HIGH  ZRO
+$LET   ZRO
+$LETN  ZRO     0               B OR D AFTER NUMBER FLAG
+$LIBFLG ZRO    0               LIBRARY MODE FLAG
+$LITF  ZRO
+$LITW  ZRO
+$LGI   ZRO
+$LOOPX ZRO     0               LOOP EXIT LINK
+$LOW   ZRO
+$LST1  ZRO
+$LWT   ZRO
+$MAPX  ZRO
+$MINTAB ZRO
+$MVI   ZRO
+$NBLK  ZRO     0               LBT INDEX
+$NDEC  ZRO     0               NUMBER AS DECIMAL
+$NOCT  ZRO     0               NUMBER AS OCTAL
+$NRAD  ZRO     0               RADIX FROM B OR D
+$NSAVE ZRO     0               SAVE NUMBER WHEN B OR D SEEN
+$NUM   ZRO
+$PAA   ZRO
+$PAF   ZRO
+$PAL   ZRO
+$PAT   ZRO
+$PCOC  BSS     3               BREAKS SINCE LAST REG PRINTOUT
+$EPCOC EQU     *
+$PDL   BSS     NPD             P]SHDOWN LIST
+$PDP   ZRO     0               PUSHDOWN POINTER
+$PEX   ZRO
+$PFG   ZRO
+$PNS   ZRO
+$PRCC  ZRO
+$PRNF  ZRO     0               PRINT ALL REG FLAG
+$PRPF  ZRO     0               PROCEED/TRACE PRINT FLAG
+$RADIX ZRO
+$RDEOR ZRO
+$REG   ZRO
+$RELADA ZRO    0               RELOCATE WORD ADDRESS INST
+$ROP   ZRO
+$SBIT  ZRO
+$SDFO  ZRO     0               OPCODE DEFINE FLAG
+$SFLAG ZRO
+$SIGN  ZRO
+$SRLVAL ZRO    0                 SPECIAL REL. VALUE
+$SVAL  ZRO
+$SVF   ZRO     0               < FLAG
+$SYL   ZRO
+$SYML  ZRO
+$SYMR  ZRO
+$T     ZRO
+$TBLK  ZRO     0               BLOCK NO. PRINTED
+$TCFA  ZRO     0               SAVE (A) FOR TCF
+$TLOC  ZRO
+$TMPRL ZRO
+$TMPRL1 ZRO
+$TQC   ZRO     0               'TRACE QUIETLY' COUNT
+$TT    ZRO
+$TTT   ZRO
+$TYC   ZRO     0               CHARACTER TYPED IN
+$TYX   ZRO
+$UMA   ZRO     0               LAST USER MAP ADDRESS PAGE
+$URA   ZRO
+$URB   ZRO
+$USIND ZRO
+$USML  ZRO
+$USMR  ZRO
+$VEF   ZRO     0               CALL VEV FLAG
+$WDCNT ZRO
+$WDI   ZRO
+$WDW   ZRO
+$WORD  ZRO
+$XEA   ZRO     0               EFFECTIVE ADDRESS
+$XEC   ZRO     0               EXU LOOP COUNTDOWN
+$XIX   ZRO     0               EXIT ROUTINE LINK
+$XPWD  ZRO     0               TEMP FOR PWD ROUTINE
+
+ETS    BSS     0               END OF T.S.
+       BSS     X+1400B-ETS
+$S0     EQU     *-1
+$SYM    EQU     *               FIRST SYMBOL NAME WORD
+$S1     EQU     *+1             SECOND NAME WORD AND FLAGS
+$S2     EQU     *+2             VALUE WORD
+$SY1   TEXT    '.   '
+$SY2   DATA    6
+$LRO   ZRO     0               CURRENT LOCATION
+*   PERMANENT OPCODE SPACE
+$P      EQU     *
+$P1     EQU     *+1
+$P2     EQU     *+2
+       BSS     333
+$OPCOD  EQU     *+3
+       END
+
+DMAIN  IDENT   (LOAD AT 30000B)
+       NOLIST  EXT
+*      DDT ENTRY POINTS
+       BRU     START
+       BRU     DENT
+$PSAA  BRU     PS
+$PFRAA BRU     PFR
+$PSNAA BRU     PSN
+$APTAA BRU     APT
+$PWDAA BRU     PWD
+$PWIAA BRU     PWI
+$PADAA BRU     PAD
+*  PART OF INITIALIZATION
+$START2 BRS     43
+       CBX
+       LCY     6
+       ETR     =77B
+       STA     DRLB
+       CLA
+       LCY     6
+       STA     LRL
+       LCY     12
+       ETR     =77B
+       STA     NRL
+       CXA
+       ETR     =7700B
+       XAB
+       BRS     44
+       BRU     DGO
+* PANIC ENTRIES
+$DMEM  ZRO     T
+       STP     DAR
+       STX     DXR
+       LDA     T
+       ETR     ADB
+       SKG     =33777B
+       BRU     DMEMT
+       BRS     43
+       SKB     =77B
+       BRU     DMEMT
+       C       DMX
+       LDP     DAR
+       LDX     DXR
+       BRU*    T
+$DMX   BRS     43
+       XAB
+       MRG     DRLB
+       XAB
+       BRS     44
+       R1
+DMEMT  LDA*    T
+       SKA     =20040000B
+       BRU     DMEM1
+       LDA     ='??? '
+       BRU     DMP
+DMEM1  LDA     ='(M) '
+DMP    C       PWD
+       BRU     RSY
+$DROUT ZRO     T
+       LDA     =CAPTR
+       STA     CAP
+       STA     CAP1
+       LDX     =-1
+       LDA     TYC
+       BRS     13
+       CLA
+       EOR     =-1
+       BRS     29
+       BRS     11
+       SKE     =0
+       BRU     *+2
+$BPR   BRS     10
+       TCF     =147B
+       BRU     RSY
+*      PERCENT-F
+$PEF   C       TCR
+       BRS     10
+*      RESET SEQUENCE
+DENT   STP     FI
+$DGO   CLX
+       STX     FR
+       EAX     CAPTR
+       STX     CAP
+       STX     CAP1
+       BRS     43
+       CBA
+       ETR     =7700B
+       STA     MRL
+$DGO1  CLX
+       EAX     DROUT
+       STX     201B
+       EAX     DMEM
+       STX     202B
+       LDA     EAX7X
+       STA     BCEAX
+       LDP     TV100
+       STP     100B
+       LDP     TV102
+       STP     102B
+RSY    LDA     =-1
+       STA     PSSF
+       STA     PBSF
+       STA     UMA
+       STA     SDFO
+       STA     TYC
+$RSP   BSS     0
+$RSR   SKN     USIND
+       TCF     CRC
+       SKN     USIND
+       TCF     LFC
+       CLA
+       XMA     FR
+       SKE     =0
+       BRS     20
+$RSE   CLA
+       STA     LWT
+       STA     USIND
+$RSC   LDA     =-1
+       STA     CBI
+       STA     FCNT
+       STA     ROP
+       STA     PFG
+       STA     PEX
+       LDA     =17B
+       STA     EXF
+       STA     PAF
+$RSW   LDA     =3B6
+       BRS     78
+       BRS     43
+       SKB     =77B
+       BRU     *+2
+       BRU     RSW1
+       LRSH    6
+       LCY     6
+       BRS    44
+       SKN     VEF
+       BRU     RSW1
+       MIN     VEF
+       C       RNRL
+       C       VEV
+       BRU     RSW
+RSW1   LDA     =-1
+       STA     SVF
+       STA     FPF
+$RSL   CLAB
+       STA     ARG
+       STP     USML
+       LDA     =-1
+       STA     ARI
+       STA     LITF
+       STA     SYL
+$RSA   CLA
+       STA     WORD
+$RSD   LDA     =-1
+       STA     FDEX
+$RSF   LDA     =-1
+       STA     SIGN
+       CLA
+       STA     FIELD
+$RSS   CLA
+$RSB   STA     BLNF
+       LDA     =-1
+       STA     LET
+       STA     LETN
+       CLAB
+       STP     NDEC
+       STA     NUM
+       STP     SYML
+       LDA     PRAD
+       STA     RADIX
+       LDA     =6
+       STA     CHC
+       LDA     =CAPTP
+       STA     CAPT
+       STA     CAPT1
+$R     LDA     =PDL
+       STA     PDP
+       LDX     =DTAB+1-ENDTAB
+       C       RR
+       BRU     0,2
+**DOUBLE
+RR1    CAX
+RR     C TI; ETR =177B
+RRD    STA TYC; WCI CAPT;  LCY 15;  SKA =1B7;  EAX* ENDTAB-1,2;  ETR =77B5;  STA T
+RD     LDA ENDTAB,2;  ETR =7777777B;  SKG T;  BRX RD;  SKA INB;  BRU RR1
+RE     LDA ENDTAB,2; STA DP; LRSH 21; SKG =5; SKN HSHFLG; BRU REX
+       LDA =-1; STA USIND; C LDRL; GCD CAPT; BRU SRTZZ; WCD CAP; BRU *-3
+REX    ETR PEX; CAX; LDA =-1; STA PEX; BRU RXT,2
+RXF    C RNRL
+RXE    SKN SYL;  BRU *+3;  LDA LWT;  STA WORD;  C EVW;  STA LWT
+RXX    LDX DP; R1
+RXZ    C EVL; BRU RXX-1
+RXD    SKN SYL;  BRU *+2;  BRU RXE+2
+       C EVW; C UIL;  BRU RXX-1
+$RNRL  BRS 43; XAB; ETR =77777700B; MRG NRL; XAB; BRS 44; R1
+RXB    C RNRL; BRU RXX
+RXT    BRU RXX NO EVAL; BRU RXB RELABEL FOR BREAK PAGE
+      BRU RXD EVAL (LWT, MUST BE DEFINED);  BRU RXZ EVAL, DO NOT COMBINE
+      BRU RXE EVAL (LWT); BRU RXF; BRU RXX; BRU RXD
+**SINGLE
+*   ASSORTED CONSTANTS
+$BRY   BRU     1
+$BZN   DATA    16161616B
+BZN1   DATA    16160000B
+TV100  BRU     TCFP
+       BRU     TMFP
+TV102  BRU     CALLP
+       BRU     WOFP
+*      PUSHDOWN OPERATIONS
+$CALLP XMA     0
+       STA*    PDP
+       XMA     0
+       MIN     PDP
+       BRU*    0
+$R1    SKR     PDP
+       BRR*    PDP
+$R2    SKR     PDP
+       MIN*    PDP
+       BRR*    PDP
+*      CLOSE REGISTER
+$CLO   SKN     FCNT
+       BRU     CLF
+       LDA     ROP
+       SKN     SYL
+       SKG     =-1
+       R1
+CLZ    SKN     USIND
+       BRU     *+2
+ILLB   BRU     ILL
+       CLA
+       SKE     USML
+       BRU     CLU
+$CLS   C       CRL
+       LDA     LRO
+       SKE     LCN
+       BRU     CLW
+       MIN     LCN
+       SKN     FPF
+       MIN     LCN
+CLW    LDA     WORD
+       LDX     LRO
+       C       UST
+       LDX     LRO
+       EAX     1,2
+       LDA     FPS
+       SKN     FPF
+       C       UST
+       SKN     PFG
+       R1
+       C       RNRL
+       C       ESL
+       BRU     CRL
+CLF    SKN     SYL
+       C       SFR2
+       LDA     LGI
+       STA     WORD
+       BRU     CLZ
+CLU    LDA     WORD
+       SKA     ADB
+       BRU     ILU
+       C       RNRL
+       BRU     CLU1
+$CRL   BRS     43
+       LRSH    6
+       LSH     6
+       BRS     44
+       LDA     =3B6
+       BRS     78
+       R1
+*      ASSORTED NO-EVAL CHARACTERS
+$ILL   TCF     =37B
+$ILX   LDX     =-1
+       BRS     14
+       BRS     11
+$TR    SKN     ROP
+       BRU     RST
+       BRU     RSR
+$ILU   LDA     ='(U) '
+       C       PWD
+       BRU     ILX
+$ILA   LDA     ='(A) '
+       BRU     ILU+1
+$UIL   LDB     =-1
+       SKB     USML
+       BRU     ILU
+       R1
+$STQ   LDA     =-1
+       STA     LET
+STH    LDA     =5
+       STA     CHC
+       MIN     SYL
+       LDA     SYL
+       SKG     =0
+       STA     WORD
+       BRU     R
+$INDIR LDA     INB
+       ADM     WORD
+       MIN     SYL
+       BRU     STH
+*      PRINT AS NUMBER,INST,SIGNED,BCI
+$EQ    NOP     APT
+       LDA     =6
+       SKN     SYL
+       SKE     CHC
+       BRU     EQV
+       BRU     LIT
+$EMF   NOP     PFR
+$EMS   NOP     PP
+$EM    NOP     PS
+$BCP   NOP*    XMD
+$RT    NOP     PSN
+EQV    LDA     0,2
+       STA     EQI
+       C       TTB
+       LDA     WORD
+       LDX     =-1
+       C*      EQI
+$RST   C       TTB
+       BRU     RSW
+*      INTERNAL REGISTERS
+$PEN   NOP     PFD
+       SKN     ARI
+       BRU     *+2
+       BRU     INTERN
+       C       EVL
+       STA     PFD
+       LDA     ARG
+       STA     PFM
+       BRU     RSR
+$DLL   NOP     PC
+       SKN     ARI
+       BRU     SETL
+$DLL0  NOP     ORG
+$DLL1  NOP     LL
+$DLL2  NOP     UL
+$DLF   NOP     LCN
+       ETR     ADB
+$PEV   NOP     PON
+$DLI   NOP     IWD
+$PEB   NOP     CBF
+$PEI   NOP     PIF
+$PEP   NOP     PPCF
+$PEM   NOP     PFM
+$PEO   NOP     TPF
+$PEU   NOP     TSF
+$DLA   NOP     AR
+$DLB   NOP     BR
+$DLX   NOP     XR
+$DLM   NOP     MASK
+$DLQ   NOP     LWT
+INTERN LDX     0,2
+       STX     DP
+       LDA     =6
+       SKN     SYL
+       BRU     *+2
+       BRU     *+3
+       SKE     CHC
+       BRU     INTS
+       LDA     0,2
+       STA     NUM
+       BRU     STQ
+INTS   C       EVW
+       C       UIL
+       STA     LWT
+       STA*    DP
+       BRU     RSR
+*      COMMA, SETS LIMITS
+$SEP   SKN     ARI
+       BRU     ILL
+       STA     ARG
+       CLA
+       STA     ARI
+       BRU     RSA
+SETL   C       EVL
+       STA     UL
+       LDA     ARG
+       STA     LL
+       BRU     RSR
+*      CR, LF, (, OR **
+$CLOS  C       CLO
+       SKN     PFG
+       BRU     CPAT
+       BRU     RSC
+CPAT   C       RNRL
+       BRU     CPAT1
+$ORN   C       CLO
+       MIN     LRO
+OPR    C       OPV
+       BRU     RST
+       BRU     RSE
+OPV    LDA     LRO
+       ETR     ADB
+       STA     LRO
+       STA     WORD
+       SKN     PFG
+       BRU     OPC
+       LDX     =-1
+       SKN     PAF
+       BRU     OPA
+OPC    LDA     EXF
+       ETR     =177B
+       STA     TYC
+       CIO     FO
+       SKN     PFG
+       R1
+       CLA
+       STA     PEX
+       STA     SYL
+       STA     USIND
+       LDA     =DTAB
+       STA     DP
+       LDA     EXF
+       LDX     =DTAB+1-ENDTAB
+       C       RRD
+       LDA*    0,2
+       STA     ERX
+       LDA     LRO
+       STA     ROP
+       BRU     ERT
+OPA    C*      AMD
+       LDA     TBLK
+       STA     BLOCK
+       BRU     OPC
+$ORA   C       CLO
+       LDA     WORD
+       STA     LRO
+       BRU     ORR
+$ORP   C       CLO
+       SKR     LRO
+       NOP
+$ORR   C       TCR
+       BRU     OPR
+$ORQ   C       CLO
+       LDA     LRO
+       ADD     =1
+       ETR     ADB
+       STA     LRO
+       STA     REG
+       CAX
+       C       ERE
+       BRU     RSW
+*      FILL, EXAMINE
+$EMD   NOP*    RMD
+       LDA     =40000000B
+       ADM     TYC
+$ERF   NOP     EMF
+$ERW   NOP*    RMD
+$ERI   NOP     EM
+$ERC   NOP     EQ
+$ERS   NOP     RT
+ERH    LDA*    0,2
+       STA     ERX
+       LDA     TYC
+       SKN     SYL
+       STA     EXF
+       SKN     SYL
+       BRU     ERO
+       LDA     LWT
+       ETR     ADB
+ERP    SKN     ARI
+       BRU     ERQ
+ERY    C       ERT
+       BRU     RST
+       BRU     RSE
+ERT    STA     REG
+       CAX
+       SKN     TYC
+       BRU     ERL
+ERE    C       URL
+       R1
+       LDA*    URA
+       STA     LWT
+       R1
+ERL    C       TTB
+       C       ULD
+       STA     LWT
+       LDX     REG
+       C*      ERX
+       SKN     USIND
+       R1
+       LDA     ='[P] '
+       LDB     =1
+       SKB     USIND
+       LDA     ='[U] '
+       C       PWD
+       R2
+ERQ    SKN     EXF
+       BRU     *+2
+       BRU     ERY
+       LDA     ARG
+       ETR     ADB
+       XMA     LRO
+       STA     ARG
+       C       TCR
+ERR    C       OPV
+       NOP
+       C       TCR
+       LDA     ARG
+       SKG     LRO
+       BRU     RSR
+       MIN     LRO
+       BRU     ERR
+ERO    C       EVL
+       C       UIL
+       ETR     ADB
+       STA     LRO
+       STA     ROP
+       LDB     TBLK
+       STB     BLOCK
+       BRU     ERP
+*      RELABEL FOR USER
+$URL   STA     URA
+       ETR     =3777B
+       MRG     =24000B
+       XMA     URA
+       LRSH    11
+       ETR     =7
+       SKE     UMA
+       BRU     URS1
+       R2
+URS1   STA     UMA
+       MUL     =3
+       CBX
+       BRS     116
+       LCY     0,2
+       STX     URB
+       RCY     6
+       ETR     =770000B
+       STA     TT
+       BRS     43
+       XAB
+       ETR     =77007777B
+       EOR     TT
+       XAB
+       BRS     44
+       SKB     =770000B
+       R2
+       LDB     =-1
+       STB     UMA
+       R1
+$URT   CXA
+       C       URL
+       BRU     XERR
+       R1
+$ULD   C       URL
+       BRU     ILL
+       LDA*    URA
+       R1
+$USP   LDX     LCN
+       MIN     LCN
+$UST   STA     T
+       CXA
+       C       URL
+       BRU     UGM
+       LDA     T
+       STA*    URA
+       R1
+$UGM   LDA     T
+       STA*    URA
+       BRS     116
+       STP     URL1
+       BRS     43
+       BAC
+       LDX     URB
+       ETR     =770000B
+       RCY     0,2
+       LCY     30
+       MRG     URL2
+       XAB
+       MRG     URL1
+       BRS     117
+       R1
+DCORE  IDENT   (LOAD AFTER DMAIN)
+       NOLIST  EXT
+*
+$ADB   DATA    37777B
+$INB   DATA    40000B
+$CRC   DATA    155B
+$LFC   DATA    152B
+$MADB  DATA    77740000B
+$LMSK  DATA    77770000B
+*      DISPATCHER
+$DTAB  ZRO     DTAB1-ENDTAB
+       ZRO    SPC,0            SPACE 0
+       BRU    BEE,2            EXCLAMATION POINT
+       2B     BCI,0            QUOTE
+       3B     RT,2             NUMBER SIGN
+       4B     ERS,0            $
+       5B*     PCT+1-ENDTAB     PERCENT
+       6B     BLS,0            AMPERSAND
+       7B     BCP,2            '
+       10B    ORA,2            (
+       11B    ILL
+       MIW    INDIR,0          *
+       POT    PLS,0            +
+       ETR    SEP,3            ,
+       15B    MNS,0            -
+       MRG    LETTER,0         .
+       17B    ERW,0            /
+       31B    DIGIT,6          0-9
+       WIM    HERE,1           COLON
+       PIN*    DOL+1-ENDTAB     SEMICOLON
+       34B    SSV,2            LESS THAN
+       STA    EQ,2             =
+       STB    EMF,2            GREATER THAN
+       STX    TR,0             QUESTION MARK
+       SKS    ERF,0            AT SIGN
+       41B    LETTER,0        A
+       42B    LETTB,0         B
+       43B    LETTER,0        C
+       44B    LETTD,0         D
+       72B    LETTER,0        E-Z
+       73B    ERC,0            LEFT BRACKET
+       74B    EMD,0            BACK SLASH
+       75B    ERI,0            RIGHT BRACKET
+       LDA    ORP,4            UP ARROW
+       EAX    EM,2             LEFT ARROW
+DTAB1  51B   ILL,0
+       52B   ORN,4            LINE FEED
+       4B   ILL,0
+       55B   CLOS,4           CARRIAGE RETURN
+       77B   ILL,0
+PCT    ZRO     PCT1-ENDTAB
+       1B     BEP,2           !
+       2B      ILL
+       3B      PFP,3           NUMBER SIGN
+       5B     ILL,0
+       6B     PBK,0           AMPERSAND
+       15B     ILL
+       16B     PE1             DOT
+       17B     ILL
+       31B     PE1             0-9
+       36B    ILL,0
+       37B    TR,0            QUESTION MARK
+       40B    ILL,0
+       41B    PEA,1           A
+       42B     PEB             B
+       44B     ILL
+       45B    PEE,0            E
+       46B    PEF,0           F
+       50B     ILL
+       51B     PEI           I
+       52B    ILL,0
+       53B     PEK,1           K
+       54B    ILL
+       55B    PEM           M
+       56B    PEN             N
+       57B    PEO           O
+       60B     PEP           P
+       61B    ILL,0
+       62B    PER,1           R
+       64B    ILL
+       65B    PEU           U
+       66B    PEV              V
+       67B    PEW,2           W
+       70B     ILL
+       71B     PEY,7           Y
+PCT1   77B     ILL
+DOL    ZRO     DOL1-ENDTAB
+       ZRO    ORQ,4           SPACE
+       BRU    BER,2           EXCLAMATION POINT
+       EOM    SERH,0          QUOTE
+       3B     NWDS,2          NUMBER SIGN
+       4B     OPEOR,0         $
+       5B     OPMRG,0         PERCENT
+       6B     OPETR,0         AMPERSAND
+       7B     EQS,3           '
+       10B    IPATCH,5         (
+       11B    PATCH,5          )
+       12B    OPMUL,0         *
+       13B    OQPLS,0         +
+       14B    SFR,2           ,
+       15B    OQMNS,0         -
+       16B    DLDOT,2          .
+       17B    OPDIV,0          /
+       20B    DLL0          0
+       21B    DLL1          1
+       22B    DLL2           2
+       23B    DL3,0           3
+       24B    DL4,0           4
+       31B    ILL,0
+       32B    OPMOD,0         COLON
+       33B    ILL,0
+       34B    OPLSS,0         LESS THAN
+       STA    OPEQL,0         =
+       STB    OPGRT,0         GREATER THAN
+       37B    TR,0            QUESTION MARK
+       40B    SERF,0          AT SIGN
+       BRX    DLA            A
+       42B    DLB            B
+       BRM    DLC,1           C
+       44B    DLD,0            D
+       45B    DLE,4           E
+       46B    DLF            F
+       47B    DLG,3            G
+       SKE    ILL,0
+       51B    DLI              I
+       SKB    ILL,0
+       SKN    DLK,1            K
+       SUB    DLL              L
+       ADD    DLM            M
+       SUC    DLN,3            N
+       ADC    DLO,0            O
+       SKR    DLP,3            P
+       MIN    DLQ,2            Q
+       XMA    DLR,3            R
+       ADM    DLS,3           S
+       MUL    DLT,7            T
+       DIV    DLU,2            U
+       66B    DLV,3            V
+       67B    DLW,2            W
+       SKM    DLX            X
+       LDX    DLY,7            Y
+       SKA    DLZ,3            Z
+       SKG    NUPP,0          LEFT BRACKET
+       SKD    PAFF,0           BACK SLASH
+       LDB    SUPP,0          RIGHT BRACKET
+       76B    ILL,0
+       77B    EMS,2           LEFT ARROW
+DOL1   77B     ILL
+ENDTAB EQU     *
+$PAD    ETR     ADB
+       STA     PAA
+       SKG     ORG
+       BRU     APT
+       CXA
+       STA     TLOC
+       SKG     =-1
+       BRU     PAC4
+       STA     TLOC
+       C       PAC2
+*   LOG SEARCHES
+PAC4   LDA     PAA
+       LDX     LOCAL
+       LDB     ESYM
+       C       LG
+       LDX     =-1
+       STX     T
+       LDA     PAA
+       LDX     GLOB
+       LDB     LOCAL
+       C       LG
+       BRU     PAE
+PAP    LDA     PAA
+       SKG     2,2
+       BRU     PAI+1
+       LDA     1,2
+       SKA     =1
+       BRU     PAK
+*   GLOBAL FOUND
+       SKN     T
+       BRU     PAR
+       BRU     PAI
+PAR    STX     TT
+       LDX     T
+PAY    LDA     1,2
+       ETR     =7700B
+       LRSH    5
+       COPY    XB,AX
+       LDA     BN1,2
+       SKA     =1
+       BRU     PAO
+*   LOCAL FOUND
+       CBX
+       SKN     TT
+       BRU     *+2
+       BRU     PAI
+*   DECIDE FOR LOCAL OR GLOBAL
+       LDA     2,2
+       CXB
+       LDX     TT
+       SKG     2,2
+       BRU     *+2
+       CBX
+*   PRINT SYMBOL + CONST
+PAI    LDA     PAA
+       SUB    2,2
+       SKG     =177B
+       BRU     PAW
+*   PRINT CONST
+PAB    C       PALC
+       LDA     PAA
+       BRU     APT
+PAW    STA     T
+       STX     TT
+       SKE     =0
+       C       PALC
+       LDX     TT
+       C       PSYM
+       LDA     T
+PAV    SKE     =0
+       BRU     *+2
+       R1
+       SKG     =-1
+       BRU     PSN
+       TCF     =13B
+       BRU     APT
+*   GLOBAL NOT FOUND
+PAE    LDX     =-1
+       SKN     T
+       BRU     PAR
+       BRU     PAB
+PAK    CXA
+       SKG     GLOB
+       BRU     PAE
+       EAX     -3,2
+       BRU     PAP
+PAO    COPY    BA,BX
+       SKG     LOCAL
+       BRU     *+3
+       EAX     -3,2
+       BRU     PAY
+*   LOCAL NOT FOUND
+       LDX     TT
+       SKN     TT
+       BRU     PAI
+       BRU     PAB
+*   TEST FOR PRINT . + OR - CONST
+PALC   LDA     TLOC
+       SKG     =-1
+       R1
+*   TEST FOR LITERAL
+       LDA     PAA
+       LDB     =1
+       LDX     =-64
+PAC3   SKG     ELBT1,2
+       SKG     ELBT,2
+       BRX     PAC1
+       SKB     EBN1,2
+       BRX     PAC1
+       SKR     PDP
+       TCF     =35B
+       STA     TLOC
+       C       PAC2
+       LDA     TLOC
+       C       ULD
+       SKG     =-1
+       SKG     =-4001B
+       BRU     APT
+       BRU     PSN
+PAC1   BRX     PAC3
+       LDA     PAA
+       SUB     LRO
+       SKG     =2
+       SKG     =-3
+       R1
+       TCF     =16B
+       SKR     PDP
+       BRU     PAV
+*   TEST IF UBT OR PBT BIT SET
+PAC2   LRSH    12
+       COPY    AX,A
+       LCY     4
+       STA     T
+       LDA     UBT,2
+       RSH*    T
+       SKA     =1
+       BRU     SSU
+PBS    LDA     TLOC
+       LRSH    12
+       COPY    AX,A
+       LCY     4
+       STA     T
+       LDA     PBT,2
+       RSH*    T
+       SKA     =1
+       BRU     SSPE
+       R1
+*   SCAN UNDEFINED CHAINS
+SSU    CLX
+       LDA     =-1
+       STA     LOW
+       C       ULU
+       LDA TLOC
+       ETR     =3777B
+       STA CP
+       LDB     =34000B
+       BRU     PAQ+1
+PAU    LDA     W,2
+       SKG     =-1
+       BRU     PAQ-1
+       SKM     TLOC
+       BRU     PAQ
+       MIN     LOW
+       STX     T
+       STA LGI
+       C       URL
+       BRU     PAX
+       LDB     =400B
+       STB     TYX
+       LDA     LGI
+PAJ    ETR     =3777B
+       SKE     CP
+       BRU     PAG
+       LDX     MVI
+       SKR     PDP
+       LDA     =-1
+       STA     USIND
+       BRU     PSYM
+PAG    CAX
+       LDA     W,2
+       SKA     =2B4
+       BRU     PAN
+PAM    SKR     TYX
+       BRU     PAJ
+PAX    LDX     MVI
+       C       PSYM
+       LDA     ='(U) '
+       C       PWD
+PAN    LDX     T
+       C       ULU
+       LDB     =34000B
+       BRU     PAQ
+       STA     MVI
+PAQ    BRX     *+1
+       CXA
+       SKE     ESTP
+       BRU     PAU
+       SKN     LOW
+       BRU     PBS
+       LDA     TLOC
+       LRSH    12
+       CAX
+       STB     LOW
+       LDA     UBT,2
+       SKN     LOW
+       LCY     8
+       ETR     =77600377B
+       SKN     LOW
+       RCY     8
+       STA     UBT,2
+       BRU     PBS
+*   SCAN POLISH STRING PAGE
+SSPE   LDA     =24000B
+       STA     TTT
+SSPA   SKE     VSE
+       BRU     SSPB
+       R1
+SSPB   C       VGT
+       LDA*    TTT
+       LRSH    14
+       ADD     TTT
+       XMA     TTT
+       STA     LGI
+       CLA
+       LCY     14
+SSPC   STA     MVI
+       C       ULD
+       ETR     ADB
+       SKE     TLOC
+       BRU     SSPD
+       BRS     43
+       STP     USML
+       C       VGT
+       C       RNRL
+       LDA     LGI
+       ADD     =1
+       C       PL
+       LDP     USML
+       BRS     44
+       SKR     PDP
+       LDA     =-2
+       STA     USIND
+       R1
+SSPD   SKE     MVI
+       BRU     SSPC
+       LDA     TTT
+       BRU     SSPA
+*   LOG SEARCH
+$LG     STA     TT
+       STX     LOW
+       LDA     2,2
+       SKG     TT
+       BRU     *+2
+       R1
+       CBA
+       SUB     =3
+       STA     HIGH
+       SUB     LOW
+       SKG     =-3
+      R1
+       SKG     =0
+       BRU     LGC
+       ADD     =3
+       LDX     =45
+       NOD     48
+       LDB     =3
+       LSH     0,2
+       LDX     LOW
+       BRU     LGB+2
+LGA    COPY    XB,XA
+       ADD     LGI
+       SKG     HIGH
+       BRU     *+2
+       BRU     LGB
+       CAX
+       LDA     2,2
+       SKG     TT
+       BRU     *+2
+       CBX
+LGB   LDA     LGI
+       RSH     1
+       STA     LGI
+       SKE     =1
+       BRU     LGA
+LGC    ADD     =0
+       R2
+$ULU   BRS     43
+       XAB
+       ETR     =77007777B
+       MRG     UPRL
+       XAB
+       BRS     44
+       LDA     =-1
+       STA     UMA
+       SKB     =77B4
+       R1
+       STA     W
+       BRS     43
+       BAC
+       ETR     =77B4
+       STA     UPRL
+       STB     ESTP
+       R1
+*      LETTERS OR DIGITS
+$LETTB1 LDA     NOCT
+       LDB     =8
+       BRU     *+3
+$LETTD1 LDA     NDEC
+       LDB     =10
+       STA     NUM
+       STB     NRAD
+       SKN     LET
+       BRU     LN
+       SKN     LETN
+       BRU     LETTR1
+       LDA     =6
+       SKG     CHC
+       BRU     LETTR1
+       CLA
+       STA     NOCT
+       STA     NDEC
+       XMA     NUM
+       STA     NSAVE
+       MIN     LETN
+       BRU     LN
+LETTB  C       LETTB1
+       BRU     R
+LETTD  C       LETTD1
+       BRU     R
+LETTER C       LETTR1
+       BRU     R
+$LETTR1 MIN     LET
+LN     LDA     TYC
+       CLB
+       LDX     CHC
+       BRU     CHT,2
+CHT    R1
+       RCY     6
+       RCY     6
+               RCY     6
+       RCY     6
+       RCY     6
+CHL    LCY     18
+       ADM     SYML
+       CBA
+       ADM     SYMR
+       MIN     SYL
+       SKR     CHC
+       R1
+DIGIT  C       DIGIT1
+       BRU     R
+$DIGIT1 SKN     LET
+       BRU     LETTR1
+       LDA     RADIX
+       MUL     NUM
+       LSH     23
+       ADD     TYC
+               SUB     =20B
+       STA     NUM
+       LDA     TYC
+       RCY     3
+       LDA     NOCT
+       LCY     3
+       STA     NOCT
+       LDA     NDEC
+               MUL     =5
+       LSH     24
+       ADD     TYC
+       SUB     =20B
+       STA     NDEC
+       BRU     LN
+*      EVALUATE FIELD
+$EVF   SKN     LET
+       BRU     EVS
+       LDA     =-1
+       XMA     LETN
+       SKG     =-1
+       BRU     EVV
+       LDA     NDEC
+       ETR     =7
+       STA     NDEC
+       LDA     NSAVE
+       BRU     EVP
+EVM    MUL     NRAD
+       LSH     23
+EVP    SKR     NDEC
+       BRU     EVM
+       STA     NUM
+EVV    LDA     FIELD
+       LDX     SIGN
+       EXU     EVTAB+1,2
+EVVR   STA     FIELD
+       R1
+EVS    LDA     SYML
+       SKE     =16B6
+       BRU     *+3
+       LDA     LRO
+       BRU     EVV-1
+       LDB     LMSK
+       LDA     =-1
+       SKE     BLNF
+       SKE     FDEX
+       BRU     EVON
+       C       LSO
+       BRU     EVVN
+       C       LSP
+       BRU     EVVN
+EVON   C       LS
+       BRU     EVK
+EVU    C       UIL
+       LDA     SYML
+       STA     USML
+       SKN     ARI
+       BRU     ILU
+       LDA     SYMR
+       STA     USMR
+       LDA     FIELD
+       R1
+EVK    SKA     =20B
+       BRU     EVSA
+EVKR   SKA     =10B
+       BRU     EVU1
+       LDA     1,2
+       ETR     =7700B
+       STA     TBLK
+EVVN   LDA     2,2
+       STA     NUM
+       BRU     EVV
+EVSA   LDA     =-1
+       STA     TT
+EVSS   LDA     1,2
+       ETR     =7700B
+       SKE     BLOCK
+       BRU     EVSL
+EVST   STX     TT
+EVSK   C       SCU
+       BRU     EVSS
+       LDA     TT
+       SKG     =-1
+       BRU     EVU2
+       CAX
+       LDA     1,2
+       BRU     EVKR
+EVSL   SKN     BLNF
+       BRU     EVSK
+       EOR     =-1
+       SKE     TT
+       BRU     EVSK
+       BRU     EVST
+EVU1   C       SCU
+       BRU     *+2
+       BRU     EVU
+       LDA     =-2
+       BRU     EVSA+1
+EVU2   SKE     =-1
+       BRU     ILU
+       BRU     ILU
+EVTAB  ADD     NUM
+       SUB     NUM
+       BRU     EVMUL
+       BRU     EVDIV
+       BRU     EVLSS
+       BRU     EVEQL
+       BRU     EVGRT
+       ETR     NUM
+       MRG     NUM
+       EOR     NUM
+       BRU     EVMOD
+       BRU     EVPLSP
+       BRU     EVMNSP
+EVMUL  MUL     NUM
+       LCY     23
+       BRU     EVVR
+EVDIV  RSH     23
+       DIV     NUM
+       BRU     EVVR
+EVLSS  SKG     NUM
+       BRU     EVLSS1
+EV0    CLA
+       BRU     EVVR
+EVLSS1 SKE     NUM
+       BRU     EV1
+       BRU     EV0
+EVEQL  SKE     NUM
+       BRU     EV0
+EV1    LDA     =1
+       BRU     EVVR
+EVGRT  SKG     NUM
+       BRU     EV0
+       BRU     EV1
+EVMOD  RSH     23
+       DIV     NUM
+       CBA
+       BRU     EVVR
+EVPLSP MUL     =30000000B
+       LSH     2
+       ADD     NUM
+       BRU     EVVR
+EVMNSP MUL     =30000000B
+       LSH     2
+       SUB     NUM
+       BRU     EVVR
+*      EVALUATE EXP
+$EVL   C       EVF
+       ETR     FDEX
+       ADD     WORD
+       STA     WORD
+       SKN     LITF
+       BRU     *+2
+       R1
+       C       UIL
+       STB     LITF
+       STB     SIGN
+       LDB     =17777B
+       RCY     12
+       STP     SYML
+       LDA     LITW
+       STA     WORD
+       CLA
+       STA     FIELD
+       C       EVS
+       BRU     EVL+1
+*      EVALUATE WORD
+$EVW   C       EVL
+       SKN     ARI
+       BRU     *+2
+       R1
+       ABC
+       RCY     3
+       MRG     ARG
+       STA     WORD
+       R1
+*      ARITH. OPS
+SPC    C       EVL
+       LDA     ADB
+       STA     FDEX
+       BRU     RSF
+OPT    EQU     *
+PLS    BRU     SSAOP
+MNS    BRU     SSAOP
+OPMUL  BRU     SSAOP
+OPDIV  BRU     SSAOP
+OPLSS  BRU     SSAOP
+OPEQL  BRU     SSAOP
+OPGRT  BRU     SSAOP
+OPETR  BRU     SSAOP
+OPMRG  BRU     SSAOP
+OPEOR  BRU     SSA1
+OPMOD  BRU     SSAOP
+OQPLS  BRU     SSAOP
+OQMNS  BRU     SSAOP
+SSAOP  STX     TYC
+       C       EVF
+       LDA     TYC
+       SUB     =OPT+1
+       STA     SIGN
+       MIN     SYL
+       BRU     RSS
+SSA1   SKN     SYL
+       BRU     SSAOP
+       EAX     SERN
+       BRU     SERN
+*      PROCESS LITERAL
+$LIT   SKN     LITF
+       BRU     ILL
+       C       UIL
+       LDA     WORD
+       SKA     ADB
+       BRU     ILL
+       STA     LITW
+       MIN     LITF
+       BRU     RSA
+*      PRINT SIGNED NUMBER
+$PSN   CAB
+       LDA     PRAD
+       MRG     =4B7
+       XAB
+       BRU     *+2
+*      PRINT NUMBER
+$APT   LDB     PRAD
+       LDX     FO
+       BRS     36
+       R1
+*      PRINT CHARACTER
+$TCFP  STA     TCFA
+       LDA*    0
+       CIO     FO
+       LDA     TCFA
+       BRR     0
+*      PRINT MESSAGE
+$TMFP  EAX*    0
+       CXA
+       ETR     ADB
+       LDB     =-1
+       LDX     FO
+       BRS     34
+       BRR     0
+*   PRINT 3 CHAR / WORD
+$PWI   LDB     =8
+       BRU     *+2
+*      PRINT BCI WORD
+$PWD   LDB     =6
+       STB     XPWD
+       BRU     PWDA
+PWN    ABC
+       LCY*    XPWD
+       C       PCI
+       CBA
+$PWDA  SKE     =0
+       BRU     PWN
+       R1
+$PCI   SKA     =100B
+       TCF     =6
+       ETR     =77B
+       CIO     FO
+       R1
+$PXT   EQU     PWD
+*      PRINT SYMBOL
+$PSYM  LDA     0,2
+       LDB     LMSK
+       SKM     LMSK
+       BRU     PSYN
+       TCF     =35B
+       LDP     0,2
+       LCY     12
+       BRU     PSN
+PSYN   LDA     1,2
+       ETR     =7700B
+       SKE     =0
+       STA     TBLK
+       LDA     1,2
+       SKA     =20B
+       BRU     *+2
+       BRU     PSYS
+       SKN     PBSF
+       BRU     PSYS
+       RCY     5
+       ETR     =176B
+       STX     TT
+       CAX
+       SKG     =0
+       BRU     PSYA
+       LDA     BN,2
+       SKE     =-1
+       C       PWD
+       LDA     BN1,2
+       ETR     LMSK
+       C       PWD
+PSYA   TCF     =6
+       LDX     TT
+PSYS   SKN     PSSF
+       R1
+       LDA     0,2
+       C       PWD
+       LDA     1,2
+       ETR     LMSK
+       BRU     PWD
+*   INPUT A CHARACTER TO DDT
+$CI    SKN     FI
+       BRU CI1
+       SBRM*   FI
+       BRU     CI1+1
+CI1    CIO     FI
+       MIN     TYC
+       R1
+*  CONTROL A LOGIC
+CAB    DATA 36340400B,11700000B,17400B
+CAB1   EQU     CAB+1
+CA     STX     T
+       LDA     =1
+       LDX     =-1
+       STX     CAA
+       BRS     12
+       LDA     =CAPTR
+       STA     CAP
+       STA     CAP1
+CA1    C       CI
+       SKE     =141B
+       BRU     CA3
+       LDA     =-1
+       STA     CAA
+       GCD     CAP
+       BRU     CA4
+       TCF     =76B
+       BRU     CA1
+CA4    TCF     =147B
+       BRU     CA1
+CA3    WCI     CAP
+       SKN     CAA
+       BRU     TI2
+       SKE     =';'
+       BRU     CA9
+CA7    STA     TT
+       CLA
+       LDX     =-1
+       BRS     12
+       LDA     TT
+       MIN     CAA
+       BRU     CA1
+CA9    SKE     ='%'
+       BRU     *+2
+       BRU     CA7
+       SKG     =77B
+       BRU     CA8
+TIC    SKE     CRC
+       BRU     TI1
+       TCF     LFC
+       BRU     TI2
+TI1    SKE     LFC
+       BRU     TI2
+       TCF     CRC
+       TCF     CRC
+TI2    LDX     T
+*      INPUT CHARACTER
+$TI    GCI     CAP
+       BRU     CA
+       R1
+CA8    CAX
+       SKG     =23
+       BRU     CA5
+       EAX     -24,2
+       LDP     CAB1
+       BRU     *+2
+CA5    LDP     CAB
+       LCY     0,2
+       SKG     =-1
+       BRU     TI2
+       BRU     CA1
+*      TYPE CR, TAB, 'OK'
+$TCR   TCF     CRC
+       TCF     LFC
+       R1
+$TTB   TCF     =0
+       TCF     =0
+       TCF     =0
+       R1
+$TOK   LDA     ='--OK'
+       C       PWD
+       C       CI
+       SKE     =16B
+       BRU     ILL
+       R1
+*      PRINT INSTRUCTION
+$PS    STX     TLOC
+       LDB     INB
+       STB     USIND
+       STA     WORD
+       SKG     ADB
+       SKG     =-1
+       BRU     *+2
+       BRU     PSP2
+       LDX     GLOB
+       LDB     LOCAL
+       C       LG
+       BRU     PSP3
+       LDA     WORD
+       SKE     2,2
+       BRU     PSP3
+       BRU     PSYM
+PSP3   LDX     LOCAL
+       LDB     ESYM
+       C       LG
+       BRU     PSP1
+       LDA     WORD
+       SKE     2,2
+       BRU     PSP2
+       BRU     PSYM
+PSP1   LDA     WORD
+PSP2   SKA     =17700000B
+       BRU     PSO
+PSP    LDB     WORD             INDIRECT FLAG
+       SKB     INB
+       TCF     =12B
+       TCF     =0
+PSA    LDA     WORD             PRINT ADDR
+       ETR     ADB
+       LDX     TLOC
+       C*      AMD
+       LDA     WORD
+       SKA     =60000000B
+       BRU     *+2
+       R1
+       ETR     =60000000B
+       LRSH    9
+       ADD     =',0  '
+       BRU     PWD
+PSM    LDA     WORD
+       ETR     =60077777B
+       XMA     WORD
+       EOR     WORD
+       RSH     15
+       C       APT
+       TCF     =42B
+       TCF     =25B
+       BRU     PSP
+PSV    LDB     1,2
+       SKB     =1
+       BRU     PSU
+PSW    STX     PAL
+       EOR     =-1
+       STA     PAT
+PSL    LDB     =17700000B
+PSG    EAX     3,2
+       CXA
+       SKE     TYX
+       BRU     PSS
+PSK    SKN     PAL
+       BRU     *+2
+       BRU     PSM
+       LDX     PAL
+       C       PSYM
+       LDA     PAT
+       STA     WORD
+       LDB     1,2
+       SKB     =1
+       SKE     =0
+       BRU     PSP
+       R1
+PSU    SKE     =-1
+       BRU     PSL
+       BRU     PSW
+PSO    RSH     15
+       SKE     =-1
+       BRU     PSOS
+       LDA     WORD
+       BRU     PSN
+PSOS   LDB     =-1
+       STB     PAL
+       STB     PAT
+       LDB     =17700000B
+       LDX     =P
+       LDA     UNDEF
+PSE    STA     TYX
+       BRU     PSG+1
+PSS    LDA     WORD
+       SKM     2,2
+       BRU     PSG
+       EOR     2,2
+       SKA     2,2
+       BRU     PSG
+       EOR     =-1
+       SKA     PAT
+       BRU     PSV
+       EOR     =-1
+       SKE     PAT
+       BRU     PSG
+       STX     PAL
+       BRU     PSG
+SQE    EAX     -3,2
+SPE    EAX     3,2
+$SP     LDX     SPE
+       STB     LOW
+       BRU     *+3
+$SQ     LDX     SQE
+       STA     LOW
+       STX     TT
+       STB     HIGH
+       SUB     HIGH
+       MUL     =12525253B
+       SUB     =1
+       SKG     =-1
+       R1
+       STA     TTT
+       CAB
+       LDX     LOW
+       LDA     0,2
+       EXU     TT
+       XMA     0,2
+       SKR     TTT
+       BRU     *-3
+       LDX     LOW
+       STB     TTT
+       LDA     1,2
+       EXU     TT
+       XMA     1,2
+       SKR     TTT
+       BRU     *-3
+       LDX     LOW
+       STB     TTT
+       LDA     2,2
+       EXU     TT
+       XMA     2,2
+       SKR     TTT
+       BRU     *-3
+       R1
+$DLY   LDB     =1
+       BRU     DLT+1
+$PEY   CLB
+       BRU     *+2
+$DLT   LDB     =-1
+       STB     SFLAG
+       ETR     ADB
+       STA     LWT
+       C       LDRL
+       BRU     LDENT
+LDRL   BRS     43
+       XAB
+       ETR     =77007700B
+       MRG     LRL
+       XAB
+       BRS     44
+       R1
+*      SYMBOL SEARCH
+SCL    LDA     0,2
+       SKE     SYML
+       BRU     SCU
+       LDA     1,2
+       SKM     SYMR
+       BRU     SCU
+       R1
+$SCU   EAX     3,2
+$SCH   CXA
+       SKE     HIGH
+       BRU     SCL
+       R2
+$LS    LDX     UNDEF
+LS2    LDA     ESYM
+LS1    STA     HIGH
+       BRU     SCH
+$LSGL  LDX     GLOB
+       BRU     LS2
+$LSG   LDX     GLOB
+       LDA     LOCAL
+       BRU     LS1
+$LSL   LDX     LOCAL
+       BRU     LS2
+$LSU   LDX     UNDEF
+       LDA     GLOB
+       BRU     LS1
+$LSO   LDX     =OPCOD
+       LDA     UNDEF
+       BRU     LS1
+$LSP   LDX     =P
+       LDA     =OPCOD
+       BRU     LS1
+$LSA   LDX     =OPCOD
+       BRU     LS2
+*      SET TEXT MODE
+EAX7X  EAX     7,2
+EAX5X  EAX     5,2
+$DL3   NOP     PWIAA
+$DL4   NOP     PWDAA
+       LDA     0,2
+       STA     XMD
+       LDA     -2,2
+       STA     BCEAX
+       BRU     TR
+$BCI   NOP     BCP
+       SKN     SYL
+       BRU     ERH
+       BRU     BCIA
+*   PROCESS LESS THAN
+$SSV    STA     SVAL
+       MIN     SVF
+       BRU     RSL
+* SET BLOCK
+$BLS   LDP     BZN
+       SKN     LET
+       LDP     SYML
+       C       BLKS
+       BRU     ILL
+       LDA     =-1
+       BRU     RSB
+*      SEARCH FOR BLOCK NAME
+$BLKS  LDX     =-64
+       STB     LGI
+       LDB     LMSK
+BLS1   SKE     EBN,2
+       BRX     BLS2
+       XMA     LGI
+       SKM     EBN1,2
+       BRX     BLS3
+       COPY    XA,B
+       ADD     =100B
+       LSH     5
+       STA     BLOCK
+       R2
+BLS3   XMA     LGI
+BLS2   BRX     BLS1
+       R1
+$DLW   SKN     SYL
+       BRU     DLW1
+       C       RNRL
+       BRU     PUNSYM
+*      PERMANENT RADIX CHANGE
+$DLO   SKN     SYL
+       BRU     DFE1
+       LDA     =8
+$RADS  STA     PRAD
+       BRU     RSR
+$DLD   LDA     =10
+       BRU     RADS
+DFE1   C       RNRL
+       BRU     DFE
+$SIOO  LDA     ='FULL'
+       C       PWD
+       BRU     ILL
+*      GET POLISH STRING PAGE
+$VGT  LDA     =-1
+       STA     UMA
+       BRS     43
+       LCY     12
+       ETR     =77777700B
+       MRG     VRLB
+       RCY     12
+       BRS     44
+       R1
+       END
+
+DBREAK IDENT   (LOAD AT 34000B)
+       NOLIST  EXT
+CAX    OPD     4600400B,0
+CXA    OPD     4600200B,0
+XXA    OPD     4600600B,0
+$PADAB ZRO*    PADAA
+$APTAB ZRO*    APTAA
+*      GOTO OR BREAK-POINT EXIT ROUTINE
+$DLG   LDB     =-1
+       STB     PRNF
+       SKN     ARI
+       BRU     DLG1
+       SBRM    XIC
+       BRU     UMEM
+       BRU     UILLG
+       BRU     PCE
+       BRU     PCP
+DLG1   CLA
+       STA     PRPF
+       C       PRCS1
+       BRU     PRC3
+XIC    ZRO     XIX
+       STA     T
+       C       PRUT
+       LDA     T
+       C       TCR
+XIT    NOP     XIX
+       ETR     ADB
+       STA     T
+       LDX     =-NBP
+XIN    SKN     BPTE,2
+       BRU     XIB
+       BRX     XIN
+XIS    LDA     PC
+       ETR     =10000000B
+       MRG     T
+       STA     PC
+       LDX     =-1
+       LDA     ECHTB
+       BRS     12
+       BRS     116
+       STP     URL1
+       SKN     CBF
+       C       IN1
+       LDA     PPE
+       BRS     71
+       LDA     PPB
+       BRS     9
+       BRS     31
+       LDX     =-1
+       BRS     40
+       STA     ECHTB
+       BRS     86
+       LDP     URL1
+       BRS     117
+       SKN     CBF
+       C       IN3
+       LDX     =-NBP
+XIP    SKN     BPTE,2
+       BRU     XIW
+       BRX     XIP
+XIE    LDA     =2
+       SUB     UMI
+       ADM     XIX
+       LDA     PC
+       ETR     =10037777B
+       STA     PC
+       ETR     ADB
+       LDB     UMI
+       SKB     =-1
+       BRR     XIX
+       SKN     CBI
+       BRR     XIX
+       LDX     =-NBP
+XIR    SKE     BPTE,2
+       BRU     *+2
+       BRR     XIX
+       BRX     XIR
+       MIN     XIX
+       BRR     XIX
+XIB    STX     TTT
+       LDA     BPTE,2
+       C       ULD
+       LDX     TTT
+       STA     BPWE,2
+       ETR     =70077777B
+       MRG     =533B5
+       STA*    URA
+       BRX     XIN
+       BRU     XIS
+XIW    STX     TTT
+       LDA     BPTE,2
+       C       ULD
+       LDX     TTT
+       LDB     =577B5
+       SKM     =533B5
+       BRU     XIE-1
+       LDA     BPWE,2
+       STA*    URA
+       BRX     XIP
+       BRU     XIE
+PPB    24B     PC,3
+PPE    24B     PC,7
+*      EXECUTE, GO TO
+$DLU   LDB     =-1
+       STB     PRNF
+       SKN     SYL
+       BRU     XEXR
+       BRU     LISTUN
+XEXR   C       USP
+       LDA     BPR
+       C       USP
+       LDA     BPR
+       C       USP
+       LDA     PC
+       STA     PCTT
+       LDA     =-3
+       SKN     CBF
+       BRU     *+2
+       ADM     LCN
+       LDA     LCN
+       SBRM    XIC
+       BRU     UMEM
+       BRU     UILLG
+       BRU     PCE
+       XMA     LCN
+       SKN     CBF
+       SUB     =3
+       XMA     LCN
+       SUB     =1
+       SKE     LCN
+       BRU     PCXE2
+PCXE1  TCF     =4
+       LDA     PCTT
+       STA     PC
+       BRU     RSP
+PCXE2  SUB     =1
+       SKE     LCN
+       BRU     PCP
+       TCF     =4
+       BRU     PCXE1
+*      PROCEED
+PRCS   STA     PRPF
+       STB     SDFO
+       LDA     PC
+       ETR     ADB
+       C       ULD
+       SKE     BPR
+       BRU     *+2
+       BRU     PRCS3
+       LDB     =577B5
+       SKM     =533B5
+       BRU     *+2
+PRCS3  MIN     PC
+       CLA
+       STA     PRNF
+       SKN     ARI
+       BRU     PRCS1
+PRCS2  SKN     SYL
+       LDA     WORD
+       SUB     =1
+       STA     PRCC
+       C       PRUT
+       BRU     TCR
+PRCS1  LDA     PC
+       ETR     =1B7
+       MRG     ARG
+       STA     PC
+       BRU     PRCS2
+PRUT   LDA     UNDEF
+       SKE     GLOB
+       C       TOK
+       R1
+$PRCV  LDA     =-1
+       BRU     *+2
+$DLP   CLA
+       CLB
+       C       PRCS
+       BRU     PRC3
+PRC2   SKN     PRPF
+       BRU     PRC1
+       C       PCO
+       C       TCR
+PRC3   LDP     AR
+       STP     DAR
+       LDA     XR
+       STA     DXR
+PRC1   C       XEX
+       LDA     PC
+       SBRM    XIT
+       BRU     UMEM
+       BRU     UILLG
+       BRU     *+2
+       BRU     PCP
+       SKR     PRCC
+       BRU     PRC2
+*      RE-ENTRY FROM BREAK-POINT
+PCE    C       PCO
+       C       TCR
+       BRU     RSC
+PCO    LDA     PC
+       ETR     ADB
+       STA     PC
+       STA     LRO
+       SKN     PPCF
+       BRU     PCO3
+       LDX     =-1
+       C*      AMD
+PCO3   SKN     PIF
+       BRU     PCO5
+PCO6   LDX     =-3
+PCO1   LDB     ='←'
+       LDA     EAR,2
+       SKN     PRNF
+       SKE     EDAR,2
+       BRU     PCO4
+       SKR     EPCOC,2
+       BRU     PCO2
+       LDB     ='='
+PCO4   STB     LST1
+       STX     XIX
+       C       TTB
+       TCF     PCOT+3,2
+       TCF     LST1
+       LDX     =-1
+       C*      RMD
+       LDX     XIX
+       LDA     =9
+       STA     EPCOC,2
+PCO2   BRX     PCO1
+       R1
+PCO5   LDA     =6400200B
+       C       PWI
+       LDA     LRO
+       C       ULD
+       STA     LWT
+       C       PS
+       BRU     PCO6
+PCOT   ASC     '  A  B  X'
+* INTERPRET ONE INSTRUCTION
+XEX    LDA     =-1
+       STA     TQC
+XEXE   LDA     PC
+       ETR     ADB
+       C       ULD
+       LDX     =100B
+       STX     XEC
+XEXXE  LDB     =17700000B
+       SKA     =10000000B
+       BRU     XEPOP
+XOPT   LDX     =XOPS-XOPSE
+       SKM     XOPSE,2
+       BRX     *-1
+       BRU*    XOPSE,2
+XNOR   SKA     =10000000B
+       BRU     XSPOP
+       STA     XEC
+       RSH     19
+       ETR     =3
+       AXC
+       LDX     XILO,2
+       LCY     4
+       XXA
+       LCY     0,2
+       SKG     =-1
+       BRU     UILLG
+       LDA     XEC
+       C       EFF
+       BRU     XEFF
+       CXA
+       ETR     ADB
+       C       URL
+       C       UGM
+       LDA     XEC
+       ETR     =77B5
+       MRG     URA
+       STA     XEC
+XDO    ROV
+       LDA     PC
+       LCY     1
+       LSH     1
+       LDP     AR
+       LDX     XR
+       EXU     XEC
+       BRU     *+2
+       MIN     PC
+       STP     AR
+       STX     XR
+       LDA     PC
+       ADD     =1
+       ETR     ADB
+       OVT
+       MRG     =10000000B
+       STA     PC
+       BRU     XNE
+XSPOP  C       USP
+       LDA     BPR
+       C       USP
+       LDA     BPR
+       C       USP
+       LDA     =-3
+       ADM     LCN
+       LDA     PC
+       STA     XEA
+       LDA     LCN
+       SBRM    XIT
+       BRU     XMEM
+       BRU     XILLG
+       BRU     XERR
+       SUB     LCN
+       ETR     =3
+       ADD     XEA
+XNX    LDB     PC
+       SKB     =10000000B
+       MRG     =10000000B
+       STA     PC
+XNE    SKN     TQC
+       SKN     SDFO
+       R1
+       BRU     XEXE
+$XERR  LDA     ='$>> '
+       BRU     UPANP
+XMEM   EAX     UMEM
+       BRU     *+2
+XILLG  EAX     UILLG
+       LDA     XEA
+       STA     PC
+       BRU     0,2
+XEFF   SKN     NUM
+       BRU     UMEM
+       LDA     ='E>> '
+       BRU     UPANP
+XIMM   STA     XEC
+       BRU     XDO
+XEAX   C       EFF
+       BRU     XEFF
+       CXA
+       ETR     ADB
+       XMA     XR
+       ETR     MADB
+       ADM     XR
+XNOP   MIN     PC
+       BRU     XNE
+XSH    STA     XEC
+       C       EFF
+       BRU     XEFF
+       ETR     =20037777B
+       XMA     XEC
+       ETR     =77B5
+       ADM     XEC
+       BRU     XDO
+XBRU   C       EFF
+       BRU     XERR
+XBR    CXA
+       ETR     ADB
+       BRU     XNX
+XBRM   C       EFF
+       BRU     XERR
+       STX     XEA
+XBRM1  C       URT
+       LDA     PC
+       MRG     =3200000B
+       STA*    URA
+       SKN     TQC
+       BRU     *+2
+       SKN     TSF
+       MIN     TQC
+       LDX     XEA
+XBRI   EAX     1,2
+       BRU     XBR
+XBRR   C       EFF
+       BRU     XERR
+       C       URT
+       LDX*    URA
+       SKR     TQC
+       BRU     XBRI
+       LDA     =-1
+       STA     TQC
+       BRU     XBRI
+XBRX   MIN     XR
+       LDB     XR
+       SKB     INB
+       BRU     XBRU
+       BRU     XNOP
+XEXU   C       EFF
+       BRU     XERR
+       C       URT
+       LDA*    URA
+       SKR     XEC
+       BRU     XEXXE
+       BRU     XERR
+XEPOP  SKA     =40000000B
+       BRU     XOPT
+       LRSH    15
+       ETR     =177B
+       XMA     PC
+       MRG     =3240000B
+       CLX
+       C       UST
+       SKN     TQC
+       BRU     *+2
+       SKN     TPF
+       MIN     TQC
+       LDA     PC
+       BRU     XEXU
+XSBRM  C       EFF
+       BRU     XERR
+       STX     XEA
+       C       URT
+       LDX*    URA
+       BRU     XBRM1
+XSBRR  ADD     =5140000B-57100000B
+       BRU     XEXXE
+*      USER RUBOUT/PPAN RETURN
+PCP    LDA     PC
+       ETR     ADB
+       STA     LRO
+       STA     LWT
+       C       ULD
+       LDB     =577B5
+       SKM     =533B5
+       BRU     PCC
+       BRU     PCB
+PCC    SKE     BPR
+       BRU     *+2
+       BRU     PCB
+       LDX     =-1
+       BRS     29
+PCB    TCF     =147B
+       BRU     RSP
+*      OPCODE TABLES
+XOPS   BRU     XBRU
+       BRX     XBRX
+OBRR   BRR     XBRR
+       BRM     XBRM
+       EXU     XEXU
+       SBRM    XSBRM
+       171B    XSBRR,4
+       EXS     XERR
+       NOP     XNOP
+       22B     XIMM
+ORCH   RCH     XIMM
+       66B     XSH
+       67B     XSH
+       EAX     XEAX
+XOPSE  BRU     XNOR
+XILO   DATA 57772000B,23774000B,53200000B,0
+*      SET, CLEAR, LIST BREAKPOINTS
+$BEP  LDB     =-1
+       SKN     SYL
+       BRU     BEP1
+       LDX     =-NBP
+       STB     BPTE,2
+       BRX     *-1
+       BRU     RSR
+$BER   SKN     SYL
+       BRU     BER1
+       LDX     =-NBP
+BER2   STX     ARG
+       C       TTB
+       LDA     BPTE,2
+       SKG     =-1
+       BRU     BER4
+       C       PAD
+BER3   LDX     ARG
+       BRX     BER2
+       BRU     RSR
+BER4   TCF     =12B
+       BRU     BER3
+BEP1   ETR     ADB
+       BRU     BER5
+BER1   C       BET
+       CAB
+       LDA     =-1
+BER5   LDX     =-NBP+1
+       SKE     BPTE,2
+       BRX     *-1
+       CXA
+       SKE     =0
+       BRU     BEP2
+       SKB     MADB
+       BRU     ILL
+       BRU     SIOO
+BEP2   CBA
+       BRU     BKP1
+$BEE   CLB
+       SKN     SYL
+       BRU     BEE1
+       LDA     =-1
+       LDX     =-NBP
+BKP1   STA     BPTE,2
+       BRU     RSR
+$DLDOT SKN     SYL
+       BRU     *+2
+       LDA     LRO
+       LDB     =-1
+       STB     WORD
+BEE1   C       BET
+       LDX     =-NBP
+       STA     BPTE,2
+       SKB     =-1
+       BRU     DLP
+       BRU     RSR
+BET    ETR     ADB
+       LDX     =-NBP
+       SKE     BPTE,2
+       BRX     *-1
+       SKE     BPTE,2
+       R1
+       BRU     ILL
+*      COMPUTE EFFECTIVE ADDRESS
+EFF    LDX     =100B
+       STX     NUM
+       LDX     XR
+       XXA
+       ETR     ADB
+       MRG     EAXWD
+       STA     EFFI
+       CXA
+EFFE   CAX
+       SKA     =20000000B
+       EXU     EFFI
+       SKA     INB
+       BRU     EFF1
+       R2
+EFF1   CXA
+       C       URL
+       R1
+       LDA*    URA
+       SKR     NUM
+       BRU     EFFE
+       R1
+EAXWD  EAX     0,2
+*      BCI INPUT
+$BCIA  SKN     ROP
+       BRU     BCI1
+       LDX     =-24
+BCI2   C       CI
+       SKE     =144B
+       BRU     BCI2A
+       BRU     BCIX
+BCI2A  EXU     BCEAX
+       ABC
+       RCY     25,2
+       ADM     NUM
+       BRX     BCI2
+BCI2B  C       CI
+       SKE     =144B
+       BRU     BCI2B
+BCIX   TCF     =2
+       BRU     STQ
+BCI1   LDX     =-24
+BCI3   C       CI
+       SKE     =144B
+       BRU     BCI3A
+       BRU     BCIX
+BCI3A  EXU     BCEAX
+       ABC
+       RCY     25,2
+       ADM     NUM
+       BRX     BCI3
+       C       CI
+       SKE     =144B
+       BRU     BCI3B
+       BRU     BCIX
+BCI3B  COPY    AB,A,X
+       EXU     BCEAX
+       RCY     1,2
+       XMA     NUM
+       LDX     LRO
+       C       UST
+       MIN     LRO
+       LDX     =-24
+       EXU     BCEAX
+       BRX     BCI3
+*   FLOATING POINT FILL
+$PE1   LDA     =PFPP
+       STA     SYML
+       STA     SYMR
+       LDA     TYC
+       WCI     SYML
+FPF1   C       TI
+       WCI     SYML
+       SKG     =31B
+       SKG     =17B
+       BRU     *+2
+       BRU     FPF1
+       SKE     ='+'
+       BRU     *+2
+       BRU     FPF1
+       SKE     ='-'
+       BRU     *+2
+       BRU     FPF1
+       SKE     ='E'
+       BRU     *+2
+       BRU     FPF1
+       SKE     ='.'
+       BRU     *+2
+       BRU     FPF1
+       CLX
+       SIC     SYML
+       NOP
+       STA     NUM
+       STB     FPS
+FPF3   GCD     SYML
+       BRU     FPF2
+       WCD     CAP
+       BRU     FPF3
+FPF2   CXA
+       WCD     CAP
+       MIN     FPF
+       MIN     SYL
+       BRU     R
+*      PRINT FLOATING POINT
+$PFP   C       UIL
+       SKN     ARI
+       BRU     PFP1
+       ETR     ADB
+       SKN     SYL
+       STA     LRO
+       LDA     LRO
+       STA     ROP
+       C       ULD
+       STA     ARG
+       LDA     LRO
+       ADD     =1
+       C       ULD
+PFP1   C       TTB
+       COPY    AB,X
+       LDA     =PFPP
+       STA     SYML
+       STA     SYMR
+       LDA     ARG
+       ISC     SYML
+       MIN     SYML
+       GCI     SYML
+       HLT
+       SKE     =0
+       BRU     PFP2
+PFP3   GCI     SYML
+       HLT
+       SKE     =0
+       BRU     *+2
+       BRU     PFP3
+       WCD     SYML
+       GCD     SYML
+       HLT
+       SKE     =20B
+       BRU     PFP2+1
+PFP4   GCD     SYML
+       HLT
+       SKE     =20B
+       BRU     *+2
+       BRU     PFP4
+       WCI     SYML
+       BRU     *+2
+PFP2   WCD     SYML
+       LDP     SYML
+       LDX     FO
+       BRS     35
+       BRU     TR
+*      PRINT STRING FROM POINTER
+$EQS   C       UIL
+       SKN     ARI
+       BRU     EP1
+       ETR     ADB
+       SKN     SYL
+       STA     LRO
+       LDA     LRO
+       STA     ROP
+       C       ULD
+       ETR     =177777B
+       STA     ARG
+       LDA     LRO
+       ADD     =1
+       C       ULD
+EP1    ETR     =177777B
+       STA     WORD
+       C       TTB
+       BRU     EP3
+EP2    LDA     ARG
+       ADD     =1
+       ETR     =177777B
+       STA     ARG
+       RSH     23
+       DIV     =3*4000B
+       STB     T
+       LSH     11
+       C       ULD
+       LDA     T
+       ADD     =3*24000B-1
+       LDB     =177777B
+       STP     TT
+       GCI     TT
+       HLT
+       C       PCI
+EP3    LDA     WORD
+       SKG     ARG
+       BRU     TR
+       BRU     EP2
+*      LIST ALL BLOCKS
+$PBK   C       TCR
+       LDX     =-76B
+PBK1   LDA     EBN,2
+       SKE     =0
+       BRU     PBK2
+PBK3   BRX     *+1
+       BRX     PBK1
+       BRU     RSR
+PBK2   SKE     =-1
+       BRU     *+2
+       BRX     PBK3+1
+       C       PWD
+       LDA     EBN1,2
+       ETR     LMSK
+       C       PWD
+       LDB     EBN1,2
+       LDA     =';]  '
+       SKB     =1
+       C       PWD
+       C       TCR
+       BRX     PBK3+1
+*      EFFECTIVE ADDRESS SEARCH
+$DLE   LDB     =-1
+       SKB     USML
+       BRU     EAU
+       LDB     *+2
+       BRU     WDE
+       BRU     EAE
+EAU    SKE     =0
+       BRU     ILL
+       LDA     ='[U] '
+       C       PWD
+       C       TCR
+       LDP     USML
+       STP     SYML
+       LDB     LMSK
+       C       LSU
+       BRU     EUL
+EUR    C       TCR
+       BRU     RSR
+EUL    LDA     2,2
+       SKE     =-1
+       BRU     *+2
+       BRU     EUR
+       STA     WDW
+EUM    C       ULU
+       LDX     WDW
+       BRX     *+1
+       SKN     W,2
+       BRU     *+2
+       BRU     EUR
+       STX     WDW
+       LDA     W,2
+       ETR     =34000B
+       STA     WDCNT
+       LDA     W,2
+EUP    C       OPN
+       C       TCR
+       LDA     LWT
+       SKA     =20000B
+       BRU     EUM
+       ETR     =3777B
+       MRG     WDCNT
+       BRU     EUP
+EAE    LDA*    URA
+       LDB     =17700000B
+       SKM     ORCH
+       BRU     *+2
+       BRU     WDC
+       SKA     =20040000B
+       BRU     *+2
+       BRU     EAL
+       C       EFF
+       BRU     WDRN
+       STX     T
+       LDA     SYML
+       C       URL
+       BRU     ILL
+       LDA     T
+EAL    LDB     ADB
+       SKM     WDW
+       BRU     *+2
+       BRU     WDP
+       CAX
+       LDA*    URA
+       LDB     =17700000B
+       SKM     OBRR
+       BRU     WDC
+       CXA
+       C       URL
+       BRU     WDRN
+       LDA*    URA
+       ADD     =1
+       LDB     ADB
+       SKM     WDW
+       BRU     WDRN
+       BRU     WDP
+*      BLOCK OPERATIONS
+$LOOP  ZRO     LOOPX
+       ETR     ADB
+       ADD     =1
+       STA     SYL
+       SKG     ARG
+       BRU     ILL
+       LDA     ARG
+LOOP2  STA     SYML
+       ADD     =4000B
+       ETR     =74000B
+       SKG     SYL
+       BRU     *+2
+       LDA     SYL
+       STA     SYMR
+       LDA     SYML
+       C       URL
+       BRU     LOOPN
+       LDA     SYMR
+       SUB     SYML
+       STA     ARG
+       SKR     ARG
+       SBRR    LOOP
+$LOOPN LDA     SYMR
+       SKE     SYL
+       BRU     LOOP2
+       SKN     BASE
+       BRU     RSR
+       LDA     BASE
+       EOR     =-1
+       C       APT
+       BRU     RSR
+*      ZERO MEMORY
+$DLZ   SKG     =0
+       BRU     ZKILL
+       SKN     ARI
+       BRU     *+2
+       STA     ARG
+       STA     BASE
+       SBRM    LOOP
+       CLB
+       SKN     SVF
+       LDB     SVAL
+DLZS   STB*    URA
+       MIN     URA
+       MIN     SYML
+       SKR     ARG
+       BRU     DLZS
+       BRU     LOOPN
+ZKILL  C       TOK
+       BRS     57
+       BRS     116
+       LDX     =-8
+       STX     UMA
+ZKILL1 LCY     6
+       STP     SYML
+       ETR     =77B
+       SKE     =0
+       BRS     121
+       LDP     SYML
+       BRX     ZKILL1
+       CLAB
+       BRS     117
+       BRU     RSR
+*      WORD SEARCH
+$PEW   LDX     =-1
+       SKN     SVF
+       BRU     DLW2
+       BRU     ILL
+$DLW1  LDX     =2B7
+DLW2   LDB     NWDN
+       BRU     WDS
+WDE    LDX     =-1
+       STX     SVF
+       LDX     =2B7
+WDS    STB     WDI
+       STX     BASE
+       STA     WDW
+       LDA     LL
+       STA     ARG
+       LDA     =-1
+       STA     EXF
+       C       TCR
+       LDA     UL
+       SBRM    LOOP
+WDN    EXU     WDI
+       LDB     MASK
+WDR    SKM     WDW
+       BRU     WDC
+WDP    LDA     SYML
+       SKN     BASE
+       C       OPN
+       SKN     SVF
+       BRU     WDD
+WDCR   C       TCR
+WDRN   LDA     SYML
+       C       URL
+       BRU     ILL
+WDC    MIN     URA
+       MIN     SYML
+       SKR     ARG
+       BRU     WDN
+       BRU     LOOPN
+WDD    LDA     SYML
+       C       ULD
+       ETR     MASK
+       EOR*    URA
+       ADD     SVAL
+       STA*    URA
+       SKR     BASE
+       BRU     *+2
+       BRU     WDRN
+       C       TTB
+       C       OPN1
+       BRU     WDCR
+$NWDS  LDB     *+2
+       BRU     WDE
+       BRU     NWDN
+NWDN   LDA*    URA
+       LDB     MASK
+       SKM     WDW
+       BRU     WDP
+       BRU     WDC
+*      PRINT REGISTER
+OPN    STA     LRO
+       STA     ROP
+       LDX     =-1
+       C*      AMD
+       LDA     =3600200B
+       C       PWI
+       LDA     LRO
+       C       ULD
+OPN1   STA     LWT
+       LDX     LRO
+       BRU*    RMD
+*      ERROR ENTRIES
+UMEM   LDA     ='M>> '
+       BRU     UPANP
+UILLG  LDA     ='I>> '
+UPANP  C       PWD
+       LDA     PC
+       ETR     ADB
+       STA     LRO
+       LDX     =-1
+       STX     ROP
+       C*      AMD
+       C       TTB
+       LDA     LRO
+       C       URL
+       BRU     UPANI
+       LDA*    URA
+       LDX     LRO
+       C*      RMD
+       BRU     RSP
+UPANI  TCF     =37B
+       BRU     RSP
+*      TRACE
+$DLS   LDA     =-1
+       BRU     *+2
+$DLN   CLA
+       LDB     =-1
+       C       PRCS
+       LDA     =-2
+       STA     BITSS
+TRC9   LDP     AR
+       STP     DAR
+       LDA     XR
+       STA     DXR
+TRC1   LDA     PC
+       C       ULD
+       STA     XIX
+       ETR     =177B5
+       SKG     =37B5
+       SKG     =34B5
+       BRU     TRC6
+TRC4   LDA     XIX
+       C       EFF
+       BRU     ILL
+       CXA
+       ETR     ADB
+TRC7   STA     XIX
+       C       XEX
+       MIN     BITSS
+       SKR     PRCC
+       BRU     TRC2
+       SKN     PRPF
+       BRU     *+2
+       BRU     TRC5
+       SKN     BITSS
+       BRU     TRC3
+TRC5   LDA     XIX
+       SKG     =-1
+       BRU     TRC3
+       C       OPN
+       C       TCR
+TRC3   C       PCO
+       C       TCR
+       SKN     PRCC
+       BRU     TRC9
+       BRU     RSC
+TRC2   SKN     PRPF
+       BRU     TRC1
+       BRU     TRC5
+TRC6   SKG     =63B5
+       SKG     =57B5
+       BRU     *+2
+       BRU     TRC4
+       SKE     =43B5
+       BRU     *+2
+       BRU     TRC4
+       LDA     =-1
+      BRU      TRC7
+LEB1   SKE     0
+LEB2   SKG     0
+LEB3   ADD     0
+LEB4   BRU     0
+LEB5   BRU     2
+LEB6   LDA     0
+LEB7   BRR     EEINT-INT
+LEB8   BRU     IILL1
+LEB9   BRM     EEINT-INT-11
+LEB10  LDX     0
+LEB11  EAX*    0
+LEB12  XXA
+LEB13  ETR     0
+LEB14  CXA
+LEB16  STA     0
+LEB17  LDB     0
+LEB18  LSH     9
+LEB19  SUB     0
+LEB20  BRM     0
+LEB21  LDA*    SL
+LEB22  SKE     L46B5
+LEB23  SKG     L67B5
+LEB24  SKG     L65B5
+LEB25  CBA
+LEB26  SKE     L77B5
+LEM    TMF     LEM1
+       BRU     RSR
+LEW    TMF     LEW1
+       BRU     RSR
+LEM1   ASC     'SYNTAX ERROR/'
+LEW1   ASC     'WILL NOT FIT/'
+LEL1   ADD     LCN
+LEL    LDX     LEP
+       C       UST
+       LDX     LEP
+       BRX     LEW
+       STX     LEP
+       R1
+*   ADD TO FALSE BRANCH CHAIN
+LEFS   LDA     LEP
+       XMA     LEA
+       SKG     =-1
+       LDA     LEP
+       C       LEL
+       R1
+$LE    LDP     SSP
+       STP     DAR
+       LDA     =-1
+       STA     LEN
+       STA     LEA
+LE32   STA     LEC
+       LDA     LEB6
+       STA     LEF
+LE31   LDA     =-1
+       STA     LEE
+       STA     LES
+       STA     LEI
+       STA     LER
+LE30   CLAB
+LE33   STA     BLNF
+       STA     FIELD
+LE34   STA     NUM
+       STP     NDEC
+       STP     SYML
+       LDA     =-1
+       STA     USML
+       STA     SIGN
+       STA     LET
+       STA     LETN
+       STA     SYL
+       LDA     =6
+       STA     CHC
+       BRU     LE1
+LE0    MIN     LES
+LE1    GCI     SSP
+       BRU     LEM
+       STA     TYC
+       SKE     ='B'
+       BRU     LE2
+       C       LETTB1
+       BRU     LE0
+LE2    SKE     ='D'
+       BRU     LE3
+       C       LETTD1
+       BRU     LE0
+LE3    SKG     =72B
+       SKG     =40B
+       BRU     LE4A
+LE3A   C       LETTR1
+       BRU     LE0
+LE4A   SKE ='.'
+       BRU     LE4
+       BRU     LE3A
+LE4    SKG     =31B
+       SKG     =17B
+       BRU     LE5
+       C       DIGIT1
+       BRU     LE0
+LE5    SKE     ='&'
+       BRU     LE6
+       LDP     BZN
+       SKN     LET
+       LDP     SYML
+       C       BLKS
+       BRU     ILL
+       STA     BLNF
+       CLAB
+       BRU     LE33
+LE6    SKE     =';'
+       BRU     LE7
+       GCI     SSP
+       BRU     LEM
+       SKE     ='E'
+       BRU     LE43
+LE44   LDA     =SX
+       MRG     LEB10
+       C       LEL1
+       LDA     =IR
+       MRG     LEB11
+       C       LEL1
+       LDA     LEB12
+       C       LEL
+       LDA     =L37777B
+       MRG     LEB13
+       C       LEL1
+LE49   LDA     =-2
+       STA     LER
+       CLA
+       SKE     LEC
+       BRU     LE0
+       LDA     =ST
+       MRG     LEB16
+       C       LEL1
+       LDA     LEB14
+       C       LEL
+       LDA     =ST
+       BRU     LE48
+LE43   SKE     ='S'
+       BRU     LE41
+       LDA     LEB25
+       C       LEL
+       LDA     =L177B5
+       MRG     LEB13
+       C       LEL1
+       LDA     LEB22
+       C       LEL1
+       LDA     LEB5
+       ADD     LEP
+       C       LEL
+       C       LEFS
+       LDA     LEB26
+       C       LEL1
+       LDA     LEB5
+       ADD     LEP
+       C       LEL
+       C       LEFS
+       LDA     LEB23
+       C       LEL1
+       LDA     LEB24
+       C       LEL1
+       C       LEFS
+       BRU     LE44
+LE41   SKE     ='O'
+       BRU     LE42
+       CLA
+       SKE     LEC
+       BRU     *+3
+       LDA     LEB12
+       C       LEL
+       LDA     LEB18
+       C       LEL
+       LDA     =L177B
+       MRG     LEB13
+       C       LEL1
+       LDA     =IR
+       MRG     LEB17
+       C       LEL1
+       BRU     LE49
+LE42   LDX     ADB
+       SKE     ='L'
+       BRU     *+2
+       EAX     SL
+       SKE     ='A'
+       BRU     *+2
+       EAX     SA
+       SKE     ='B'
+       BRU     *+2
+       EAX     SB
+       SKE     ='X'
+       BRU     *+2
+       EAX     SX
+       CXA
+       SKE     ADB
+       BRU     *+2
+       BRU     LEM
+LE48   ADD     LCN
+       STA     LER
+       BRU     LE0
+LE7    SKE     ='@'
+       BRU     LE53
+       LDA     LEB13
+       BRU     LE52
+LE53   SKE     ='+'
+       BRU     LE51
+       LDA     LEB3
+       LDB     =-1
+       BRU     LE52
+LE51   SKE     ='-'
+       BRU     LE50
+       LDA     LEB19
+       CLB
+LE52   SKN     LEI
+       BRU     LE54
+       SKN     LES
+       SKN     LEC
+       BRU     LEM
+       XMA     LEF
+       C       LEQ
+       BRU     LE31
+LE54   STB     SIGN
+       BRU     LE0
+LE50   SKE     =0
+       BRU     LE55
+       C       EVF
+       CLAB
+       BRU     LE34
+LE55   SKE     ='='
+       BRU     LE8
+       SKN     LEE
+       BRU     LE9
+       CLA
+LE10   SKN     LES
+LE10A  SKN     LEC
+       BRU     LEM
+       STA     LEO
+       LDA     LER
+       SKE     =-2
+       BRU     LE35
+LE36   MIN     LEC
+       LDA     =-1
+       STA     LER
+       STA     LEI
+       STA     LES
+       BRU     LE30
+LE35   LDA     LEF
+       C       LEQ
+       BRU     LE36
+LE9    MIN     LEO
+       BRU     LE1
+LE8    SKE     ='#'
+       BRU     LE11
+       LDA     =1
+       BRU     LE10
+LE11   SKE     ='<'
+       BRU     LE12
+       LDA     =4
+LE15   MIN     LEE
+       BRU     LE10
+LE12   SKE     ='>'
+       BRU     LE13
+       LDA     =2
+       BRU     LE15
+LE13   SKE     =7
+       BRU     LE13B
+       LDA     =7
+       BRU     LE10B
+LE13B  SKE     =2
+       BRU     LE13A
+       LDA     =6
+LE10B  LDB     =-2
+       STB     LER
+       BRU     LE10A
+LE13A  SKE     ='*'
+       BRU     LE14
+       C       LESTAR
+       BRU     LE32
+LESTAR CLA
+       SKN     LES
+       SKE     LEC
+       BRU     LEM
+       LDX     LEO
+       BRU*    *+1,2
+       DATA    LEA0,LEA1,LEA2,LEA3,LEA4,LEA5,LEA9,LEA9
+LEA0   LDA     LEB1
+LEA6   C       LEQ
+LEA61  C       LEFS
+       BRU     LE16
+LEA1   LDA     LEB1
+LEA8   C       LEQ
+LEA8A  LDA     LEB5
+       ADD     LEP
+       C       LEL
+       BRU     LEA61
+LEA2   LDA     LEB2
+       BRU     LEA6
+LEA7   LDA     =L1
+       MRG     LEB3
+       C       LEL1
+       LDA     LEB2
+       R1
+LEA3   C       LEA7
+       BRU     LEA6
+LEA4   C       LEA7
+       BRU     LEA8
+LEA5   LDA     LEB2
+       BRU     LEA8
+LEA9   C       EVF
+       SKA     MADB
+       BRU     *+2
+       MRG     LEB20
+       C       LEL
+       LDA     LEO
+       SKE     =7
+       BRU     LEA61
+       BRU     LEA8A
+LE14   SKE     ='!'
+       BRU     LE17
+       LDA     LEB4
+       STA     LED
+       C       LEPLUS
+       BRU     LE32
+LEPLUS CLA
+       SKN     LES
+       SKE     LEC
+       BRU     LEM
+LEPLU1 C       LESTAR
+       LDA     LEB8
+       C       LEL1
+       LDA     LEP
+       SKN     LED
+       BRU     *+4
+       LDA     LEB7
+       STA     LED
+       LDA     LCN
+       ADM     LED
+       LDA     =-1
+       XMA     LEA
+       C       LEPT
+LE16   LDA     =-1
+       R1
+*   PATCH UP CHAIN
+LEPT   STA     TTT
+       C       ULD
+       LDB     LED
+       STB*    URA
+       SKE     TTT
+       BRU     LEPT
+       R1
+LE17   SKE     ='$'
+       BRU     LE18
+       SKN     LES
+       BRU     LEM
+       MIN     LEI
+       BRU     LE1
+LE18   SKE     =144B
+       BRU     LEM
+       LDA     =-1
+       STA     LED
+       C       LEPLU1
+       LDA     =LEQT
+       STA     LEI
+       LDA     =LEQL
+       STA     LES
+       LDA     LEP
+       STA     LEC
+LE20   LDA*    LEI
+       C       LEL
+       LDA*    LES
+       C       URL
+       BRU     ILL
+       LDA     LEC
+       ADM*    URA
+       MIN     LES
+       MIN     LEI
+LE19  SKR      LEN
+       BRU     LE20
+       LDP     DAR
+       STP     SSP
+       R1
+*   EVALUATE OPERAND AND STORE LITERAL
+LEQ    STA     LGI
+       LDA     LER
+       SKG     =-1
+       C       EVF
+       SKN     LEI
+       BRU     LEQ1
+LEQ2   MRG     LGI
+       C       LEL
+       R1
+LEQ1   MIN     LEN
+       LDX     LEN
+       STA     LEQT,2
+       LDA     LEP
+       STA     LEQL,2
+       CXA
+       BRU     LEQ2
+$PEE   C       TCR
+       LDA     =SS
+       ADD     =SS
+       ADD     =SS
+       SUB     =1
+       STA     SSP
+       STA     SSP1
+PEE1   C       CI
+       SKE     =141B
+       BRU     PEE2
+       LDX     ='↑'
+       GCD     SSP
+       LDX     ='G'+100B
+       CXA
+       CIO     FO
+       BRU     PEE1
+PEE2   SKE     ='R'+100B
+       BRU     PEE3
+       C       TCR
+       LDP     SSP
+       STP     SYML
+PEE5   GCI     SSP
+       BRU     PEE4
+       CIO     FO
+       BRU     PEE5
+PEE4   LDP     SYML
+       STP     SSP
+       BRU     PEE1
+PEE3   WCI     SSP
+       SKE     =144B
+       BRU     PEE1
+       BRU     RSR
+INT    EQU     *
+       RELORG  0
+SL     BSS 1
+SA     BSS 1
+SB     BSS 1
+SX     BSS 1
+ST     BSS     1
+IS     STB SB; STX SX; STA SA
+INOP   MIN     SL
+IL     LDB* SL
+IA     STB IR; ZRO; SKB L1B7; BRU IPOP
+       LSH 9,4; ETR L77B; CAX 0,4; BRU* DT,2
+IX     LDB SB; LDX SX; LDA SA
+IR     ZRO; BRU IS; MIN SL; BRU IS
+IEXU   LDX SX; LDB* IR; BRU IA
+IBRU   LDX SX; EAX* IR; CXA 0,4; ETR L37777B; STA SL; BRU IL
+IBRX   LDX SX; MIN SX; LDB SX; SKB L4B4; BRU IBRU+1; BRU INOP
+IBRM   LDX SX; EAX* IR
+       LDA SL; MRG L32B5; STA 0,6
+       EAX 1,6; CXA 0,4; ETR L37777B; STA SL; BRU IL
+IBRR   LDX SX; LDA* IR; ADD L1; ETR L37777B; STA SL; BRU IL
+IPOP   SKB L4B7; BRU ISYSPP; LDA SL; MRG L324B4; STA 0,4
+       LSH 9,4; ETR L177B; STA SL; BRU IL
+ISYSPP LSH 9,4; ETR L177B; SKE L170B; BRU ISYS1
+       LDX SX; EAX* IR; LDA SL; MRG L32B5; STA* 0,6
+       EAX 1,6; CXA 0,4; ETR L37777B; STA SL; BRU IL
+ISYS1  NOP; BRU IX
+IILL   ZRO
+IILL1  BRS     10
+DT     DATA IILL,IBRU,IILL,IILL,IILL,IILL,IILL,IILL
+       DATA IILL,IILL,IILL,IILL,IX,IILL,IX,IX
+       DATA INOP,IILL,IX,IEXU,IILL,IILL,IILL,IILL
+       DATA IILL,IILL,IILL,IILL,IILL,IX,IX,IX
+       DATA IILL,IBRX,IILL,IBRM,IILL,IILL,IX,IILL
+       DATA IX,IBRR,IX,IX,IX,IX,IX,IX
+       DATA IX,IX,IX,IX,IX,IX,IX,IX
+       DATA IX,IX,IX,IX,IX,IX,IX,IX
+EINT   EQU     *
+L32B5  DATA    32B5
+L177B  DATA    177B
+L164B  DATA    164B
+L1B7   DATA    1B7
+L77B   DATA    77B
+L37777 DATA    37777B
+L1     DATA    1
+L4B7   DATA    4B7
+L170B  DATA    170B
+L4B4   DATA    4B4
+L324B4 DATA    324B4
+L177B5 DATA    177B5
+L46B5  DATA    46B5
+L67B5  DATA    67B5
+L65B5  DATA    65B5
+L77B5  DATA    77B5
+       RETREL
+EEINT  EQU     *
+EINT   EQU     EINT+INT
+IN1    LDA     LCN
+       STA     LEP
+       ADD     =IILL1
+       STA     CBI
+       LDX     =INT-EINT
+IN2    STX     LEC
+       LDA     EINT,2
+       SKN     EINT,2
+       ADD     LCN
+       C       LEL
+       LDX     LEC
+       BRX     IN2
+       LDX     =EINT-EEINT
+       STX     LEC
+       LDA     EEINT,2
+       C       LEL
+       LDX     LEC
+       BRX     *-4
+       MIN     LEP
+       C       LE
+       LDX     =-4
+IN4    STX     LEA
+       LDA     URL1,2
+       C       USP
+       LDX     LEA
+       BRX     IN4
+       LDA     =7
+       ADM     LCN
+       LDA     LCN
+       ADD     LEB9
+       C       USP
+       LDA     LCN
+       SUB     =3
+       STA     PC
+       SUB     =9
+       STA     LCN
+       R1
+IN3    LDA     =-1
+       XMA     CBI
+       LDB     ADB
+       SKM     PC
+       BRU     *+2
+       MIN     CBI
+       LDX     =-4
+IN6    STX     LEA
+       C       IN5
+       LDX     LEA
+       STA     URL1,2
+       BRX     IN6
+       LDA     =-4
+       ADM     LCN
+       R1
+IN5    LDA     LCN
+       C       ULD
+       MIN     LCN
+       R1
+*      LIST UNDEFINED SYMBOLS
+$LISTUN LDX     UNDEF
+       BRU     LUN1
+LUN    C       PSYM
+       EAX     3,2
+LUN1   CXA
+       C       TCR
+       SKE     GLOB
+       BRU     LUN
+       BRU     RSR
+*   SUPPRESS BLOCK PRINT
+$SUPP  SKN     SYL
+       BRU     *+3
+       LDA     =PSAA
+       BRU     SERN+2
+       C       SBLK
+       MRG     =1
+SUPP1  STA EBN1,2
+       BRU     TR
+SBLK   LDP     SYML
+       C       BLKS
+       BRU     ILL
+       LDA     EBN1,2
+       R1
+*   UNDO SUPPRESS BLOCK PRINT
+$NUPP  SKN     SYL
+       BRU     *+3
+       LDA     =APTAA
+       BRU     SERN+2
+       C       SBLK
+       ETR     =-2
+       BRU     SUPP1
+*      MODE SWITCHES AND SWITCHERS
+$SERF  NOP     PFRAA
+$SERH  NOP*    XMD
+$SERN  NOP     PSNAA
+       LDA     0,2
+       STA     RMD
+       BRU     RSR
+$DLV   SKN     SYL
+       BRU     PRCV
+       LDA     APTAB
+SEA    STA     AMD
+       BRU     RSR
+$DLR   SKN     ARI
+       BRU     SREL
+       SKN     SYL
+       BRU     SRAD
+       LDA     PADAB
+       BRU     SEA
+SREL   STA     T
+       LDP     AR
+       STP     DAR
+       LDX     =-1
+       STX     UMA
+       LDA     =SREL1
+       STA     PC
+       LDA     PC5
+       BRS     71
+       LDA     PC11
+       BRS     9
+       BRS     31
+       LDP     DAR
+       STP     AR
+       CXA
+       SKE     =0
+       BRU     ILL
+       BRU     RSR
+PC5    NOP     PC,5
+PC11   NOP     PC,1
+SREL1  LDA     ARG
+       LDB     T
+       BRS     117
+       BRS     10
+SRAD   SKG     =1
+       BRU     ILL
+       BRU     RADS
+*      SUPPRESS ADDRESS PRINT
+$PAFF  LDA     =-1
+       STA     PAF
+       BRU     TR
+*      PRINT CHARACTER POINTER
+$PP    ETR     =177777B
+       MUL     =12525253B
+       STB     WORD
+       STA     LWT
+       C       PAD
+       LDB     WORD
+       LCY     8
+       ETR     =300B
+       MRG     =';+0 '
+       BRU     PWD
+*   PRINT REGISTER FORMATED
+$PFR   STA     WORD
+       LDA     PFD
+       MRG     =1
+       STA     T
+PFR1   CLX
+       C       FSHF
+       R1
+       CLB
+       LDA     PFM
+       LRSH    24,2
+       STB     PFM
+       ADM     PFM
+       CLB
+       LDA     WORD
+       LRSH    24,2
+       STB     WORD
+       ETR     PFM
+       C       APT
+       TCF     =0
+       BRU     PFR1
+*   STORE FIELD FORMATED
+$SFR   SKN     ROP
+       BRU     *+2
+       BRU     ILL
+       C       SFR2
+       BRU     RSW
+$SFR2  LDA     LRO
+       C       ULD
+       SKN     FCNT
+       BRU     *+2
+       STA     LGI
+       MIN     FCNT
+       LDA     PFD
+       SKE     =0
+       BRU     *+2
+       BRU     ILL
+       STA     T
+       LDA     FCNT
+       STA     MVI
+       LDX     =20060B
+       BRU     *+3
+       C       FSHF
+       BRU     ILL
+       SKR     MVI
+       BRU     *-3
+       STX     TTT
+       LDX     =20060B
+       C       FSHF
+       BRU     SFR1
+       STX     MVI
+       LDB     WORD
+       CLA
+       LSH*    MVI
+       CLB
+       LSH*    TTT
+       ETR     PFM
+       STA     FIELD
+       LDA     =-1
+       CLB
+       LSH*    MVI
+       LDB     =-1
+       LSH*    TTT
+       STA     WORD
+       LDA     LGI
+       ETR     WORD
+       MRG     FIELD
+       STA     LGI
+       R1
+SFR1   LDX     LRO
+       LDA     LGI
+       C       UST
+       MIN     LRO
+       LDA     =-1
+       STA     FCNT
+       BRU     SFR2
+FSHF   LDA     T
+       SKE     =0
+       BRU     *+2
+       R1
+       CLB
+       LRSH    2
+       NOD     24
+       LSH     2
+       STA     T
+       R2
+       END
+
+DLOAD  IDENT   (LOAD AFTER DBREAK)
+       NOLIST EXT
+ADB    DATA    37777B
+MADB   DATA    77740000B
+LMSK   DATA    77770000B
+W6     EQU     30000B
+W61    EQU     30001B
+W62    EQU     30002B
+W7     EQU     34000B
+EAXWD  EAX     0,2
+BRZ    BRU     0
+BUFA   EQU     10000B-400B
+WIO    OPD     103B5
+CII    OPD     104B5
+RWIO   OPD     56B6
+*      READ BINARY FILE
+LDSET  CLX
+       EAX     DROUT
+       STX     201B
+       EAX     DMEM
+       STX     202B
+       LDX      =TV-ETV
+       LDA     ETV,2
+       STA     ETV-TV+100B,2
+       BRX     *-2
+       R1
+$LDENT LDA     =-1
+       STA     LIBFLG
+       STA     XEC
+       CLAB
+       STP     TMPRL
+       C       LDSET
+SLJ    C       TTB
+       LDB     FO
+       LSH     36
+       MRG     FI
+       COPY    AX,A,B
+       BRS     15
+       BRU     ILL
+       STA     FR
+       STB     TYC
+       CBA
+       SKE     =16B
+       BRU     SLL
+SLK    STA     BUFC
+       CXA
+       LSH     3
+       RSH     21
+       STA     T
+       LDA     =-1
+       STA     ROP
+       C       TTB
+       BRS     57
+       LDA     T
+* 'SAVE' FILE
+       SKE     =1
+       BRU     RLINK
+       SKN     SYL
+       BRU     ILL
+       TMF     TSVM
+       RWIO     FR
+       ETR     ADB
+       STA     SYML
+       RWIO     FR
+       ETR     ADB
+       SUB     SYML
+       ADD     =1
+       STA     SYMR
+       RWIO     FR
+       ETR     ADB
+       STA     NUM
+       BRU     TSVC
+TSVW   RWIO     FR
+       LDX     SYML
+       C       UST
+       MIN     SYML
+TSVC   SKR     SYMR
+       BRU     TSVW
+       LDA     NUM
+       SKG     =0
+       BRU     DGO1
+       TMF     TSVS
+       LDA     NUM
+       C       APT
+       BRU     DGO1
+TSVM   ASC     'SAVE   /'
+TSVS   ASC     'START AT /'
+* RELOCATABLE
+RLINK  SKE     =2
+       BRU     ILL
+       SKN     HSHFLG
+       BRU     HASH
+RLINKA WIO     FR
+       STA     TYX
+       MIN     XEC
+       LDA     =-1
+       STA     UMA
+SLINK  LDA     GLOB
+       STA     LST1
+       LDX     =-16
+       CLA
+       STA     ELCS,2
+       BRX     *-1
+       STA     BLOCK
+       LDA     =-1
+       STA     NBLK
+       LDX     =-64
+       STA     EOTV,2
+       BRX     *-1
+       LDA     LCN
+       SKN     SYL
+       BRU     SLO
+SLS    STA     BASE
+       STA     LCN
+       STA     BASEA
+       STA     LCNA
+       STA     LCNC
+       STA     BASEC
+       MRG     EAXWD
+       STA     RELADA
+       LDA     =3
+       STA     SRLVAL
+       LDA     TYX
+       BRU     LOAD2A
+SLL    SKE     =33B
+       BRU     ILL
+       BRU     SLK
+CONTRL STA     TYX
+       CLB
+       STB     SBIT
+       LRSH    21
+       SKG     =2
+       BRU     CTL1
+       SKB     =77777770B
+       BRU     RDILL
+CTL1   CAX
+       BRU     *+1,2
+       BRU     LOAD             PROGRAM (BSS)
+       BRU     LOAD             POP PROGRAM
+       BRU     EDISP            END OR SPECIAL
+       BRU     OPDEF            OPD
+       BRU     DEF              EXTERNAL DEF
+       BRU     IDENT            IDENT RECORD
+       BRU     INREF            EXTERNAL USAGE
+       BRU     SYDEF            SYMBOL DEF
+SLO    LDA     LWT
+       ETR     ADB
+       SKG     ORG
+       STA     ORG
+       BRU     SLS
+LOAD4  LDA     OTV1,2
+       SKE     =-1
+       BRU     *+2
+       BRU     TROP2
+       MRG     =1B7
+       LRSH    15
+       ETR     =177B
+       CAX
+       BRU     LOAD5
+LOAD   LDA     TYX
+       ADD     LCNC
+       ETR     ADB
+       STA     LCNC
+       CXA
+       SKE     =1
+       BRU     LOAD2
+       LCY     6
+       CAX
+       SKB     =4B7
+       BRU     LOAD4
+LOAD5  LDA     LCNC
+       MRG     BRZ
+       C       UST
+LOAD2  SKR     WDCNT
+       BRU     LOAD3
+       WIO     FR
+LOAD2A STA     BITSS
+       LDA     =7
+       STA     WDCNT
+LOAD3  LDA     BITSS
+       LRSH    21
+       STB     BITSS
+       CAX
+       WIO     FR
+       BRU     *+1,2
+       BRU     STORE            ABS WORD
+       BRU     RELA            RELOCATE ALT LOC CNT
+       BRU     RELADD           14 BIT RELOCATABLE
+       BRU     SRLWRD         SPECIAL 24 BIT REL
+       BRU     CONTRL           CONTROL WORD
+       BRU     SRLA            SPECIAL RELOCATE ALT LOC CNT
+       BRU     RELWRD           24 BIT RELOCATABLE
+       BRU     RELADD          LITERAL REF.
+RELWRD ADD     BASEC
+STORE  CAX
+STORE2 LDA     LCNC
+       MIN     LCNC
+STORE3 LDB     =77774000B
+       SKM     UMA
+       BRU     STORE1
+       ETR     =3777B
+       XXA
+       STA     24000B,2
+       BRU     LOAD2
+STORE1 XXA
+       C       UST
+       BRU     LOAD2
+RELADD CAX
+       EXU     RELADA
+       BRU     STORE2
+*      SPECIAL RELOCATION
+SRLWRD STA     TYX
+       LDA     SRLVAL
+       MUL     BASEC
+       LSH     23
+       ADD     TYX
+       BRU     STORE
+*   ALTERNATE LOCATION COUNTER
+SRLA   STA     TYX
+       LDA     SRLVAL
+       MUL     BASEA
+       LSH     23
+       ADD     TYX
+       BRU     STOA
+RELA   ADD     BASEA
+STOA   CAX
+       LDA     LCNA
+       MIN     LCNA
+       BRU     STORE3
+*      2XX CODE
+EDISP  CLA
+       LCY     6
+       CAX
+       SKG     =EETAB-1-ETAB
+       BRU     ETAB,2
+       BRU     RDILL
+ETAB   BRU     FIXUP            END
+       BRU     LITORG           LIT ORG
+       BRU     SETSRL          SET SPECIAL REL.
+       BRU     PCHAIN          PATCH CHAIN
+       BRU     PCWRD           PATCH CHAIN WITH PREV. WORD (14 BIT)
+       BRU     PCWRDF          SAME, 24 BIT
+       BRU     SELALC
+       BRU     SELCLC
+       BRU     TROP            TRANSLATE PREVIOUS OPCODE
+EETAB  EQU     *
+FIN1   LDA     LCNC
+       STA     LCN
+       C       APT
+       SUB     =1
+       LDX     NBLK
+       STA     ELBT1,2
+       C       TCR
+FIN    WIO     FR
+       STA     TYX
+       SKE     =27657537B
+       BRU     FCON
+       BRU     SRTZ
+FCON   LRSH    21
+       SKE     =4
+       BRU     RDILL
+       BRU     SLINK
+*   TRANSLATE PREVIOUS OPCODE
+TROP   LDA     LCNC
+       SUB     =1
+       C       ULD
+       LRSH    15
+       ETR     =77B
+       CAX
+       LDA     OTV,2
+       SKE     =-1
+       BRU     TROP1
+TROP2  TMF     TROPM
+       BRU     ILL
+TROPM   ASC     'OPCODE DEF MISSING/'
+TROP1  XMA*    URA
+       ETR     =60077777B
+       ADM*    URA
+       BRU     LOAD2
+*   SELECT ALT LOC CNT
+SELALC ETR     =17B
+       COPY    AX,AB,A
+       SKE     LCS,2
+       BRU     *+2
+       BRU     ILL
+       LDA     BASE,2
+       STA     BASEA
+       LDA     LCN,2
+       XMA     LCNA
+       LDX     LNA
+       STA     LCN,2
+       STB     LNA
+       BRU     LOAD2
+*   SELECT CURRENT LOC CNT
+SELCLC ETR     =17B
+       LDB     LCS,2
+       SKB     =-1
+       BRU     *+2
+       BRU     ILL
+       CAX
+       XMA     LNC
+       XMA     LNA
+       CAB
+       LDA     BASE,2
+       XMA     BASEC
+       STA     BASEA
+       LDA     LCN,2
+       XMA     LCNC
+       XMA     LCNA
+       CBX
+       STA     LCN,2
+       BRU     LOAD2
+*   SET LITERAL ORIGIN
+LITORG LSH     15
+       SUB     =1
+       ADD     BASEC
+       ETR     ADB
+       STA     TYX
+       LDA     NBLK
+       SKE     =-1
+       BRU     LITOR1
+       CLAB
+       C       BLKS
+       BRU     IDENT2
+       STX     NBLK
+       SKN     SFLAG
+       BRU     LITOR2
+       CXA
+       ETR     =7
+       XXA
+       ETR     =70B
+       LRSH    21
+       COPY    XA,BA,B
+       LSH     12
+       ADD     =20207000B
+       LDX     NBLK
+       STP     EBN,2
+       STP     SYML
+       C       IDENTP
+LITOR1 LDX     NBLK
+       LDA     TYX
+       STA     ELBT,2
+       BRU     LOAD2
+LITOR2 LDA     =-1
+       CLB
+       STP     EBN,2
+       BRU     LITOR1
+*      SET SPECIAL RELOCATION VALUE
+SETSRL LCY     25
+       RSH     10
+       STA     SRLVAL
+       BRU     LOAD2
+*      CHAIN PATCHING ROUTINES
+PCWRDF NOP
+PCWRD  SKR     LCNC
+       LDA     LCNC
+       C       ULD
+       ABC
+       STA*    URA
+       BRU     PC1
+PCHAIN LDB     LCNC
+PC1    LDA     TYX
+       ADD     BASEC
+       SKG     =-1
+       R1
+       ETR     ADB
+       STB     T
+       LDB     =34000B
+PCH1   STA     TTT
+       SKM     UMA
+       BRU     PCH2
+       ETR     =3777B
+       CAX
+       LDA     W,2
+       ETR     MADB
+       MRG     T
+       XMA     W,2
+       ETR     ADB
+       SKE     TTT
+       BRU     PCH1
+       BRU     LOAD2
+PCH2   C       URL
+       BRU     ILL
+       LDA     TTT
+       BRU     PCH1-1
+*      ERROR TRAPS
+IOILL  TMF     IOM
+       BRU     ILL
+IOM    ASC     'I-O ERROR/'
+RDILL  TMF     RFIM
+       BRU     ILL
+RFIM   ASC     'ILLEGAL CONTROL WORD/'
+*      IDENT
+IDENTP TMF     IDENTM
+       LDA     SYML
+       C       PWD
+       LDA     SYMR
+       C       PWD
+       C       TTB
+       R1
+IDENT  WIO     FR
+       STA     SYML
+       WIO     FR
+       STA     SYMR
+       WIO     FR
+       SKE     =0
+       BRU     LIBEXT
+IDENT0 C       IDENTP
+       SKN     SFLAG
+       BRU     IDENT3
+       LDP     SYML
+       C       BLKS
+       BRU     IDENT1
+       TMF     IDMM
+       BRU     SKIPSY
+LIBEXT SKE     =-1
+       BRU     LIBEX0
+SKIPSY WIO     FR
+       SKE     =-1
+       BRU     SKIP1
+RDSX   CLA
+       STA     WDCNT
+       BRU     LOAD2
+IDENTM ASC     '$IDENT.   /'
+IDENT3 LDA     =-1
+       CLB
+       STP     SYML
+IDENT1 CLAB
+       C       BLKS
+       BRU     IDENT2
+       STA     BLOCK
+       LDP     SYML
+       STP     EBN,2
+       STX     NBLK
+       BRU     SKIPSY
+IDENT2 TMF     IDFM
+       BRU     SKIPSY
+IDMM   ASC     '(ALREADY LOADED)   /'
+IDFM   ASC     '(BLOCK TABLE FULL)   /'
+SKIP1  WIO     FR
+       WIO     FR
+       BRU     SKIPSY
+LIBEX0 SKG     =-1
+       BRU     ALC
+       CNA
+       STA     NUM
+       MIN     LIBFLG
+       LDP     SYML
+       STP     USMR
+LIBEX1 WIO     FR
+       SKE     =-1
+       BRU     LIBEX2
+       LDX     NUM
+       WIO     FR
+       BRX     *-1
+       BRU     FIN
+LIBEX2 STA     SYML
+       WIO     FR
+       STA     SYMR
+       WIO     FR
+       LDB     =7777B4
+       C       LSU
+       BRU     IDENT0
+       BRU     LIBEX1
+*   ASSOCIATE LOC COUNTER
+ALC    ETR     =17B
+       SKG     =0
+       BRU     ILL
+       STX     SVAL
+       C       SRTRL
+       C       HS
+       BRU     *+2
+       BRU     ILL
+       LDA     2,2
+       LDX     SVAL
+       STA     LCN,2
+       STA     BASE,2
+       LDP     SYML
+       STA     LCS,2
+       STB     LCSA,2
+       BRU     SKIPSY
+*      GET POLISH STRING PAGE
+VGT    LDA     =-1
+       STA     UMA
+       BRS     43
+       LCY     12
+       ETR     =77777700B
+       MRG     VRLB
+       RCY     12
+       BRS     44
+       SKB     =770000B
+       R1
+       LDA     24000B
+       BRS     43
+       LCY     12
+       ETR     =77B
+       STA     VRLB
+       R1
+*      STORE CONSTANT IN POLISH STRING
+$EW    SKG     =37B
+       SKG     =-41B
+       BRU     EW1
+       ADD     =140B
+       WCH     VSW
+       R1
+EW1    STA     EWV
+       SKG     =-1
+       CNA
+       LDB     =63B
+       SKG     =777777B
+       LDB     =62B
+       SKG     =7777B
+       LDB     =61B
+       SKG     =77B
+       LDB     =60B
+       XAB
+       SKN     EWV
+       EOR     =20B
+       STA     EWC
+       ETR     =3
+       AXC
+       EXU     EW2,2
+       STB     EWV
+       LDA     EWC
+       WCH     VSW
+       ETR     =3
+       STA     EWC
+EW3    LDA     EWV
+       LRSH    18
+       STB     EWV
+       MRG     =100B
+       WCH     VSW
+       SKR     EWC
+       BRU     EW3
+       R1
+EW2    LCY     18
+       LCY     12
+       LCY     6
+       NOP
+*      READ POLISH EXPRESSION
+RV     ADD     BASEC
+       STA     LGI
+*   SET PBT BITS
+RV13   STA     MVI
+       LRSH    12
+       AXC
+       LCY     4
+       STA     TYX
+       LDA     PBT,2
+       RSH*    TYX
+       MRG     =1
+       LSH*    TYX
+       STA     PBT,2
+       LDA     MVI
+       C       ULD
+       ETR     ADB
+       SKE     MVI
+       BRU     RV13
+       C       VGT
+       LDA     LGI
+       STA*    VSE
+       LDA     BUFP
+       MUL     =3
+       LSH     23
+       SUB     =1
+       STA     CBUFP
+       LDA     CBUFD+1
+       STA     CBUFP1
+       LDA     VSE
+       ADD     VSE
+       ADD     VSE
+       ADD     =2
+       STA     VSW
+       SKG     =30000B*3-7
+       BRU     RV1
+$RVF   TMF     PEFM
+       BRU     ILL
+PEFM   ASC     'POLISH STRING FULL/'
+RV1    CII     FR
+       SKA     =340B
+       BRU     RV2
+*   OPERATOR
+       WCH     VSW
+       SKE     =0
+       BRU     RV1
+*   END OF STRING
+       LDA     VSW
+       MUL     =12525253B
+       ADD     =1
+       XMA     VSE
+       COPY    AX,N,B
+       ADD     VSE
+       LSH     14
+       ADM     0,2
+       LDA     CBUFP
+       MUL     =12525253B
+       ADD     =1
+       STA     BUFP
+       CNA
+       ADD     =10000B+4B7
+       STA     BUFC
+       BRU     INREF5
+RV2    SKA     =300B
+       BRU     RV3
+*   LONG CONSTANT
+       STA     T
+       ETR     =3
+       STA     EWC
+       CLA
+RV4    STA     EWV
+       CII     FR
+       RCY     6
+       LDA     EWV
+       LCY     6
+       SKR     EWC
+       BRU     RV4
+       LDB     T
+       SKB     =20B
+       CNA
+       STA     EWV
+       LSH     22
+       ETR     =3
+       CAX
+       BRU*    *+1,2
+       DATA    RV6-1,RVR1,RVR2,RVR3
+       LDA     EWV
+RV6    C       EW
+       BRU     RV1
+RVR1   LDA     EWV
+       ADD     BASEC
+       BRU     RV6
+RVR2   CII     FR
+       SUB     =200B
+RVR2A  MUL     BASEC
+       LSH     23
+       ADD     EWV
+       BRU     RV6
+RVR3   CII     FR
+       CLB
+       LSH     16
+       STA     EWC
+       CII     FR
+       LSH     8
+       ADM     EWC
+       CII     FR
+       MRG     EWC
+       BRU     RVR2A
+RV3    SKA     =200B
+       BRU     RV7
+*   SHORT CONSTANT
+       WCH     VSW
+       BRU     RV1
+RV7    SKA     =100B
+       BRU     RV8
+*   LONG SYMBOL
+       ETR     =77B
+       MUL     =40B
+       STB     SYML
+       CII     FR
+       ADD     SYML
+*   SHORT SYMBOL
+RV8    SUB     =300B
+       MUL     =3
+       LSH     23
+       ADD     LST1
+       CAX
+       LDA     1,2
+       SKA     =10B
+       BRU     RV9
+       LDA     2,2
+       BRU     RV6
+RV9    LDA 1,2
+       ETR     LMSK
+       LDB     0,2
+RV12   LCY     6
+       SKB     =-1
+       BRU     RV11
+       MRG     =300B
+       WCH     VSW
+       LDA     1,2
+       MRG     =40B
+       STA     1,2
+       BRU     RV1
+RV11   MRG     =200B
+       STB     TYX
+       WCH     VSW
+       LDB     TYX
+       ETR     =7777400B
+       BRU     RV12
+HI     C       HS
+       BRU     HIM
+HIT    LDP     SYML
+       STP     0,2
+HIS    LDA     SVAL
+       STA     2,2
+       R1
+HIM    STX     LGI
+       LDB     =7700B
+       SKM     SYMR
+       BRU     *+2
+       BRU     HIS
+       LDB     LMSK
+       C       HSA
+       BRU     HIM+1
+       LDX     LGI
+       LDA     1,2
+HIL    MRG     =20B
+       STA     1,2
+       C       HSA
+       BRU     HIL
+       LDA     =20B
+       ADM     SYMR
+       BRU     HIT
+HS     LDA     SYMR
+      ETR      LMSK
+       MRG     =44444444B
+       STA     NUM
+       LDA     SYML
+       MRG     =44444444B
+       MUL     NUM
+       CLA
+       DIV     =2729
+       BAC
+       MUL     =3B7
+       LSH     2
+       ADD     =10000B
+       STA     NUM
+       LDB     LMSK
+       CAX
+HSB    LDA     0,2
+       SKE     =0
+       BRU     *+2
+       R2
+       SKE     SYML
+       BRU     HSA
+       LDA     1,2
+       SKM     SYMR
+       BRU     HSA
+       R1
+HSA    EAX     3,2
+HSC    CXA
+       SKE     NUM
+       BRU     *+2
+       BRU     SIOO
+       SKG     =27775B
+       BRU     HSB
+       LDX     =10000B
+       BRU     HSB
+FIXRL  LDA     =-1
+       STA     UMA
+       BRS     43
+       RCY     12
+       CLB
+       ETR     =777777B
+       RCY     6
+       MRG     UPRL
+       LCY     18
+       BRS     44
+       SKB     =77B2
+       R1
+       LDA     =-1
+       STA     30000B
+       CLA
+       STA     ESTP
+       BRS     43
+       RCY     18
+       ETR     =77B4
+       STA     UPRL
+       R1
+FIXUP  C       FIXRL
+FIXZ   LDX     LST1
+*   LOOP TO SCAN LIST FOR EACH PAGE
+FIXR   CXA
+       SKE     GLOB
+       BRU     FIXRR
+       SKG     LST1
+       BRU     FIXY
+       LDA     =-1
+       STA     UMA
+       BRU     FIXZ
+FIXRR  STX     T
+       LDA     1,2
+       SKA     =10B
+       BRU     FIX1
+       SKA     =4
+       BRU     FIX2
+*   LIST 3, PATCH UP NARP CHAIN
+       LDA     0,2
+       SKG     =-1
+       BRU     FIXL
+       LDB     2,2
+       STB     SVAL
+       LDB     =77774000B
+FIXN   STA     TTT
+       SKM     UMA
+       BRU     FIXMM
+       ETR     =3777B
+       CAX
+       LDA     W,2
+       ETR     MADB
+       ADD     SVAL
+       XMA     W,2
+       ETR     ADB
+       SKE     TTT
+       BRU     FIXN
+*   DELETE LIST ENTRY
+FIXL   LDX     GLOB
+       EAX     -3,2
+       STX     GLOB
+       LDA     0,2
+       STA     TTT
+       LDA     1,2
+       LDB     2,2
+       LDX     T
+       STB     2,2
+       STA     1,2
+       LDA     TTT
+       STA     0,2
+       BRU     FIXR
+FIXMM  SKN     UMA
+       BRU     FIXM
+       C       URL
+       BRU     ILL
+       LDX     T
+       LDA     0,2
+       BRU     FIXN-1
+FIXM   LDX     T
+       STA     0,2
+       BRU     FIXI
+*   LIST 2, PATCH UP DDT CHAIN
+FIX2   LDB     =77774000B
+       LDA     0,2
+       STA     SVAL
+       LDA     =-1
+       STA     TT
+       LDA     2,2
+       SKG     =-1
+       BRU     FIXL
+       CAX
+      STX      TTT
+FIX21  BRX     *+1
+       LDA     W6,2
+       SKG     =-1
+       BRU     FIXV
+       SKG     =0
+       BRU     FIX21
+       STA     TT
+       SKM     UMA
+       BRU     FIX21
+FIX2C  CLA
+       XMA     W6,2
+SDJ    ETR     =3777B
+       CAX
+       LDB     SVAL
+       LDA     W,2
+       ETR     MADB
+       XMA     W,2
+       XAB
+       SKB     =1B4
+       ETR     ADB
+       ADM     W,2
+       SKB     =2B4
+       BRU     FIXI-1
+       XAB
+       BRU     SDJ
+       LDX     T
+FIXI   EAX     3,2
+       BRU     FIXR
+*   DELETE LIST 2 ENTRY IF DONE
+FIXV   SKN     TT
+       BRU     FIXVV
+       CLA
+       LDX     TTT
+       STA     W6,2
+       BRU     FIXL
+FIXVV  SKN     UMA
+       BRU     FIXI-1
+       LDA     TT
+       C       URL
+       BRU     ILL
+       LDX     T
+       BRU     FIX2
+FIXK   SKN     UMA
+       BRU     FIXI
+       C       URL
+       BRU     ILL
+       LDX     T
+*   LIST 1, CONVERT NARP CHAIN TO DDT
+FIX1   LDA     2,2
+       LDB     1,2
+       RCY     11
+       ETR     ADB
+       SKE     =0
+       BRU     FIX1A
+       LCY     11
+       SKE     =3777B
+       BRU     *+3
+       LDA     =-1
+       STA     2,2
+       C       FIXE
+       BRU     FIXI-1
+FIX1A  LDB     =77774000B
+       SKM     UMA
+       BRU     FIXK
+       STA     TTT
+       LDA     2,2
+       ETR     =3777B
+       CAX
+FIXF   BRX     *+1
+       LDA     W6,2
+       SKG     =-1
+       BRU     FIXH
+       SKM     UMA
+       BRU     FIXF
+       BRU     FIXG
+*   CREATE CHAIN FOR PAGE
+FIXH   COPY    XA,XB
+       CNA
+       ADD     =1
+       ADD     ESTP
+       STA     TYX
+       BRU     *+2
+       BRX     *+1
+       XMA     W6,2
+       SKR     TYX
+       BRU     *-3
+       COPY    A,BX
+       STA     W6,2
+       LDB     =-1
+       EAX     -1,2
+       STX     TYX
+       LDX     UNDEF
+       BRU     FIXHB+1
+*   FIXUP UNDEF SYMTAB POINTERS
+FIXHA  SKB     1,2
+       BRU     *+2
+       BRU     FIXHB
+       LDA     2,2
+       ETR     =3777B
+       SKG     TYX
+       BRU     FIXHB
+       SKE     =3777B
+       MIN     2,2
+FIXHB  EAX     3,2
+       CXA
+       SKE     GLOB
+       BRU     FIXHA
+       LDX     TYX
+       BRX     *+1
+       MIN     ESTP
+       LDA     ESTP
+       SKG     =3776B
+       BRU     FIXG
+       BRU     SIOO
+*   GOT DDT CHAIN FOR PAGE, TRACE NARP CHAIN
+FIXG   STX     MVI
+       LDA     TTT
+       STA     SVAL
+       ETR     =3777B
+FIXD   CAX
+       LDA     W,2
+       STX     NUM
+*   SET UBT BIT
+       ETR     ADB
+       LRSH    12
+       COPY    AX,A
+       LCY     4
+       STA     TYX
+       LDA     UBT,2
+       RSH*    TYX
+       MRG     =1
+       LSH*    TYX
+       STA     UBT,2
+       LDX     NUM
+       LDA     W,2
+       LDB     ADB
+       SKM     TTT
+       BRU     FIXB
+*   END OF NARP CHAIN, PUT SYM IN UNDEF
+       STX     TTT
+       LDX     T
+       LDA     1,2
+       ETR     =77777776B
+       STA     1,2
+       LDA     2,2
+       ETR     =3777B
+       STA     2,2
+       C       FIXE
+       BRU     FIXC
+FIXB   STA     TTT
+       LDB     =34000B
+       SKM     UMA
+       BRU     FIXCC
+       ETR     =77743777B
+       STA     W,2
+       BRU     FIXD
+*   CLEAN-UP END OF DTT PAGE CHAIN
+FIXC   LDX     MVI
+       LDA     SVAL
+       XMA     W6,2
+       LDB     TTT
+       COPY    BX,AB
+       ETR     =3777B
+       SKB     =-1
+       BRU     *+2
+       MRG     =20000B
+       XMA     W,2
+       ETR     MADB
+       ADM     W,2
+       BRU     FIXI-1
+*   NARP CHAIN LEAVES PAGE
+FIXCC  ETR     ADB
+       STA     LGI
+       STX     TTT
+       LDX     T
+       LDP     1,2
+       LCY     13
+       ETR     MADB
+       MRG     LGI
+       RCY     13
+       STP     1,2
+       BRU     FIXC
+*   REPAIR UNDEF POINTERS
+FIXY   LDX     UNDEF
+       CXA
+       SKE     GLOB
+       BRU     FIXYA
+       COPY    B,X
+*   REPAIR UPRB AND SQEEZE OUT ZEROS
+FIXYB  CXA
+       SKG     ESTP
+       BRU     FIXX
+       CBA
+       SUB     =1
+       STA     ESTP
+       BRU     FIN1
+FIXX   LDA     W6,2
+       SKE     =0
+       BRU     *+3
+       BRX     *+1
+       BRU     FIXYB
+       XXB
+       STA     W6,2
+       SKN     W6,2
+       BRU     *+4
+       XXA
+       STA     2,2
+       XXA
+       BRX     *+1
+       XXB
+       BRX     *+1
+       BRU     FIXYB
+FIXYA  LDA     2,2
+       SKE     =-1
+       BRU     FIXYC
+FIXYD  EAX     3,2
+       BRU     FIXY+1
+FIXYC  COPY    AX,XA,XB
+       MRG     =4B7
+       STA     W6,2
+       CBX
+       BRU     FIXYD
+FIXE   LDB     LST1
+       LDA     1,2
+       XXB
+       XMA     1,2
+       XXB
+       STA     1,2
+       LDA     2,2
+       XXB
+       XMA     2,2
+       XXB
+       STA     2,2
+       LDA     0,2
+       XXB
+       XMA     0,2
+       EAX     3,2
+       STX     LST1
+       CBX
+       STA     0,2
+       R1
+SYDEF  SKN     SFLAG
+       BRU     SKIPSY
+       LDA     BLOCK
+       BRU     *+2
+DEF    CLA
+       STA     SBIT
+       C       SRTRL
+DEFB   WIO     FR
+       SKE     =-1
+       BRU     *+2
+       BRU     RDSX
+       STA     SYML
+       WIO     FR
+       CAB
+       WIO     FR
+       SKB     =40B
+       BRU     DEFS
+       SKB     =4000B
+       ADD     BASEC
+DEFA   STA     SVAL
+       CBA
+       ETR     LMSK
+       MRG     SBIT
+       STA     SYMR
+       SKA     =7700B
+       BRU     DEFC
+       LDB     LMSK
+       C       LSU
+       BRU     DEFU
+DEFC   C       HI
+       BRU     DEFB
+DEFS   STB     T
+       MUL     BASEC
+       LSH     23
+       STA     SVAL
+       WIO     FR
+       ADD     SVAL
+       LDB     T
+       BRU     DEFA
+DEFU   STX     T
+       LDX     LST1
+       EAX     -3,2
+       STX     LST1
+       LDA     2,2
+       STA     TT
+       LDP     0,2
+       LDX     T
+       STP     0,2
+       LDA     TT
+       XMA     2,2
+       LDX     LST1
+       LDB     =4
+       XAB
+       STP     1,2
+       LDA     SVAL
+       STA     0,2
+       BRU     DEFC
+*   OPCODE DEFINITIONS
+OPDEF  LDA     SFLAG
+       SKG     =0
+       BRU     *+2
+       BRU     SKIPSY
+OPDEFA WIO     FR
+       SKE     =-1
+       BRU     *+2
+       BRU     RDSX
+       STA     SYML
+       WIO     FR
+       SKA     =20B
+       MRG     =1
+       MRG     =4
+       CAB
+       ETR     =77777705B
+       STA     SYMR
+       LSH     20
+       STB     USML
+       WIO     FR
+       STA     USMR
+       STA     SVAL
+       LDB     LMSK
+       C       LSO
+       BRU     OPDEFB
+       LDA     GLOB
+       SKG     =7775B
+       BRU     *+2
+       BRU     SIOO
+       SKN     USML
+       BRU     OPDEFD
+       LDB     PON
+       STB     SVAL
+       SKR     PON
+OPDEFD LDB     UNDEF
+       C       SP
+       LDX     UNDEF
+       LDP     SYML
+       STP     0,2
+       LDA     =3
+       ADM     UNDEF
+       ADM     GLOB
+       ADM     LST1
+OPDEFB SKN     USML
+       BRU     OPDEFE
+       LDB     SVAL
+       LSH     15
+       LDA     2,2
+       LDX     USMR
+       LDA     OTV,2
+       SKE     =-1
+       BRU     OPDEFA
+       STB     OTV,2
+       BRU     OPDEFA
+OPDEFE LDA     SVAL
+       STA     2,2
+       BRU     OPDEFA
+*   UNDEFINED REFERENCES
+INREF  C       FIXRL
+       C       SRTRL
+*   UPDATE LOC CNT SYMBOLS
+       LDX     =-16
+       CLA
+INREF8 SKE     ELCS,2
+       BRU     INREF9
+       BRX     INREF8
+INREF5 BRS     43
+       RCY     18
+       ETR     =77007777B
+       MRG     UPRL
+       LCY     18
+       BRS     44
+INREF2 WIO     FR
+       SKE     =-1
+       BRU     INREF0
+       BRU     RDSX
+INREF9 LDA     LCN,2
+       STA     BASEA
+       STX     SVAL
+       LDA     ELCS,2
+       LDB     ELCSA,2
+       STP     SYML
+       C       HS
+       LDA     BASEA
+       STA     2,2
+       LDX     SVAL
+       BRX     INREF8
+INREF0 SKA     MADB
+       BRU     *+2
+       BRU     RV
+       STA     SYML
+       LDA     GLOB
+       SKG     =7775B
+       BRU     *+2
+       BRU     SIOO
+       WIO     FR
+       MRG     =10B
+       STA     SYMR
+       C       HS
+       BRU     INREF1
+INREFD LDB     LMSK
+       C       LSU
+       BRU     INREF4
+       LDA     =-1
+      STA      SVAL
+       LDX     GLOB
+       STX     T
+       LDA     =3
+       ADM     GLOB
+INREF6 WIO     FR
+       SKG     =-1
+       BRU     INREFA
+       SKN     SVAL
+       BRU     INREFC
+       COPY    XA,AB
+       LDX     ESTP
+       STX     SVAL
+       MRG     =4B7
+       XMA     W6,2
+       STA     W61,2
+       MIN     ESTP
+       XXA
+       SKG     =3775B
+       BRU     *+2
+       BRU     SIOO
+       CBA
+       LDX     T
+INREFC ADD     BASEC
+INREFB CLB
+       LCY     11
+       ADD     SVAL
+       STA     2,2
+       XAB
+       MRG     SYMR
+       XAB
+       LDA     SYML
+       STP     0,2
+       BRU     INREF2
+INREF1 LDB     =77777700B
+       C       HSB
+       BRU     *+2
+       BRU     INREFD
+       CLA
+       LDB     2,2
+       LDX     GLOB
+       STP     1,2
+       WIO     FR
+       SKE     =-1
+       ADD     BASEC
+       STA     0,2
+       LDA     =3
+       ADM     GLOB
+       BRU     INREF2
+INREF4 LDA     2,2
+       STA     SVAL
+       CXB
+       LDA     =-3
+       ADM     LST1
+       LDA     GLOB
+       SUB     =3
+       STA     T
+       C       SQ
+       LDX     T
+       BRU     INREF6
+INREFA LDA     SVAL
+       ETR     =3777B
+       STA     SVAL
+       CLA
+       BRU     INREFB
+SQE    EAX     -3,2
+SPE    EAX     3,2
+*   SQUASH OR SPREAD SYMTAB
+SP     LDX     SPE
+       STB     LOW
+       BRU     *+3
+SQ     LDX     SQE
+       STA     LOW
+       STX     TT
+       STB     HIGH
+       SUB     HIGH
+       MUL     =12525253B
+       SUB     =1
+       SKG     =-1
+       R1
+       STA     TTT
+       CAB
+       LDX     LOW
+       LDA     0,2
+       EXU     TT
+       XMA     0,2
+       SKR     TTT
+       BRU     *-3
+       LDX     LOW
+       STB     TTT
+       LDA     1,2
+       EXU     TT
+       XMA     1,2
+       SKR     TTT
+       BRU     *-3
+       LDX     LOW
+       STB     TTT
+       LDA     2,2
+       EXU     TT
+       XMA     2,2
+       SKR     TTT
+       BRU     *-3
+       R1
+*   RELABEL FOR SORT
+SRTRL  BRS     43
+       SKB     =7700B
+       BRU     *+2
+       R1
+       RCY     6
+       LRSH    6
+       LDB     HASHRL
+       LCY     12
+       BRS     44
+       LDA     =-1
+       STA     UMA
+       R1
+SRTZ   LDA     TYC
+       SKE     =16B
+       BRU     DGOB
+$SRTZZ C       LDSET
+       MIN     XEC
+       C       SRTRL
+       MIN     HSHFLG
+       LDA     =-1
+       STA     VEF
+       LDA     GLOB
+       STA     ESYM
+*   SQUEEZE BLANKS FROM HASH TABLE
+       LDX     =-17776B
+       CLA
+SRTA   SKE     27776B,2
+       BRX     SRTB
+       BRX     SRTD
+SRTB   LDB     27775B,2
+       STB*    ESYM
+       MIN     ESYM
+       LDB     27776B,2
+       STB*    ESYM
+       MIN     ESYM
+       LDB     27777B,2
+       STB*    ESYM
+       MIN     ESYM
+SRTD   BRX     SRTC
+SRTC   BRX     SRTA
+*   SEPARATE LOCALS AND GLOBALS
+       LDA     ESYM
+       STA     ITOP
+       LDX     GLOB
+       SKE     GLOB
+       BRU     *+2
+       BRU     SRTH
+       LDB     =7700B
+SRTF   SKB     1,2
+      BRU     SRTE
+       EAX     3,2
+       CXA
+       SKE     ITOP
+       BRU     SRTF
+       BRU     SRTH
+SRTE   STX     IBOT
+       LDX     ITOP
+SRTG   EAX     -3,2
+       CXA
+       SKE     IBOT
+       BRU     *+2
+       BRU     SRTH
+       SKB     1,2
+       BRU     SRTG
+       LDB     IBOT
+       LDA     0,2
+       XXB
+       XMA     0,2
+       XXB
+       STA     0,2
+       LDA     1,2
+       XXB
+       XMA     1,2
+       XXB
+       STA     1,2
+       LDA     2,2
+       XXB
+       XMA     2,2
+       XXB
+       STA     2,2
+       STX     ITOP
+       CBX
+       LDB     =7700B
+       BRU     SRTF+2
+SRTH   STX     LOCAL
+       EAX     -3,2
+       COPY    XB,XA
+       SKG     GLOB
+       BRU     SRTJ
+       LDA     GLOB
+       C       SORT
+SRTJ   LDA     ESYM
+       SUB     =3
+       SKG     LOCAL
+       BRU     KST
+       CAB
+     LDA     LOCAL
+       C       SORT
+       BRU     KST
+*   ERROR RETURN
+ILL    C       TTB
+       TCF     =37B
+       C       TCR
+ILL1   SKN     HSHFLG
+       BRU     KST
+       BRU     SRTZZ
+*   RELEASE MEMORY
+KST    LDA     =24000B
+KSTA   STA     MINTAB
+       LDA     ESYM
+       SUB     =3
+       LDB     =34000B
+       SKM     MINTAB
+       BRU     KSTR
+       BRU     DGOA
+KSTR   LDA     MINTAB
+       BRS     4
+       SUB     =4000B
+       BRU     KSTA
+*   NORMAL RETURN
+DGOA   CLA
+       SKE     ESTP
+       BRU     DGOC
+       XMA     UPRL
+       LRSH    12
+       BRS     121
+DGOC   LDP     TMPRL
+       RCY     18
+       LSH     6
+       CLA
+       LSH     6
+       BRS     121
+       SKB     =-1
+       BRU     *-4
+DGOB   LDX     MRL
+       BRS     43
+       XAB
+       ETR     =77770077B
+       COPY    XB,AB,BA
+       BRS     44
+       BRU     DGO1
+*   MAKE HASH TABLE
+HASH   LDA     =-1
+       STA     HSHFLG
+       BRS     43
+       STP     TMPRL
+       RCY     6
+       LRSH    6
+       COPY    AX,B
+       ETR     =7700B
+       LRSH    12
+       COPY    BA,XA,B
+       LCY     12
+       BRS     44
+       LDX     =-20000B
+       CLA
+       STA     30000B,2
+       BRX     *-1
+       BRS     43
+       LCY     12
+       STA     HASHRL
+       LDP     TMPRL
+       RCY     18
+       STP     USML
+       LDA     ESYM
+       SUB     GLOB
+       MUL     =12525253B
+       STA     TTT
+       LDA     GLOB
+       ETR     =3777B
+       SUB     =4001B
+       CAX
+       BRU     HM1
+HM     BRX     *+2
+       C       SRL
+       LDA     W7,2
+       STA     SYML
+       BRX     *+2
+       C       SRL
+       LDA     W7,2
+       STA     SYMR
+       BRX     *+2
+       C       SRL
+       LDA     W7,2
+       STA     SVAL
+       STX     T
+       C       HS
+       BRU     *+2
+       BRU     *+3
+       C       HSA
+       BRU     *-1
+       LDA     SYML
+       STA     0,2
+       LDA     SYMR
+       STA     1,2
+       LDA     SVAL
+       STA     2,2
+       LDX     T
+HM1    SKR     TTT
+       BRU     HM
+       BRU     RLINKA
+SRL    LDP     USML
+       LCY     6
+       STP     USML
+       ETR     =77B
+       CAX
+       BRS     43
+       LCY     18
+       ETR     =77777700B
+       COPY    XB,AB,BA
+       LCY     6
+       BRS     44
+       LDX     =-4000B
+       R1
+* SORTS TABLE FROM (A) TO (B) ON THIRD WORD
+*
+BITS   EQU     4B7-1
+       RPT     24
+       DATA    BITS+1
+BITS   EQU     BITS/2
+       ENDR
+BITS   EQU     *-24
+*
+SORT   STA     JTOP
+       STB     JBOT
+       CLA
+       STA     S
+       STA     I
+       LDX     =-15
+       LDA     EL5A+15,2
+       STA     ELL,2
+       BRX     *-2
+       LDA     EL5
+       STA     SORTE
+       LDA     =L31
+       STA     SORTS
+       LDA     BITS
+       STA     IX
+* MAIN LOOP. BOUNDARIES OF REGION IN JTOP,JBOT
+L1     LDX     JTOP
+       STX     ITOP
+       LDX     JBOT
+       STX     IBOT
+       LDB     IX
+       BRU     L5
+EL5A   EAX     -3,2
+       CXA
+       SKG     ITOP
+       BRU     L20BOT
+EL5    SKN     2,2
+       BRU     L5A
+       STX     IBOT
+       LDX     ITOP
+EL10   SKN     2,2
+       BRU     L15
+       EAX     3,2
+       CXA
+       SKE     IBOT
+       BRU     L10
+       BRU     L20TOP
+* AT THIS POINT WE HAVE TWO ELEMENTS TO EXCHANGE
+L15    STX     ITOP
+       LDB     IBOT
+       LDA     0,2
+       XXB
+       XMA     0,2
+       XXB
+       STA     0,2
+       LDA     1,2
+       XXB
+       XMA     1,2
+       XXB
+       STA     1,2
+       LDA     2,2
+       XXB
+       XMA     2,2
+       XXB
+       STA     2,2
+       CBX
+       LDB     IX
+       BRU     L5
+* THE POINTERS HAVE COLLIDED, SO SORTING OF THIS BIT IS COMPLETE
+L20TOP STX     ITOP
+       LDX     IBOT
+       BRU     L20
+L20BOT STX     IBOT
+L20    EXU     SORTE
+       BRU     L25
+       LDA     =3
+       ADM     IBOT
+       BRU*    SORTS
+L25    LDA     =-3
+       ADM     ITOP
+       BRU*    SORTS
+* WE NOW STACK THE POINTERS TO THE BOTTOM PART OF THE REGION JUST
+* SORTED, AND PREPARE TO SORT THE TOP HALF (THE POINTERS NEED NOT
+* BE STACKED IF THE BOTTOM HALF CONTAINS <2 ELEMENTS)
+       SKB     2,2
+L31    LDA     *-1
+       STA     L5
+       STA     L10
+       STA     SORTE
+       LDA     =L30
+       STA     SORTS
+L30    LDA     =23
+       SKG     I
+       BRU     L40
+       LDA     JBOT
+       SUB     IBOT
+       SKG     =0
+       BRU     L35
+       LDX     S
+       LDA     JBOT
+       STA     SJ,2
+       LDA     IBOT
+       STA     SI,2
+       LDA     I
+       ADD     =1
+       STA     SB,2
+       MIN     S
+* PROCEED TO SORT THE TOP HALF UNLESS IT CONTAINS <2 ELEMENTS
+L35    LDA     ITOP
+       SUB     JTOP
+       SKG     =0
+       BRU     L40
+       LDA     ITOP
+       STA     JBOT
+       MIN     I
+       LDX     I
+       LDA     BITS,2
+       STA     IX
+       BRU     L1
+* NO CLASS TO SORT ON HAND, SO UNSTACK
+L40    SKR     S
+       BRU     *+2
+       R1
+       LDX     S
+       LDA     SJ,2
+       STA     JBOT
+       LDA     SI,2
+       STA     JTOP
+       LDX     SB,2
+       STX     I
+       LDA     BITS,2
+       STA     IX
+       BRU     L1
+TV     BRU     TCFP
+       BRU     TMFP
+TV102  BRU     CALLP
+       BRU     BUF
+       BRU     CBUF
+ETV    EQU     *
+CALLP  XMA     0
+       STA*    PDP
+       XMA     0
+       MIN     PDP
+       BRU*    0
+R1    SKR     PDP
+       BRR*    PDP
+R2    SKR     PDP
+       MIN*    PDP
+       BRR*    PDP
+*      SEARCH FOR BLOCK NAME
+SCL    LDA     0,2
+       SKE     SYML
+       BRU     SCU
+       LDA     1,2
+       SKM     SYMR
+       BRU     SCU
+       R1
+SCU    EAX     3,2
+SCH    CXA
+       SKE     HIGH
+       BRU     SCL
+       R2
+LS     LDX     UNDEF
+LS2    LDA     ESYM
+LS1    STA     HIGH
+       BRU     SCH
+LSU    LDX     UNDEF
+       LDA     GLOB
+       BRU     LS1
+LSO    LDX     =OPCOD
+       LDA     UNDEF
+       BRU     LS1
+*   BLOCK NAME SEARCH
+BLKS  LDX     =-64
+       STB     LGI
+       LDB     LMSK
+BLS1   SKE     EBN,2
+       BRX     BLS2
+       XMA     LGI
+       SKM     EBN1,2
+       BRX     BLS3
+       COPY    XA,B
+       ADD     =100B
+       LSH     5
+       R2
+BLS3   XMA     LGI
+BLS2   BRX     BLS1
+       R1
+*      RELABEL FOR USER
+URL   STA     URA
+       ETR     =3777B
+       MRG     =24000B
+       XMA     URA
+       LDB     =77774000B
+       SKM     UMA
+       BRU     URS1
+       R2
+URS1   ETR     =34000B
+       STA     UMA
+       LRSH    11
+       MUL     =3
+       CBX
+       BRS     116
+       LCY     0,2
+       STX     URB
+       RCY     6
+       ETR     =770000B
+       STA     TT
+       BRS     43
+       XAB
+       ETR     =77007777B
+       EOR     TT
+       XAB
+       BRS     44
+       SKB     =770000B
+       R2
+       LDB     =-1
+       STB     UMA
+       R1
+ULD   C       URL
+       BRU     ILL
+       LDA*    URA
+       R1
+UST   STA     T
+       CXA
+       C       URL
+       BRU     UGM
+       LDA     T
+       STA*    URA
+       R1
+UGM   LDA     T
+       STA*    URA
+       BRS     116
+       STP     URL1
+       BRS     43
+       BAC
+       LDX     URB
+       ETR     =770000B
+       RCY     0,2
+       LCY     30
+       MRG     URL2
+       XAB
+       MRG     URL1
+       BRS     117
+       R1
+*      PRINT NUMBER
+APT   LDB     PRAD
+       LDX     FO
+       BRS     36
+       R1
+*      PRINT CHARACTER
+TCFP  STA     TCFA
+       LDA*    0
+       CIO     FO
+       LDA     TCFA
+       BRR     0
+*      PRINT MESSAGE
+TMFP  EAX*    0
+       CXA
+       ETR     ADB
+       LDB     =-1
+       LDX     FO
+       BRS     34
+       BRR     0
+*      PRINT BCI WORD
+PWN    ABC
+       LCY     6
+       CIO     FO
+       CBA
+PWD   SKE     =0
+       BRU     PWN
+       R1
+*      TYPE CR, TAB, 'OK'
+TCR   TCF     =155B
+       TCF     =152B
+       R1
+TTB   TCF     =0
+       TCF     =0
+       TCF     =0
+       R1
+SIOO   LDA     ='FULL'
+       C       PWD
+       BRU     ILL
+DMEM   ZRO     XIX
+       STP     DAR
+       STX     DXR
+       LDA*    XIX
+       SKA     =20040000B
+       BRU     DMEM1
+       LDA     ='??? '
+       BRU     DMP
+DMEM1  LDA     ='(M) '
+DMP    C       PWD
+       BRU     ILL
+DROUT ZRO     XIX
+       SKN     XEC
+       BRU     DROUT1
+       LDX     =-1
+       BRS     11
+       BRS     29
+       TCF     =147B
+       BRU     ILL1
+DROUT1 LDA     =3B6
+       BRS     78
+       SBRR    DROUT
+*   BUFFERED BINARY FILE INPUT
+BUF1   STX     TCFA
+       LDX     =BUFA
+       STX     BUFP
+       LDA     =400B
+       BIO     FR
+       BRU     BUF2
+BUF4   LDA     =4B7+400B
+       STA     BUFC
+       LDX     TCFA
+BUF    SKR     BUFC
+       BRU     BUF1
+BUF3   LDA*    BUFP
+       MIN     BUFP
+       BRR     0
+BUF2   LDA     FR
+       SKA     =3B5
+       BRU     BUF4
+       BRU     IOILL
+*   CHARACTER BUFFERED BINARY FILE INPUT
+CBUFD  DATA 3*BUFA-1,3*10000B-1
+CBUF1  STX     TCFA
+       LDX     =BUFA
+       LDA     =400B
+       BIO     FR
+       BRU     CBUF2
+CBUF4  LDP     CBUFD
+       STP     CBUFP
+CBUF   GCI     CBUFP
+       BRU     CBUF1
+       BRR     0
+CBUF2  LDA     FR
+       SKA     =3B5
+       BRU     CBUF4
+       BRU     IOILL
+       END
+
+DNEW   IDENT   (LOAD AT 34000B)
+       NOLIST EXT
+WIO    OPD     56B6
+       CLA
+       LDB     =1
+       BRU     30000B
+*      EVALUATE POLISH STRING MAXIMALLY
+$VEV   LDA     VSE
+       SKG     =24000B
+       R1
+       C       VGT
+       LDA     =20024000B
+       STA     USML
+       STA     USMR
+VE1    ETR     ADB
+       SKE     VSE
+       BRU     VE2
+       LDA     USML
+       ETR     ADB
+       STA     VSE
+       SKE     =24000B
+       R1
+       CLAB
+       STP     PBT
+       STP     PBT2
+       XMA     VRLB
+       BRS     121
+       R1
+VE2    ADD     =1
+       C       E
+       BRU     VE3
+       STA     T
+       LDX     USMR
+       LDA     0,2
+       LRSH    14
+       ADM     USMR
+       CLA
+       LCY     14
+VE5    STA     TTT
+       C       ULD
+       ETR     MADB
+       ADD     T
+       XMA*    URA
+       ETR     ADB
+       SKE     TTT
+       BRU     VE5
+       C       VGT
+       LDA     USMR
+       BRU     VE1
+VE3    LDX     USMR
+       LDA     0,2
+       LRSH    14
+       ADM     USML
+       ADM     USMR
+       CNA
+       CAX
+VE4    LDA*    USMR
+       STA*    USML
+       BRX     VE4
+       LDA     USMR
+       BRU     VE1
+*      POLISH EXPRESSION EVALUATOR
+GNC1 MACRO
+       BRX     *+4
+       LDX     =-3
+       LDB*    EEA
+       MIN     EEA
+       ENDM
+GNC    MACRO
+       GNC1
+       CLA
+       LCY     8
+       ENDM
+*   PRINT POLISH STRING
+$PL    CLB
+       BRU     *+2
+*   EVALUATE POLISH STRING
+E      LDB     =-1
+       STB     EEF
+       STA     EEA
+       LDA     =EES
+       STA     EEP
+       CLEAR
+       BRU     E2
+ONOP   MIN     EEP
+E3     STA*    EEP
+E1     LDX     EES
+E2     GNC
+       SKG     =177B
+       BRU     E6
+*   SYMBOL
+       STA     EES
+       LDA     =6
+       STA     XIX
+       CLA
+       STA     SYML
+       STA     SYMR
+       LDA     EES
+E9     STB     EEB
+       LDB     SYML
+       SKA     =100B
+       BRU     E7
+       ETR     =77B
+       MRG     SYMR
+       LCY     6
+       STA     SYMR
+       STB     SYML
+       LDB     EEB
+       SKR     XIX
+       GNC
+       BRU     E9
+E7     ETR     =77B
+       MRG     SYMR
+       LCY     6
+       SKR     XIX
+       BRU     *-2
+       STA     SYMR
+       STB     SYML
+       SKN     EEF
+       BRU     EPS
+       STX     EES
+       LDB     LMSK
+       C       LS
+       LDA     1,2
+       SKA     =10B
+       R1
+       LDA     2,2
+       LDB     EEB
+       BRU     ONOP
+E6     SKG     =77B
+       BRU     E5
+*   SHORT CONSTANT
+       SUB     =140B
+       SKN     EEF
+       BRU     EPN
+       MIN     EEP
+       STA*    EEP
+       BRU     E2
+E5     SKA     =340B
+       BRU     E4
+*   OPERATOR
+       SKN     EEF
+       BRU     EPO
+       STX     EES
+       CAX
+       LDA*    EEP
+       SKR     EEP
+       BRU*    EO,2
+*   LONG CONSTANT
+E4     RCY     5
+       STB     EES
+       MIN     EEP
+       CLA
+       STA*    EEP
+       LCY     5
+       ETR     =3
+       STA     EEB
+E8     GNC1
+       LCY     2
+       LDA*    EEP
+       LCY     6
+       STA*    EEP
+       SKR     EEB
+       BRU     E8
+       SKN     EES
+       BRU     *+2
+       CNA
+       SKN     EEF
+       BRU     EPN
+       STA*    EEP
+       BRU     E2
+EO     DATA    OEE,ONOT,ONEG,OADA,OADD,OSUB,OMUL,ODIV
+       DATA    OAND,OOR,OEOR,OEXP,OI,OI,OI,OI
+       DATA    ONOP,OLS,OGR,ONE,OEQ,OLE,OGE,OI
+       DATA    OI,OI,OI,OI,OI,OI,OI,OI
+ONOT   EOR     =-1
+       BRU     ONOP
+ONEG   CNA
+       BRU     ONOP
+OADA   ETR     ADB
+OADD   ADM*    EEP
+       BRU     E1
+OSUB   CNA
+       ADM*    EEP
+       BRU     E1
+OMUL   STB     EEB
+       MUL*    EEP
+       LSH     23
+       LDB     EEB
+       BRU     E3
+ODIV   STB     EEB
+       XMA*    EEP
+       RSH     23
+       DIV*    EEP
+       LDB     EEB
+       BRU     E3
+OAND   ETR*    EEP
+       BRU     E3
+OOR    MRG*    EEP
+       BRU     E3
+OEOR   EOR*    EEP
+       BRU     E3
+OEE    R2
+OEQ    SKE*    EEP
+       BRU     ORF
+ORT    LDA     =1
+       BRU     E3
+ONE    SKE*    EEP
+       BRU     ORT
+ORF    CLA
+       BRU     E3
+OGR    XMA*    EEP
+OLS    SKG*    EEP
+       BRU     ORF
+       BRU     ORT
+OLE    XMA*    EEP
+OGE    SKG*    EEP
+       BRU     ORT
+       BRU     ORF
+OEXP   STB     EEB
+       STA     EET
+       SKG     =-1
+       CNA
+       CNA
+       SUB     =1
+       CAX
+       LDA     =1
+       BRU     *+3
+       MUL*    EEP
+       LSH     23
+       BRX     *-2
+       SKN     EET
+       BRU     *+5
+       STA     EET
+       CLA
+       LDB     =2
+       DIV     EET
+       LDB     EEB
+       BRU     E3
+OI     TMF     VMES
+       BRU     ILL
+VMES   ASC     'BAD POLISH EXPRESSION'
+*   PRINT OPERATOR
+EPO    SKE     =0
+       BRU     *+2
+       R1
+       ADD     =3*EPT-1
+       STA     SYML
+       ADD     =1
+       STA     SYMR
+       STB     EEB
+       GCI     SYML
+       NOP
+       CIO     FO
+       TCF     =0
+       LDB     EEB
+       BRU     E2
+EPT    ASC     ' @-++-*/&!%↑     <>#=[]'
+*   PRINT SYMBOL
+EPS1   CIO     FO
+       LDP     SYML
+EPS    LCY     6
+       STP     SYML
+       ETR     =77B
+       SKE     =0
+       BRU     EPS1
+       CIO     FO
+       LDB     EEB
+       BRU     E2
+*   PRINT CONSTANT
+EPN    STX     EES
+       LDX     FO
+       STB     EEB
+       LDB     PRAD
+       BRS     36
+       TCF     =0
+       LDB     EEB
+       BRU     E1
+*      KILL SYMBOL OR TABLE
+$DLK   LDA     ESYM
+       SUB     =3
+       STA     MINTAB
+       LDA     BLOCK
+       ADM     SYMR
+       SKN     LET
+       BRU     KILS
+       C       TOK
+       SKN     BLNF
+       BRU     KILT
+       C       DELBLK
+       BRU     KST1
+KILT   LDA     =OPCOD
+       STA     UNDEF
+       STA     GLOB
+       STA     LOCAL
+       STA     ESYM
+       CLA
+       STA     BLOCK
+       LDX     =-76B
+       STA     EBN,2
+       BRX     *-1
+KST1   C       SID
+$KST   LDA     ESYM
+       SUB     =3
+       LDB     =34000B
+       SKM     MINTAB
+       BRU     KSTR
+       BRU     RSR
+KSTR   LDA     MINTAB
+       BRS     4
+       LDA     =-4000B
+       ADM     MINTAB
+       BRU     KST
+KILSD  C       DELSYM
+KILS   LDB     =77777700B
+       SKN     BLNF
+       LDB     LMSK
+       C       LSA
+       BRU     KILSD
+       BRU     KST1
+DELBLK LDX     LOCAL
+       BRU     DBKC
+DBKA   EAX      3,2
+DBKC   CXA
+       SKE     ESYM
+       BRU     DBKB
+       LDA     BLOCK
+       RSH     5
+       COPY    AX,A,B
+       STP     BN,2
+       R1
+DBKB   LDB     =7700B
+       LDA     1,2
+       SKM     BLOCK
+       BRU     DBKA
+       C       DELSYM
+       BRU     DBKC
+*   KILL ALL UNDEFINED SYMBOLS
+$PEK   C       TOK
+       LDX UNDEF
+       BRU     *+2
+KUND1  C       DELSYM
+       CXA
+       SKE     GLOB
+       BRU     KUND1
+       BRU     KST1
+*      WRITE WORD ON FILE
+$WOFP  LDA*    0
+       WIO     FR
+       BRR     0
+*      WRITE SYMBOL TABLE
+TPUN   C       TTB
+       LDB     FO
+       LSH     36
+       MRG     FI
+       CAB
+       LDA     =2000220B
+       ADD     ESYM
+       SUB     =SYM
+       COPY    BX,B
+       BRS     16
+       BRU     ILL
+       STA     FR
+       BRU     TCR
+TPUNX  WOF     =40000000B
+       WOF     =20000000B
+       WOF     =27657537B
+       WIO     FR
+       BRU     RSR
+PUNTAB WOF     =40000000B
+       CBA
+       WIO     FR
+       LDB     =7710B
+       LDX     GLOB
+       BRU     *+2
+TPUN2  EAX     3,2
+       CXA
+       SKE     ESYM
+       BRU     *+3
+       WOF     =-1
+       R1
+       LDA     TBLK
+       SKM     1,2
+       BRU     TPUN2
+       LDA    1,2
+       ETR     LMSK
+       SKE     LMSK
+       BRU     *+2
+       BRU     TPUN2
+       WOF     0,2
+       LDA     1,2
+       ETR     LMSK
+       WIO     FR
+       WOF     2,2
+       BRU     TPUN2
+$PUNSYM C      TPUN
+PUNS1  CLA
+       STA     TBLK
+       LDB     =40000000B
+       C       PUNTAB
+       BRU     TPUNX
+$DLC   C       TPUN
+       LDA     =100B
+DLC1   STA     TBLK
+       RSH     5
+       SKE     =100B
+       BRU     DLC2
+       WOF     =4B7
+       WOF     =3B7
+       LDX     =OPCOD
+       BRU     DLC5
+DLC4   WOF     0,2
+       WOF     1,2
+       WOF     2,2
+       EAX     3,2
+DLC5   CXA
+       SKE     UNDEF
+       BRU     DLC4
+       WOF     =-1
+       BRU     PUNS1
+DLC2   CAX
+       LDA     BN,2
+       SKE     =0
+       BRU     *+2
+       BRU     DLC3
+       SKE     =-1
+       BRU     *+2
+       BRU     DLC3
+       WOF     =40000000B
+       WOF     =50000000B
+       WOF     BN,2
+       WOF     BN1,2
+       WOF     =0
+       WOF     =-1
+       LDB     =70000000B
+       C       PUNTAB
+DLC3   LDA     TBLK
+       ADD     =100B
+       BRU     DLC1
+*      PRINT RELABELING
+$PER   C       TTB
+       BRS     116
+       C       APT
+       C       TTB
+       BRS     116
+       CBA
+       C       APT
+       BRU     RSR
+*   PUT UNDEFINED REFERENCE ON CHAIN
+$SUS   STA     TTT
+       STX     TYX
+       C       ULU
+       LDA     2,2
+       SKE     =-1
+       BRU     SUA
+*   CREATE UNDEF POINTER BLOCK
+       LDX     ESTP
+       C       SUE
+       LDX     TYX
+       LDA     ESTP
+       SUB     =1
+       STA     2,2
+       XXA
+       MRG     =4B7
+       STA     W,2
+       XXA
+*   SEARCH FOR CORRECT CHAIN
+SUA    LDB     =34000B
+       LDX     2,2
+       BRX     *+1
+       LDA     W,2
+       SKG     =-1
+       BRU     SUI
+       SKM     TTT
+       BRU     *-5
+*   INSERT REFERENCE ON CHAIN
+       STX     TYX
+       ETR     =3777B
+SUB    SKN     FDEX
+       MRG     =1B4
+       STA     URA
+       C       ULU
+       LDA     TTT
+       ETR     ADB
+       LDX     TYX
+       STA     W,2
+*   SET UBT BIT
+       LDA     TTT
+       LRSH    12
+       COPY    AX,A
+       LCY     4
+       STA     TYX
+       LDA     UBT,2
+       RSH*    TYX
+       MRG     =1
+       LSH*    TYX
+       STA     UBT,2
+       LDA     URA
+       R1
+*   CREATE NEW CHAIN
+SUI    STX     TYX
+       C       SUE
+       LDA     TYX
+SUC    CAX
+       SKN     W,2
+       BRU     *+3
+       LDX     W,2
+       STA     2,2
+       ADD     =1
+       SKE     ESTP
+       BRU     SUC
+       LDA     =2B4
+       BRU     SUB
+*   EXPAND UPRB ONE CELL
+SUE    CXA
+       CNA
+       ADD     ESTP
+       ADD     =1
+       STA     T
+       BRU     *+2
+       BRX     *+1
+       XMA     W,2
+       SKR     T
+       BRU     *-3
+       MIN     ESTP
+       LDA     ESTP
+       SKG     =3776B
+       R1
+       BRU     SIOO
+*      SYMBOL DEFINE
+$SDF   CLA
+       STA     XEC
+       SKN     SDFO
+       BRU     SDO
+       LDA     SYML
+       SKE     =16B6
+       BRU     SDD
+       LDA     SVAL
+       ETR     ADB
+       STA     LRO
+       R1
+SDD    LDB     LMSK
+       C       LS
+       BRU     SDA
+       BRU     SIG
+$SDA    CXA
+       STX     LGI
+       ADD     =1
+       SKG     GLOB
+       BRU     SDU
+       SKG     LOCAL
+       BRU     SDH
+       LDB     =7700B
+       LDA     1,2
+       SKM     BLOCK
+       BRU     SDL
+SDG    STA     SYMR
+       C       DELSYM
+       BRU     SIL
+SDL    SKA     =20B
+       BRU     *+2
+       BRU     SDG
+       LDB     =77777700B
+       C       SCU
+       BRU     SDG
+       LDA     SYMR
+       ADD     BLOCK
+       ADD     =20B
+       STA     SYMR
+       BRU     SIL
+SDU    LDA     2,2
+       SKE     =-1
+       BRU     SDC
+SDH    LDA     1,2
+       STA     XEC
+       C       DELSYM
+       BRU     SIG
+SDC    CAX
+SDM    BRX     *+1
+       C       ULU
+       LDA     W,2
+       SKG     =-1
+       BRU     SDN
+       STX     T
+       C       URL
+       BRU     ILL
+       LDA     URA
+SDJ    ETR     =3777B
+       CAX
+       LDB     SVAL
+       LDA     W,2
+       ETR     MADB
+       XMA     W,2
+       XAB
+       SKB     =1B4
+       ETR     ADB
+       ADM     W,2
+       SKB     =2B4
+       BRU     SDK
+       XAB
+       BRU     SDJ
+SDK    LDX     T
+       BRU     SDM
+SDN    LDB     LMSK
+       C       LSGL
+       BRU     *+2
+       BRU     *+3
+       LDA     =20B
+       ADM     SYMR
+       LDX     LGI
+       BRU     SDH
+SDO    LDB     LMSK
+       C       LSO
+       C       DELSYM
+       LDA     SYMR
+       MRG     =4
+       LDB     SVAL
+       SKB     =20037777B
+       MRG     =1
+       STA     SYMR
+       BRU     SIO
+*      SYMBOL INSERT
+$SIO   CLX
+       LDB     UNDEF
+       BRU     SIZ+1
+$SIU  LDX     =1
+       LDB     GLOB
+       BRU     SIZ+1
+$SIG   LDX     =2
+       LDB     LOCAL
+       LDA     GLOB
+       BRU     SIZ
+$SIL   LDX     =3
+       LDB     ESYM
+       LDA     LOCAL
+SIZ    STA     TT
+       LDA     ESYM
+       SKG     =23775B
+       BRU     SIA
+       BRU     SIOO
+SIA    LDA     =3
+       ADM     ESYM
+       BRU     *+1,2
+       ADM     UNDEF
+       ADM     GLOB
+       ADM     LOCAL
+       CXA
+       SKG     =1
+       BRU     SIB
+       LDX     TT
+       LDA     SVAL
+       C       LG
+       EAX     -3,2
+       EAX     3,2
+       CXB
+SIB    STB     T
+       LDA     ESYM
+       SUB     =3
+       C       SP
+       LDX     T
+       LDP     SYML
+       STP     0,2
+       LDA     SVAL
+       STA     2,2
+SID    CLAB
+       SKE     ESTP
+       R1
+       STP     UBT
+       STP     UBT2
+       XMA     UPRL
+       LRSH    12
+       BRS     121
+       LDA     XEC
+       SKA     =40B
+       C       VEV
+       R1
+$DELSYM STX    T
+       LDP     0,2
+       SKB     =10B
+       BRU     DELB
+       STP     SYML
+       LDB     LMSK
+       C       LS
+       BRU     *+2
+       BRU     DELA
+       SKA     =20B
+       BRU     DELR
+DELA   LDB     T
+       LDA     ESYM
+       C       SQ
+       LDA     =-3
+       ADM     ESYM
+       CAB
+       LDA     T
+       ADD     =3
+       SKG     UNDEF
+       BRU     DELU
+       SKG     GLOB
+       BRU     DELG
+       SKG     LOCAL
+       BRU     DELL
+       BRU     DELL1
+DELU   CBA
+       ADM     UNDEF
+DELG   CBA
+       ADM     GLOB
+DELL   CBA
+       ADM     LOCAL
+DELL1  LDX     T
+       R1
+DELR   STX     TT
+       C       SCU
+       BRU     *+2
+       BRU     DELA
+       CXA
+       SKE     T
+       STA     TT
+       C       SCU
+       BRU     DELA
+       LDX     TT
+       LDA     =-20B
+       ADM     1,2
+       BRU     DELA
+DELB   LDA     T
+       ADD     =1
+       SKG     GLOB
+       SKG     UNDEF
+       BRU     DELA
+       CAX
+       C       ULU
+       LDA     1,2
+       SKE     =-1
+       BRU     *+2
+       BRU     DELA1
+       LDA     1,2
+       CAX
+       BRX     *+1
+       SKN     W,2
+       BRU     *-2
+       STX     LOW
+       LDB     ESTP
+       STB     HIGH
+       STA     TTT
+       C       MV
+       LDA     TTT
+       SUB     LOW
+       ADM     ESTP
+       LDA     TTT
+       BRU     DELF
+DELC   CAX
+       SKN     W,2
+       BRU     *+3
+       LDX     W,2
+       STA     2,2
+       ADD     =1
+DELF   SKE     ESTP
+       BRU     DELC
+DELA1  LDA     GLOB
+       SUB     =3
+       CAX
+       BRU     DELE
+DELD   SUB     =3
+       CAB
+       LDA     2,2
+       SKE     =-1
+       BRU     *+3
+       COPY    BA,BX
+       BRU     DELE
+       COPY    AX,BA
+       MRG     =4B7
+       STA     W,2
+       COPY    AX,BA
+DELE   SKE     T
+       BRU     DELD
+       BRU     DELA
+MV     STA     TT
+       LDA     LOW
+       SUB     =1
+       SUB     HIGH
+       CAX
+       LDA     HIGH
+       ADD     =24001B
+       STA     MVI
+       MRG     =27600000B
+       XMA     MVI
+       ADD     TT
+       SUB     LOW
+       MRG     =23500000B
+       STA     TT
+       EXU     MVI
+       EXU     TT
+       BRX     *-2
+       R1
+*      SYMBOL DEF CHARS
+$DFE    MIN     SDFO
+       BRU     DFG
+$HERE  SKN     SVF
+       BRU     DFF
+       LDA     LRO
+DFV    STA     SVAL
+DFF    LDA     =-1
+       STA     SDFO
+DFG    SKN     LET
+       BRU     *+2
+       BRU     ILL
+       C       SDF
+       LDA     SYMR
+       SKA     =40B
+       C       VEV
+       BRU     TR
+*   PRINT AMBIGUOUS SYMBOLS
+$PEA   C       TCR
+       LDX     LOCAL
+       BRU     AM1
+AM2    LDA     1,2
+       SKA     =20B
+       BRU     AM3
+AM4    EAX     3,2
+AM1    CXA
+       SKE     ESYM
+       BRU     AM2
+       BRU     RSR
+AM3    STX     MVI
+       LDP     0,2
+       STP     SYML
+       LDB     LMSK
+       C       LSL
+       CXA
+       SKE     MVI
+       BRU     AM5
+       MIN     PBSF
+       C       PSYM
+       SKR     PBSF
+       NOP
+       LDB     LMSK
+       C       LSGL
+       BRU     AM6
+AM5    LDX     MVI
+       BRU     AM4
+AM7    C       SCU
+       BRU     AM6
+       C       TCR
+       LDA     =-1
+       STA     PSSF
+       BRU     AM5
+AM6    MIN     PSSF
+       C       TTB
+       C       PSYM
+       LDB     LMSK
+       BRU     AM7
+*  PART OF REGISTER CLOSING ROUTINE
+*  PUT UNDEFINED REFERENCE ON CHAIN
+$CLU1  LDP     USML
+       STP     SYML
+       LDB     LMSK
+       C       LSU
+       BRU     CLI
+       C       SIU
+       LDA     1,2
+       ETR     =77770001B
+       MRG     =10B
+       STA     1,2
+       LDA     =-1
+       STA     2,2
+CLI    LDA     LRO
+       C       SUS
+       ADM     WORD
+       BRU     CLS
+*   STORE LITERALS
+$ESL   LDX     UNDEF
+ELB    LDB     LMSK
+       BRU     ELA
+ELS    LDA     0,2
+       SKM     LMSK
+       BRU     ELD
+       STA     SYML
+       LDA     1,2
+       EOR     =10B
+       STA     SYMR
+       STX     TYX
+       LDA     LCN
+       STA     SVAL
+       C       SDF
+       LDP     0,2
+       LCY     12
+       C       USP
+       LDX     TYX
+       BRU     ELB
+ELD    EAX     3,2
+ELA    CXA
+       SKE     GLOB
+       BRU     ELS
+       R1
+$CPAT1 LDA     LRO
+       SKN     SYL
+       ADD     =1
+       STA     LCN
+       LDA     EXF
+       SKA     =20000000B
+       BRU     TPAT
+       LDA     PNS
+       C       USP
+TPAT   LDA     PFG
+       STA     LRO
+       ADD     BRY
+       C       USP
+       ADD     =1
+       C       USP
+       C       ESL
+       BRU     RSC
+*      PATCH FEATURE
+$IPATCH LDA    =20000011B
+       STA     TYC
+$PATCH SKN     ROP
+       SKN     PFG
+       BRU     ILL
+       C       CLO
+       LDA     LRO
+       ETR     ADB
+       STA     PFG
+       CAX
+       C       ULD
+       STA     PNS
+       LDA     LCN
+       MRG     PATW
+       STA*    URA
+       LDA     TYC
+       MRG     =40000000B
+       STA     EXF
+       SKG     =60000000B
+       BRU     NPAT
+       LDA     PNS
+       C       USP
+NPAT   LDA     LCN
+       STA     ROP
+       STA     LRO
+       BRU     ORR
+PATW   BRU     0
+*      SET UP VARIABLE BLOCK
+$START STP     FI
+$START1 CLX
+       STX     VRLB
+       STX     HSHFLG
+       STX     LL
+       STX     ECHTB
+       STX     BLOCK
+       EAX     177B
+       STX     PON
+       EAX     240B
+       STX     LCN
+       EAX     237B
+       STX     ORG
+       EAX     8
+       STX     PRAD
+       EAX     4
+       STX     SY2
+       EAX     24000B
+       STX     VSE
+       EAX     37777B
+       STX     UL
+       EAX     OPCOD
+       STX     UNDEF
+       STX     GLOB
+       STX     LOCAL
+       STX     ESYM
+       EAX     1
+       STX     PFD
+       EAX     PSAA
+       STX     RMD
+       LDA     DL3
+       STA     XMD
+       LDA     PADAB
+       STA     AMD
+       LDA     =-1
+       LDX     =-NBP
+       STA     BPTE,2
+       BRX     *-1
+       STA     MASK
+       STA     TPF
+       STA     TSF
+       STA     PFM
+       STA     PPCF
+       STA     PIF
+       STA     CBF
+       LDX     =16000000B
+       STX     SY1
+       LDP     BZN
+       STP     BN
+       LDX     =-62
+       CLA
+       STA     EBN,2
+       BRX     *-1
+       LDA     =30000B*3-1
+       LDB     VWF
+       STP     VSW1
+       LDX     =INIS-EINIS
+       LDA     EINIS,2
+       STA     1403B+EINIS-INIS,2
+       BRX     *-2
+       BRU     START2
+$VWF   BRU     RVF
+*      FLAG USE IN SECOND SYMB NAME WORD
+*      BIT 23 = PRINT ONLY ON EXACT MATCH
+*      BIT 21 = OPCODE
+*      BIT 20 = UNDEFINED, POINTER CHAIN ENDS WITH 0
+*      BIT 19 = AMBIGUOUS NAME
+*      BIT 18 = REFERENCED IN POLISH STRING
+*      BITS 12-17 = BLOCK NUMBER (0=EXTERNAL)
+S      MACRO   A
+SC     NARG
+       TEXT    'A(1$1,4)'
+       DATA    SC+3
+       A(1)    0
+       ENDM
+S1     MACRO   A
+SC     NARG
+       TEXT    'A(1$1,4)'
+       DATA    'A(1$5)   '+SC+3
+       A(1)    0
+       ENDM
+$INIS  BSS     0
+       S       BRU
+       S       EOM
+       S       SKS
+       S       POT
+       S       PIN
+       S       BRI
+       S       ROV,1
+       S       REO,1
+       S       ETR
+       S       MRG
+       S       EOR
+       S       NOP
+       S       EXU
+       S       STA
+       S       STB
+       S       STX
+       S       OVT,1
+       S       OTO,1
+       S       BRX
+       S       BRM
+       S       CLA,1
+       S       CLB,1
+       S       CLX,1
+       S       CLAB,1
+       S1      CLEAR,1
+       S       CAB,1
+       S       CBA,1
+       S       XAB,1
+       S       BAC,1
+       S       ABC,1
+       S       CXA,1
+       S       CAX,1
+       S       XXA,1
+       S       CBX,1
+       S       CXB,1
+       S       XXB,1
+       S       CNA,1
+       S       AXC,1
+       S       LDE,1
+       S       STE,1
+       S       XEE,1
+       S       SKE
+       S       BRR
+       S       SKB
+       S       SKN
+       S       SUB
+       S       ADD
+       S       SUC
+       S       ADC
+       S       SKR
+       S       MIN
+       S       XMA
+       S       ADM
+       S       MUL
+       S       DIV
+       S       RSH
+       S       RCY
+       S       LRSH
+       S       LSH
+       S       NOD
+       S       LCY
+       S       SKM
+       S       LDX
+       S       SKA
+       S       SKG
+       S       SKD
+       S       LDB
+       S       LDA
+       S       EAX
+       S       BKPT
+       S       STO
+       S       WCD
+       S       STI
+       S       GCD
+       S       ISC
+       S       SIC
+       S       DBI
+       S       DBO
+       S       DWI
+       S       DWO
+       S       LAS
+       S       SAS
+       S       IST
+       S       OST
+       S       EXS
+       S       FDV
+       S       FMP
+       S       FSB
+       S       FAD
+       S       WCI
+       S       WIO
+       S       CIO
+       S       SKSG
+       S       SKSE
+       S       WCH
+       S       GCI
+       S       LDP
+       S       STP
+       S       SBRM
+       S       SBRR
+       S       CTRL
+       S       BRS
+       S       TCI
+       S       TCO
+       S       BIO
+       S       RCH
+       FRGT    SC
+$EINIS EQU     *
+       END

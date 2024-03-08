@@ -1,0 +1,269 @@
+            ORG 400B;
+*
+*  SUBROUTINE M←CONTENTS(R0)
+LODX:      MFETCH, R0←E1, .VCY, DRETURN;
+           GOTO PAGEF IF R0<0;
+*
+*  SUBROUTINE CONTENTS(K←K+1)←M
+STORX:     R0←K←K+1;
+STOR1:     MAP, .VCY, R0←E1, GOTO CSTORE IF STERR;
+           STORE, RETURN;
+*
+*  CHECK MULTIPLE WORD OPERAND
+DBL:       CLEARA, GOTO TI IF A;
+           FETCH, RETURN;
+*
+TI1:       GOTO TI;
+*
+SKIP:       Z←P←P+1, RESETCM, DGOTO NX3;
+           R6←M←NI, Q←7B7, GOTO NX4 IF INTRPT, .TSPY←0;
+*
+*  THE SPECIAL CASES IN BRU ARE HANDLED HERE:
+*  K[0]= NOT A AND NOT B, K[1]=A
+*  NOTE HOW P IS RESTORED IF A TRAP SHOULD OCCUR
+*
+BRUA:      Q←K, GOTO NX4 IF Y<0;
+           P←S, Q LCY 1, GOTO TI IF X<0;
+           R0←P←Z, GOTO NX5;
+*
+EXUA:      DGOTO M AND Q LCY 4 MRG BASEAD, IR←XR;
+           R6←M, Q←37777B, GOTO POP IF M[9];
+*
+*
+*  LDD, Q=SR, S=Q+1
+*
+LDD1:      MFETCH, R0←E1, Z←40B, GOTO PAGEF IF Y<0;
+           RES←AR, Z←Q AND Z, DGOTO NX1;           *  TDFLAG TO Z
+           BR←M, R0←S←S+1, GOTO LDD2 IF Z#0;
+LDD2:      MFETCH, R0←E1, .VCY, GOTO PAGEF IF Y<0;
+           CR←M, R0←S←S+1, CALL LODX;
+           DR←M, Z←P←P+1, GOTO NX2;
+*
+*  XMA
+XMAA:      GOTO CSTORE IF R0[2];
+           Z←M, GOTO ROIA IF D;
+           RES←AR←Z, M←K, GOTO STRFLD IF B;
+           STORE, Z←P←P+1, GOTO NX2;
+*
+*
+*  STD, M=SR AND NOT TDFLAG, Z[18]=TDFLAG, K=Q+1
+*
+STD1:      IR←M, Q←20B, GOTO CSTORE IF R0<0;
+           Q←Q AND M LCY 1, Q←IR, GOTO ROIA IF D;
+           STORE, M←AR, DGOTO STD2 IF NZ[18];
+           M←BR, CALL STORX;
+           M←CR, CALL STORX;
+           M←DR, CALL STORX;
+STD2:      Z←P←P+1, SR←Q, GOTO NX2;
+*
+*  CYCLIC SINGLE LEFT SHIFT
+CYAL1:     Z←R0, M←24;
+CYAL:      R0←Z-M, Q←AR;
+           M←Q LCL Z, GOTO CYAL1 IF R0>=0;
+           RES←AR←M LCH Z, GOTO NX1;
+*
+*  CYCLIC SINGLE RIGHT SHIFT
+*
+CYAR2:     Z←Z+M, Q←AR, GOTO CYAR1;
+CYAR:      Z←M+ NOT Q OR Z, Q←AR;
+CYAR1:     Q←Q LCL Z, GOTO CYAR2 IF Z<0;
+           RES←AR←Q LCH Z, GOTO NX1;
+*
+*  CYCLIC DOUBLE LEFT SHIFT
+*
+CYDL1:     Z←R0, BR←M, DGOTO CYDL3;
+           M←Q, Q←24;
+CYDL:      Q←24, M←AR;
+CYDL3:     R0←Z-Q;
+           R6←M LCL Z, Q←BR, GOTO CYDL1 IF R0>=0;
+           M←R6, DGOTO Z MRG BASEMSK;
+           R6←M LCH Z, M←BR, DGOTO CYDL2;
+CYDL2:     M←M LCL Z;
+           M←M LCH Z, Z←R6;
+           BR←M AND NOT Q ! Q AND Z, DGOTO NX1;
+           RES←AR←M AND Q ! NOT Q AND Z;
+*
+*  CYCLIC DOUBLE RIGHT SHIFT
+*    SHIFT LEFT 48-COUNT.
+*
+CYDR:      M←48, DGOTO CYDL;
+           Z←M+NOT Q OR Z;
+*
+*  ARITHMETIC SINGLE LEFT SHIFT (LOGICAL IF A)
+*  Z=SHIFT COUNT
+ASAL1:     Z←24; * SHIFT←24 IF SHIFT>24
+ASAL:      M←AR, Q←24;
+           R0←Z-Q;
+           M←M LCL Z, GOTO ASAL5 IF R0>=0;
+           DGOTO Z MRG BASEMSK;
+           M←M LCH Z, DGOTO ASAL2;
+ASAL2:     RES←AR←M AND NOT Q, GOTO NX1 IF A;
+ASAL3:     Q←Q MRG 4B7, DGOTO ASAL4;
+           NOT M AND Q, GOTO NX1 IF LB=0;
+SPILL:     M←Q←4B7, DGOTO NX1;
+           M+Q, ROV;
+*
+*  ARITHMETIC SINGLE RIGHT SHIFT, (LOGICAL IF A)
+*
+ASAR:      M←24;
+           Z←M+NOT Q OR Z, R0←M←AR;
+           M←M LCL Z, Q←0, GOTO ASAR1 IF Z<0;
+           DGOTO Z MRG BASEMSK;
+           M←M LCH Z, DGOTO ASAR1;
+ASAR1:     RES←AR←M AND Q, DGOTO NX1 IF A;
+           GOTO NX1 IF R0>=0;
+           RES←AR←M OR NOT Q, GOTO NX1;
+*
+*  ARITHMETIC DOUBLE LEFT SHIFT, (LOGICAL IF A)
+*  M=BR, Z=SHIFT COUNT
+*
+LSHDL:     Z←R0, M←0;
+ASDL:      BR←0, Q←24;
+ASDL1:     R0←Z-Q;
+           Q←M LCL Z, GOTO ASDL3 IF R0>=0;
+           DGOTO Z MRG BASEMSK;
+           M←Q LCH Z, DGOTO ASDL2;
+ASDL2:     BR←M AND NOT Q;
+           R6←M AND Q, M←AR;
+           M←M LCL Z;
+           M←M LCH Z, Z←R6; DGOTO ASAL3;
+           RES←AR←M AND NOT Q+Z, GOTO NX1 IF A;
+*
+*  SHIFT COUNT>24, OVERFLOW IF NOT(AR=0 OR
+*    AR=-1 AND ((AR EOR BR) AND 4B7=0));
+*
+ASDL3:     Z←AR;
+           AR←M, GOTO LSHDL IF A;
+           Q←Z←NOT Z, GOTO ASDL4 IF Z=0;
+           GOTO ASDL4 IF Z=0;
+ASDL5:     Z←M←4B7, DGOTO ASDL;
+           Z←R0, M←Z+M, ROV;
+ASDL4:     Z←Q EOR M, DGOTO ASDL;
+           Z←R0, M←0, GOTO ASDL5 IF Z>=0;
+*
+*  ARITHMETIC DOUBLE RIGHT SHIFT
+*  M=BR, Z=NEGATIVE SHIFT COUNT AND 77B, Q=77B
+*
+ASDR:      Z←Z OR NOT Q, Q←24, GOTO NX1 IF Z=0;
+           Z←Q+Z;
+ASDR1:     M←M LCL Z, GOTO ASDR3 IF Z<=0;
+           DGOTO Z MRG BASEMSK;
+           M←M LCH Z, DGOTO ASDR2;
+ASDR2:     R6←M AND Q, M←AR;
+           M←M LCL Z, R0←AR;
+           M←M LCH Z, Z←R6;
+           BR←M AND NOT Q ! Z, DGOTO NX1 IF A;
+           RES←AR←M AND Q, GOTO NX1 IF R0>=0;
+           RES←AR←M OR NOT Q, GOTO NX1;
+*
+*  SHIF COUNT>24.  EXTEND THE SIGN OF AR.
+*
+ASDR3:     R0←M←AR, Z←Q+Z, GOTO *+2 IF A;
+           AR←-1, GOTO ASDR1 IF R0<0;
+           AR←0, GOTO ASDR1;
+*  MULTIPLY NEGATIVE MULTIPLIER
+MUL2:      M←NOT M+1, HROV, DGOTO MUL1;
+           K←4B7, GOTO MUL6 IF OVFLW;
+*  MULTIPLY NEGATIVE MULTIPLICAND
+MUL3:      K←NOT Z, Q←0, GOTO MUL5 IF OVFLW;
+           Q←R0, DGOTO MUL4;
+           MH1←Q, .LSPX←0;     *INSTR EFFECTIVELY NO-OPED
+*  MULTIPLY POSITIVE MULTIPLIER
+MUL1:      Z←K, R0←NOT Q+1, HROV, GOTO MUL3 IF R0<0;
+MUL4:      MH2←M LCY 1, .LSPX←0;
+           M←MHR, .TSPY←0;     * INSTR EFFECTIVELY NO-OPED;
+           Q←MMR, .TSPY←0;     * INSTR EFFECTIVELY NO-OPED;
+MUL5:      IR←AR←M, K, GOTO MUL10 IF Y<0;
+MUL7:      BR←Q, M←IR;
+           Q←Q LCY 20;
+           Q←Q LCY 3, Z←P←P+1, DGOTO NX2;
+           RES←M OR Q;
+*
+MUL6:      M←Q, Q←0, GOTO MUL5;
+MUL10:     Q←NOT Q+1, HROV;
+           AR←IR←NOT M+1, ROV, GOTO MUL7 IF CARRY;
+           AR←IR←NOT M, GOTO MUL7;
+*
+DIV4:      IR←Q←NOT Q+1, GOTO DIV5;
+DIV2:      Z←Z+1, HROV, DGOTO DIV1;
+           M←NOT M, GOTO DIV3 IF CARRY;
+DIV3:      M←M+1;
+DIV1:      IR, Q←40000026B, DGOTO DIV4 IF Y<0;
+           R0←NOT Q, Q←IR;
+DIV5:      R6←M-Q, Q←1, GOTO DIV6 IF X<0;
+           M←R6, Q←Z MRG 1, GOTO DIV7 IF A;
+           Z←Q LCY 1, R0←R0+1, GOTO DIV8 IF R0<0;
+           M←M LCY 1, Q←1, DGOTO DIV5;
+           M←M AND NOT Q ! Z AND Q, Q←IR;
+DIV6:      Q←Z AND NOT Q, CLEARA, R0←R0+1, GOTO DIV8 IF R0<0;
+           M←M LCY 1;
+           Z←Q LCY 1, Q←1, DGOTO DIV5;
+           M←M AND NOT Q ! Z AND Q, Q←IR;
+DIV8:      AR←RES←Q, S, GOTO DIV9 IF Y<0;
+DIV10:     BR←NOT M+1, GOTO NX1 IF D;
+           BR←M, Z←P←P+1, GOTO NX2;
+DIV9:      AR←RES←NOT Q+1, GOTO DIV10;
+DIV7:      Q←Q-1;
+           M OR Q, GOTO SPILL IF LB#0, Z←S;
+           GOTO SPILL IF Z>=0, M←S←4B7;
+           RES←AR←M, M←0, GOTO DIV10;
+*
+*  ISD, IR=MAPPED Q, R0=Q+1
+*    Q=Z=CONTENTS(Q)
+*
+ISD1:      MFETCH, .VCY, R0←E1, GOTO PAGEF IF Y<0;
+           R6←Z;
+           Q←NOT Q LCY 2 MRG 63777777B;
+           Q←Z+NOT Q, Z←54B6;                     *  Q←CPOS+CSIZE
+           R0←Q-Z, Q←Z←R6;
+           RES←Z←M-Z, M←1B6, DGOTO ISD2 IF R0<0;
+           Z←Q, GOTO NX1 IF Z=0;
+           R0←IR, Q←3B6, GOTO CSTORE IF STERR, .VCY;
+           M←Z AND NOT Q+1, DGOTO NX2;
+           STORE, Z←P←P+1;
+ISD2:      R0←IR, M←M+Z, GOTO CSTORE IF STERR;
+           STORE, Z←P←P+1, GOTO NX2;
+*
+*  DSD, R0=Q+1, Z=CONTENTS(Q)
+*
+DSD1:      MFETCH, .VCY, R0←E1, Q←3B6, GOTO PAGEF IF Y<0;
+           R6←Z;
+           Z←M AND Q, Q←R6;
+           RES←Z←Q-M, Q←14B6, DGOTO DSD2 IF Z=0;
+           Z←1B6, GOTO NX1 IF Z=0;
+           M←M-Z, R0, GOTO CSTORE IF STERR;
+DSD3:      STORE, Z←P←P+1, GOTO NX2;
+DSD2:      Z←M AND Q, R0, GOTO CSTORE IF STERR, .VCY;
+           Q←Q-Z;
+           Q←Q LCY 20;
+           Q←Q LCY 2, DGOTO DSD3;
+           M←M OR Q-1;
+*
+SRS1:      Z←R0;
+           M←M, M←Q←IR, GOTO SRS2 IF Z#0;
+           M←M AND NOT Q;
+SRS2:      CALL LOADSR;
+NEXT:      Z←P←P+1, GOTO NX2;
+*
+TSB1:      Q←IR, DGOTO NX1;
+           RES←M AND Q;
+*
+*
+GETSR:     Q←4B7, M←Z←RES;
+GETS1:     M←Z←NOT M AND Q LCY 12, Q←2B7, GOTO GETS1 IF Z=0;
+           M←SR, Q←7017B, DRETURN;
+           M←M AND NOT Q ! Z, M←E1, GSB;
+*
+LOADSR:    Z←SR←M, Q←6B3;
+           M←M AND Q, Q←2B3, PSB, DRETURN;
+           RES←M-Q;
+*
+*
+ICP1:      RES←M EOR Q MRG 1, GOTO NX2;
+DIV11:     Z←NOT Z MRG 1, SETD, GOTO DIV2;
+ASAL4:     M AND Q, M←1, GOTO NX1 IF LB=0;
+           M, GOTO SPILL IF LB#0;
+ASAL5:     RES←AR←0, GOTO NX1 IF A, .VCY;
+           M, GOTO SPILL IF LB#0;
+            GOTO NX1;
+           END;

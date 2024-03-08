@@ -1,0 +1,362 @@
+* PROGRAM TO TYPE FILES ON XEROX HYTYPER TERMINAL
+
+
+       IDENT HYTYPE;
+
+
+
+* DECLARATIONS, ETC.
+
+       DECLARE MACRO ENDWHILE←ENDFOR;
+
+       DECLARE PARAMETER CR←155B, LF←152B, BELL←147B, SET←1, RESET←-1;
+       DECLARE PARAMETER EOF←137B, MBL←135B, CTRL←154B, BKSP←150B;
+       DECLARE PARAMETER UNDX←100B;
+       DECLARE PARAMETER TTIN←0, TTOUT←1;
+       DECLARE PARAMETER MAXLINE←66, NORMAX←61;
+
+       DECLARE INTEGER TCHAR, PFILE, PFLAG, NFLAG, TFLAG, LINECT, CHRCT;
+       DECLARE INTEGER I, CHAR, SFLAG, PAGECT;
+
+       DECLARE STRING RHEADER←"**RUNOFF &M&J&L";
+       DECLARE STRING TSTRING(12), USTRING(12), FNAME(20);
+
+
+
+* COROUTINE LINKAGES BETWEEN MAIN PGM & GNC FUNCTION
+
+       FUNCTION GNC(FILENO);
+       GOTO GNCLINK;
+
+       FUNCTION MAIN();
+       GOTO MAINLINK;
+
+GNCLINK: RETURN FROM XMAIN;
+MAINLINK: RETURN FROM XGNC;
+
+
+
+* MAIN ENTRY POINT.
+
+START: INITIALIZE();
+
+
+* INITIALIZE COROUTINE LINKAGE.
+
+       XMAIN←INITGNC-1;
+
+
+* OPEN FILE TO BE PRINTED.
+
+OPENF: SOUT("&M&JFILE:  ");
+       TCHAR←INNAME(FNAME:OPENF);
+       PFILE←INFILE(FNAME:OPENF);
+
+
+* GET PAUSE AND MODE PARAMETERS.
+
+ASK1:  ASK('P',TCHAR:ASK2:PFLAG,TCHAR);
+       ASK('N',TCHAR:ASK2:NFLAG,TCHAR);
+       GOTO ASK2 IF (TCHAR#'.' AND TCHAR#CR);
+
+
+* MISCELLANEOUS INITIALIZATION
+
+
+       TFLAG←SET IF PFLAG=RESET;
+       CRLF(1);
+       PAGECT←0;
+       LINECT←MAXLINE+1;
+       BRS(12,3,,-1) IF PFLAG=SET;     * TURN OFF ECHOES
+       SETS(TSTRING,0,0);
+
+
+* SELECT PRINT MODE AND BEGIN.
+
+       GOTO NORMAL IF NFLAG=SET ELSE GOTO ABSOLUTE;
+
+
+* NORMAL MODE.
+
+NORMAL:BCOPY(USTRING,RHEADER,4);
+       FOR I←0 TO 11 DO;
+          I←20 IF (CHAR←GNC(PFILE:ENDFILE))#GCI(USTRING);
+          WCI(CHAR,TSTRING);
+       ENDFOR;
+       (SFLAG←SET & GOTO ABS1) IF I<20; * I.E., IF RUNOFF HEADER PRESENT
+       EJECT(SET);             * TELLS EJECT ROUTINE TO CONSIDER HEADERS
+       TNC(GCI(TSTRING:CAL1)) WHILE 1;
+CAL1:  WHILE 1 DO;
+          WHILE LINECT<=NORMAX DO;
+             TNC(CHAR) WHILE (CHAR←GNC(PFILE:ENDFILE))#LF;
+             LINECT←(LINECT+1) MOD MAXLINE;
+             TNC(LF);
+          ENDWHILE;
+          EJECT(SET);
+       ENDWHILE;
+
+
+* ABSOLUTE MODE.
+
+ABSOLUTE: SFLAG←RESET;
+ABS1:  NFLAG←RESET;
+       EJECT(SET);
+       WHILE 1 DO;
+          TNC(CHAR) WHILE (CHAR←GNC(PFILE:ENDFILE))#LF;
+          LINECT←(LINECT+1) MOD MAXLINE;
+          TNC(LF);
+       ENDWHILE;
+
+
+* END OF FILE ENCOUNTERED -- CLEAN UP AND QUIT.
+
+ENDFILE: EJECT(RESET);         * TELLS EJECT TO IGNORE HEADERS
+       BRS(12,0,,-1);                  * TURN ECHOES BACK ON
+       CLOSALL();
+       SOUT("MORE PRINTING?  ");
+       WHILE 1 DO;
+          IF (CHAR←CIN(TTIN))='Y' DO;
+             SOUT("ES&M&J") & GOTO START;
+          ELSEIF CHAR='N' DO;
+             SOUT("O&M&J") & EXIT();
+          ELSE DO;
+             SOUT("   ???&M&J");
+             COUT(BELL);
+          ENDIF;
+       ENDWHILE;
+
+
+* PARAMETER ERROR -- GO BACK & ASK FOR NEW VALUES EXPLICITLY.
+
+ASK2:  SOUT("  ???");
+       BRS(11);                * CLEAR TTY INPUT BUFFER
+       TCHAR←'.';              * FORCE ASK FN TO ASK EXPLICITLY
+       GOTO ASK1;
+
+
+* FUNCTION TO RETRIEVE PARAMETERS FROM TERMINAL.
+* THE PARAMETERS ARE:  1) PAUSE/NOPAUSE,  2) NORMAL/ABSOLUTE.
+* THESE MAY BE INPUT FOLLOWING THE FILE NAME WITH P/N AND N/A.
+* LEAVING THEM OUT CAUSE THE FUNCTION TO ASK EXPLICITLY FOR THEIR VALUES.
+* IF THE FUNCTION GETS CONFUSED, IT STARTS OVER WITH EXPLICIT QUESTIONS.
+
+       DECLARE INTEGER MSG, ACHR, ANS;
+
+       FUNCTION ASK(MSG,ACHR);
+       GOTO PMSG IF MSG='P' ELSE GOTO NMSG;
+
+PMSG:  IF ACHR=',' DO;         * SEE IF PARAMS FOLLOW FILE NAME
+          IF (MSG←CIN(TTIN))='P' DO;  * 1ST PARAM MUST BE P OR N
+             ANS←SET;
+          ELSEIF MSG='N' DO;
+             ANS←RESET;
+          ELSE DO;
+             RETURN;           * I.E., FAIL RETURN -- PARAM NOT RIGHT
+          ENDIF;
+          ACHR←CIN(TTIN);      * GET NEW TERMINATOR
+          SRETURN ANS,ACHR;
+       ELSEIF (ACHR='.' OR ACHR=CR) DO;  * NO PARAMS -- ASK FOR THEM
+          SOUT("&M&JPAUSE BEFORE EACH PAGE?  ");
+          IF (MSG←CIN(TTIN))='Y' DO;
+             SOUT("ES");
+             ANS←SET;
+             ACHR←'.';
+          ELSEIF MSG='N' DO;
+             SOUT("O");
+             ANS←RESET;
+             ACHR←'.';
+          ELSE DO;
+             RETURN;           * FAIL -- ANSWER NOT YES OR NO
+          ENDIF;
+          SRETURN ANS,ACHR;
+       ELSE DO;
+          RETURN;              * FAIL -- LINE SYNTAX WRONG
+       ENDIF;
+
+NMSG:  IF ACHR=',' DO;         * SEE IF THERE IS ANOTHER PARAM
+          IF (MSG←CIN(TTIN))='N' DO;   * 2ND PARAM MUST BE N OR A
+             ANS←SET;
+          ELSEIF MSG='A' DO;
+             ANS←RESET;
+          ELSE DO;
+             RETURN;           * FAIL
+          ENDIF;
+          ACHR←CIN(TTIN);      * GET TERMINATOR
+          SRETURN ANS,ACHR;
+       ELSEIF (ACHR='.' OR ACHR=CR) DO;  * ASK FOR PARAM
+          SOUT("&M&JNORMAL PRINTING?  ");
+          IF (MSG←CIN(TTIN))='Y' DO;
+             SOUT("ES");
+             ANS←SET;
+             ACHR←'.';
+          ELSEIF MSG='N' DO;
+             SOUT("O");
+             ANS←RESET;
+             ACHR←'.';
+          ELSE DO;             * FAIL
+             RETURN;
+          ENDIF;
+          SRETURN ANS,ACHR;
+       ELSE DO;
+          RETURN;              * FAIL
+       ENDIF;
+
+
+* FUNCTION TO HANDLE PAGE EJECTS.  THIS FN IS COMPLICATED BY THE
+*      FACT THAT IT MUST WORK CORRECTLY IN SEVERAL DIFFERENT MODES.
+* IT KEEPS TRACK OF THESE BY MEANS OF PFLAG (PAUSE BEFORE STARTING
+*      NEW PAGE), NFLAG (NORMAL MODE/ABSOLUTE MODE), AND SFLAG
+*      (SKIP OVER TOP MARGIN BEFORE RESUMING PRINTING).
+
+       DECLARE INTEGER ECHR;
+
+       FUNCTION EJECT(EFLAG);
+
+* FIRST, SKIP TO TOP OF NEXT PAGE
+
+       CRLF(1) FOR I←LINECT TO MAXLINE IF TFLAG=SET;
+       PAGECT←PAGECT+1;
+       LINECT←1;
+       CHRCT←1;
+
+* HANDLE MODES
+
+       IF NFLAG=SET DO;        * NORMAL MODE
+
+
+* PROCESS PAUSE
+
+          IF PFLAG=SET DO;
+             WHILE 1 DO;
+                (TFLAG←SET & GOTO EJ1) IF (ECHR←CIN(TTIN))='P';
+                (TFLAG←RESET & GOTO EJ1) IF ECHR='S';
+                COUT(BELL,TTOUT);
+             ENDWHILE;
+          ENDIF;
+
+EJ1:      IF TFLAG=SET DO;
+             CRLF(3);
+             HEADER() IF EFLAG=SET;
+             CRLF(3);
+          ENDIF;
+          LINECT←8;
+
+       ELSE DO;                * ABSOLUTE MODE
+
+* THIS CASE SKIPS FIRST, THEN PAUSES
+
+          IF SFLAG=SET DO;
+             CRLF(5) IF TFLAG=SET;
+             LINECT←6;
+          ENDIF;
+* PROCESS PAUSE
+
+          IF PFLAG=SET DO;
+             WHILE 1 DO;
+                (TFLAG←SET & GOTO EJ2) IF (ECHR←CIN(TTIN))='P';
+                (TFLAG←RESET & GOTO EJ2) IF ECHR='S';
+                COUT(BELL,TTOUT);
+             ENDWHILE;
+EJ2:      ENDIF;
+
+       ENDIF;
+       RETURN;
+
+
+
+* CODE BODY FOR COROUTINE TO GET NEXT CHARACTER FROM PRINT FILE.
+* THIS CODE HANDLES MULTIPLE BLANKS.  IT SKIP RETURNS IN ALL CASES
+*      EXCEPT WHEN THE END OF FILE IS REACHED.
+
+       DECLARE INTEGER BCOUNT, GCHR, J;
+
+INITGNC: WHILE 1 DO;
+          MAIN() IF (GCHR←CIN(FILENO))=EOF;
+          IF GCHR=MBL DO;
+             BCOUNT←CIN(FILENO);
+             FOR J←1 TO BCOUNT DO;
+                XGNC←XGNC+1;
+                MAIN(' ');
+             ENDFOR;
+          ELSE DO;
+             XGNC←XGNC+1;
+             MAIN(GCHR);
+          ENDIF;
+       ENDWHILE;
+
+
+* FUNCTION TO PRINT HEADER LINE.  DISPLAYS PAGE NUMBER, DATE-TIME,
+*      AND FILE NAME.
+
+       DECLARE INTEGER K, X, Y;
+
+       DECLARE FIELD YR(0:0,7), MO(0:8,15), DAY(0:16,23);
+       DECLARE FIELD HR(0:0,7), MIN(0:8,15), SEC(0:16,23);
+
+       DECLARE STRING XSTRING(10), YSTRING(5);
+
+       DECLARE STRING ARRAY MONTHS[12]←"JANUARY ","FEBRUARY ","MARCH ",
+               "APRIL ","MAY ","JUNE ","JULY ","AUGUST ",
+               "SEPTEMBER ","OCTOBER ","NOVEMBER ","DECEMBER ";
+
+
+       FUNCTION HEADER();
+       SOUT("PAGE ");
+       IOUT(PAGECT);
+       COUT(' ') FOR K←1 TO 16;
+       BRS(39::X,Y);
+       BCOPY(XSTRING,MONTHS[X$MO-1],4);
+       SOUT(XSTRING);
+       IOUT(X$DAY);
+       SOUT(", 19");
+       IOUT(X$YR);
+       SOUT("  ");
+       SETS(YSTRING,0,0);
+       CNS(Y$HR,YSTRING);
+       COUT('0') IF LENGTH(YSTRING)=1;
+       SOUT(YSTRING);
+       COUT(':');
+       SETS(YSTRING,0,0);
+       CNS(Y$MIN,YSTRING);
+       COUT('0') IF LENGTH(YSTRING)=1;
+       SOUT(YSTRING);
+       COUT(':');
+       SETS(YSTRING,0,0);
+       CNS(Y$SEC,YSTRING);
+       COUT('0') IF LENGTH(YSTRING)=1;
+       SOUT(YSTRING);
+       COUT(' ') FOR K←1 TO 8;
+       BCOPY(XSTRING,FNAME,4);
+       SOUT(XSTRING);
+       SOUT(":9SYM");
+       CRLF(1);
+       RETURN;
+
+
+* FUNCTION TO HANDLE OUTPUT CHARACTERS.  DOES A SIMPLE COUT PROVIDED
+*      THAT TFLAG IS SET.  OTHERWISE IGNORES OUTPUT CHARACTERS.
+
+       DECLARE INTEGER TCHR;
+
+       FUNCTION TNC(TCHR);
+       (EJECT() & RETURN) IF (TCHR=CTRL AND CHRCT=1);
+       IF TCHR=CR DO;
+          CHRCT←1;
+       ELSEIF TCHR#LF DO;
+          CHRCT←CHRCT+1;
+       ENDIF;
+       IF TFLAG=SET DO;
+          IF TCHR='←' DO;
+             COUT('<');
+             COUT(BKSP);
+             COUT('-');
+          ELSEIF TCHR=UNDX DO;
+             COUT('←');
+          ELSE DO;
+             COUT(TCHR);
+          ENDIF;
+       ENDIF;
+       RETURN;
+
+
+       END;

@@ -1,0 +1,208 @@
+          CPU;
+           MACRO DP ← DEFINE PARAMETER;
+*
+           DP MAXOPR   ←45;
+           DP MAXPRIV  ←100B;
+           DP BASE940  ←1600B;
+           DP BASEINST ←1400B;
+           DP BASEMSK  ←140B;
+           DP MVSTBL   ←1340B;
+*
+           DP USIBMSK  ←37B;
+           DP USIBTOP  ←15B;
+           DP CTCL     ←63B;
+           DP CTCR     ←62B;
+           DP ITL      ←61B;
+           DP ITR      ←60B;
+           DP UNLS     ←64B;
+           DP UNMS     ←65B;
+           DP CPUNO←1;            *1.5 CPU #1,SET TO 0 FOR CPU#0;
+*
+           MACRO DE ← DEFINE REGISTER;
+*
+           DE  R2  AS  H1;         *  H REGISTERS USED IN 940 MODE
+           DE  R3  AS  H2;         *
+           DE  R4  AS  H3;         *
+           DE  R6  AS  H4;         *
+           DE  R1  AS  P;          *  PROGRAM COUNTER
+           DE  R2  AS  S;          *
+           DE  R3  AS  K;          *
+           DE  R4  AS  IR;         *
+           DE  R5  AS  RES;        *  RESULT REGISTER
+*
+*  R6 AND K ARE UNAFFECTED BY THE ADDRESS
+*    CALCULATION
+*
+           DE  SK0   AS  MBA;      *  MAP BASE ADDRESS
+           DE  SK1   AS  AR;       *  CPU REGISTERS
+           DE  SK2   AS  BR;       *
+           DE  SK3   AS  CR;
+           DE  SK4   AS  DR;
+           DE  SK5   AS  ER;
+           DE  SK6   AS  XR;
+           DE  SK7   AS  LR;
+           DE  SK8   AS  GR;
+           DE  SK9   AS  SR;
+           DE  SK11  AS  SHIFT;    *  USED BY FIELD ADDRESSING
+           DE  SK12  AS  WORD;     *          "
+           DE  SK13  AS  MASK;     *          "
+           DE  SK14  AS  ROIAD;    *  ROIA TRAP PARAMETER
+           DE  SK16  AS  ILIM;     *
+           DE  SK17  AS  PRTINDEX; *
+           DE  SK32  AS  MH1;      *  MULTIPLIER REGISTERS
+           DE  SK33  AS  ML1;      *
+           DE  SK34  AS  ML2;      *
+           DE  SK35  AS  MH2;      *
+           DE  SK36  AS  MHR;      *  MULTIPLIER RESULTS
+           DE  SK37  AS  MMR;      *
+           DE  SK38  AS  MLR;      *
+           DE  SK40  AS  NI;       *  NEXT INSTRUCTION FROM FU
+*
+*
+*  THE FOLLOWING SCRATCH-PAD LOCATIONS ARE USED
+*    AS WORKING STORAGE
+           DE  SK20  AS  U;        *  SEE IAF1
+*
+           DE  SK18  AS  SP;       *  BLL WORKING LOCATION
+           DE  SK19  AS  SPAD;     *        "
+           DE  SK20  AS  POPW;     *        "
+           DE  SK21  AS  NEWG;     *        "
+           DE  SK22  AS  NEWP;     *        "
+           DE  SK23  AS  NEWF;     *        "
+           DE  SK24  AS  NEWL;     *        "
+           DE  SK25  AS  BITS;     *        "
+           DE  SK26  AS  XSRC;     *        "
+           DE  SK27  AS  BRD;      *        "
+           DE  SK28  AS  NFW;      *        "
+           DE  SK29  AS  NAW;      *        "
+           DE  SK30  AS  AP;       *        "
+           DE  SK31  AS  FP;       *        "
+*
+           DE  SK20  AS  UN0;      *  SEE PAGEF. CODE
+           DE  SK21  AS  UN1;      *        "
+           DE  SK22  AS  PARAM;    *        "
+           DE  SK23  AS  PMTRO;    *        "
+           DE  SK24  AS  MAPRO;    *        "
+*
+           DE  SK20  AS  MP1;      *  SEE FLOATING POINT
+           DE  SK21  AS  MP2;      *
+           DE  SK22  AS  DV1;      *
+           DE  SK23  AS  DV2;      *
+           DE  SK24  AS  MSIGN;    *
+           DE  SK25  AS  DSIGN;    *
+           DE  SK26  AS  LO;       *
+*
+           DE  SK20  AS  SMASK;    *  SEE STRING MOVE
+           DE  SK21  AS  TMASK;    *
+           DE  SK22  AS  SSHIFT;   *
+           DE  SK23  AS  TSHIFT;   *
+           DE  SK24  AS  TW;       *
+           DE  SK25  AS  NEWX;     *
+           DE  SK26  AS  DEL;      *
+           DE  SK27  AS  NEWS;     *
+*
+           DE  SK20  AS  XX;       *  TEMPORARY XR
+*
+           MACRO SC ← DEFINE SCONDITION;
+*
+           SC  LPF         ← 22B, (BRM ZZ22), NOVCY;
+           SC  CMAPS       ← 62B, (BRM ZZ22), NOVCY;
+           SC  SABCDE0     ← 33B, (BRM ZZ25), NOVCY;
+           SC  ABCD0       ← 70B, (BRM ZZ45), NOVCY;
+           SC  SETA        ← 30B, (BRM ZZ26), NOVCY;
+           SC  SETB        ← 26B, (BRM ZZ27), NOVCY;
+           SC  SETC        ← 35B, (BRM ZZ28), NOVCY;
+           SC  SETD        ← 36B, (BRM ZZ29), NOVCY;
+           SC  CLEARA      ← 50B, (BRM ZZ30), NOVCY;
+           SC  GSB         ← 27B, (BRM ZZ31), NOVCY;
+           SC  PSB         ← 55B, (BRM ZZ38), NOVCY;
+           SC  HROV        ← 57B, (BRM ZZ40), NOVCY;
+           SC  ROV         ← 66B, (BRM ZZ43), NOVCY;
+           SC  CLEARTOV    ← 67B, (BRM ZZ44), NOVCY;
+           SC  MAP         ← 37B, (BRM ZZ32), NOVCY;
+           SC  SSOURCE     ← 52B, (BRM ZZ34), NOVCY;
+           SC  MAPSS       ← 51B, (BRM ZZ33), NOVCY;
+           SC  CLEARMAP    ← 74B, (BRM ZZ35), NOVCY;
+           SC  ZTOMAP      ← 53B, (BRM ZZ36), NOVCY;
+           SC  MAPAD       ← 54B, (BRM ZZ37), NOVCY;
+           SC  READS       ← 56B, (BRM ZZ39), NOVCY;
+           SC  RESETCM     ← 24B, (BRM ZZ23), NOVCY;
+           SC  X23LCK      ← 71B, (BRM ZZ46), NOVCY;
+           SC  ALERT       ← 14B, (BRM ZZ13), NOVCY;
+           SC  POT         ← 15B, (BRM ZZ14), NOVCY;
+           SC  PIN         ← 16B, (BRM ZZ15);
+           SC  STROBE      ← 17B, (BRM ZZ12), NOVCY;
+           SC  UNPROTECT   ← 20B, (BRM ZZ17), NOVCY;
+           SC  CLEARSP     ← 23B, (BRM ZZ18), NOVCY;
+          SC  PROTECT     ← 25B, (BRM ZZ22);
+           SC  CLM940      ← 72B, (BRM ZZ50), NOVCY;
+           SC  CLEAROV     ← 73B, (BRM ZZ41), NOVCY;
+           SC  SETBA       ← 61B, (STB NBANK), NOVCY;
+           SC  SETBB       ← 60B, (STA NBANK), NOVCY;
+           SC  MFETCH      ← 34B, (BRM ZZ62), NOVCY;
+           SC  TAKE        ← 75B, (BRM ZZ75), NOVCY;
+           SC  SCAN        ← 63B, (BRM ZZ63), NOVCY;
+           SC  STOP        ← 76B, (BRM ZZ36), NOVCY;
+           SC  CRSL2       ← 32B, (BRM ZZ76), NOVCY;
+           SC START/STOP   ← 77B, (BRM ZZ22), NOVCY;
+
+           MACRO BC ← DEFINE BCONDITION;
+
+  BC  XPAGE, U80←42B,(BRM XX80), NOVCY;
+  BC  INTRPT3, U81←56B,(BRM XX81), NOVCY;
+  BC  INTRPT2, U82←65B,(BRM XX82), NOVCY;
+  BC  STERR, U83←32B,(BRM XX83), NOVCY;
+  BC  Y<0, U10← 53B,(BRM XX10); * Y[0] =1
+  BC  X<0, U9← 17B,(BRM XX9);
+  BC  X>=0, U11← 16B,(BRM XX11);
+  BC  Z=0, U12← 2B, (BRM XX12), NOVCY; *  NOT(Z[0] OR Z[1]....OR Z[23])
+  BC  Z#0, U13← 3B, (BRM XX13), NOVCY; *  Z[0] OR Z[1]....OR Z[23]
+  BC  Z>=0, U15← 5B, (BRM XX15), NOVCY; *  Z[0] = 0
+  BC  Z<0, U17← 4B, (BRM XX17), NOVCY; *  Z[0] = 1
+  BC  Z>0, U19← 6B, (BRM XX19), NOVCY; *  "Z >= 0" AND NOT "Z = 0"
+  BC  Z<=0, U21← 13B,(BRM XX21), NOVCY; *  "Z < 0" OR "Z = 0"
+  BC  Z[18], U14← 14B,(BRM XX14), NOVCY; *  Z[18] = 1
+  BC  NZ[18], U43← 15B,(BRM XX43), NOVCY; *  Z[18] = 0
+  BC  NZ[16], U18← 10B,(BRM XX18), NOVCY; *  Z[16] = 0
+  BC  LB=0, U20← 22B,(BRM XX20), NOVCY; *  NOT(LB[0] OR LB[1].OR LB[23])
+  BC  LB#0, U22← 23B,(BRM XX22), NOVCY; *  NOT "LB = 0
+  BC  M[1], U23← 21B,(BRM XX23), NOVCY; *  M[1] =1
+  BC  M[4], U24← 74B,(BRM XX24), NOVCY; *  M[4] = 1
+  BC  M[5], U25← 50B,(BRM XX25), NOVCY; *  M[5] = 1
+  BC  M[9], U28← 71B,(BRM XX28), NOVCY; *  M[9] = 1
+  BC  M[13], U26← 75B,(BRM XX26), NOVCY; *  M[13] = 1
+  BC  NM[13], U32← 40B,(BRM XX32), NOVCY; *  M[13] = 0
+  BC  R0<0, U42← 11B,(BRM XX42), NOVCY; *  R0[0] = 1
+  BC  R0>=0, U27← 12B,(BRM XX27), NOVCY; *  R0[0] = 0
+  BC  R0[1], U29← 66B,(BRM XX29), NOVCY; *  RO[1] = 1
+  BC  R0[2], U30← 24B,(BRM XX30), NOVCY; *  R0[2] = 1
+  BC  NR0[2], U31← 25B,(BRM XX31), NOVCY; *  R0[2] = 0
+  BC  CAR, U38← 46B,(BRM XX38), NOVCY; *  CAR = 1
+  BC  OV, U36← 37B,(BRM XX36), NOVCY; *  OV = 1
+  BC  M940, U35← 43B,(BRM XX35), NOVCY; *  M940 = 1
+  BC  A, U48← 33B,(BRM XX48), NOVCY; *  A = 1
+  BC  B, U34← 34B,(BRM XX34), NOVCY; *  B = 1
+  BC  C, U40← 35B,(BRM XX40), NOVCY; *  C = 1
+  BC  D, U39← 47B,(BRM XX39), NOVCY; *  D = 1
+  BC  ST, U50← 62B,(BRM XX50), NOVCY; *  R0[2] OR A = 1 OR B = 1 OR
+                                        *   D = 1
+  BC  AORB, U41← 51B,(BRM XX41), NOVCY; *  A = 1 OR B = 1
+  BC  Z[3]#R0=LAX, U45← 55B,(BRM XX45), NOVCY;
+  BC  INTRPT, U16← 41B,(BRM XX16), NOVCY;
+  BC  STINST, U44← 54B,(BRM XX44), NOVCY;
+  BC  R0[13:23]=0, U46← 56B,(BRM XX46), NOVCY; *  NOT(R0[13] OR....R0[23])
+  BC  OVFLW, U47← 57B,(BRM XX47), NOVCY;
+  BC  CARRY, U49← 61B,(BRM XX49), NOVCY;
+  BC  MULT, U51← 63B,(BRM XX51), NOVCY; *   R0[0] EQV CARRY
+  BC  INTRPT1, U52← 64B,(BRM XX52), NOVCY; *  INTRPT AND NOT STEP
+  BC  NZ[15], U53← 7B,(BRM XX53), NOVCY; *  Z[15] = 0
+  BC  NPROCEED, U55← 67B,(BRM XX55), NOVCY; *
+  BC  SPANL, U56← 70B,(BRM XX56), NOVCY; *
+  BC  NSP, U57← 27B,(BRM XX57), NOVCY; *
+  BC  TO, U58← 72B,(BRM XX58), NOVCY; *
+  BC  M[0]=M[1], U59← 73B,(BRM XX59), NOVCY; *  M[0] = M[1]
+  BC  NPROTECT, U4← 30B,(BRM XX4);
+  BC  FPN, U76← 76B,(BRM XX76), NOVCY;
+*
+*  END OF DECLARATIONS
+           END;

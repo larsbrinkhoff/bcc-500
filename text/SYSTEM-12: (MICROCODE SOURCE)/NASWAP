@@ -1,0 +1,488 @@
+
+SWAPR: SSMREG←M, M←R0, GOTO SAVST IF BRKON;
+       STKP ← LSKPR,  RSTRQL,  GOTO GO;
+ILOOP: T2 ← Q ← P,  DGOTO IL0;
+       FETCH ABSP ← ABSP + 1,  P ← Q + 1;
+
+
+*  START FIELD LOGIC
+*
+*  CALCULATE DISPLACEMENT AND FETCH
+*  R2 - (RELATIVE) INSTRUCTION ADDRESS
+*  T1 - RETURN ADDRESS
+*  M - BR
+*  RETURNS:  M - AR
+*            T - R2
+*            Q - RIGHT-ADJUSTED FIELD MASK
+*            Z - DATA WORD CYCLED SO THAT FIELD IS RIGHT-ADJUSTED
+FLDO:  CALL INDEX ON T←M LCY 1< 0,Q←NADB;
+       GOTO *+2 IF YEVEN, T, Z←4B7;
+       Z←RELL;
+       M←M AND NOT Q+Z, Z←R2;
+       T←Z, Q←17B;
+       R2←ADR←M+Z AND Q, PREFETCH, Q←T;
+       T2←Z←Q LCY 20;
+       M←Q LCY 3;
+       M←M LCY 12, Q←37B;
+       Z←Z AND Q - M AND Q, Q←1,  HFETCH;
+       Q←Q LCH Z;
+       Q←Q LCL Z;
+       T2 ← Q - 1,  Z ← T2 + 1;
+       M ← M LCL Z,  Q ← T1;
+       Z ← M LCH Z;
+       DGOTO Q,  Q ← T2;
+       Q ← Q LCY 1 MRG 1,  M ← AR;
+
+
+*  ADD TO FIELD
+*
+ADF1:  M←M+Z;
+*  ROUTINE FOR FIELD STORES
+*  EXPECTS M - INFO TO STORE
+*          T,Q,Z, FROM FLDO
+ADF2:  M←M AND Q ! Z AND NOT Q, Q←T;
+*  RETURN WORD
+       Q←Q LCY 20, Z←23;
+       Z←Z-Q,  Q ← BOUND;
+       M←M LCH Z,  DGOTO STOR3;
+       M←M LCL Z, GOTO STOR2 ON Z ← R2 >= 0;
+
+
+LLN1:  Z ← Q ← Q LCY 1,  DGOTO *+1 IF Z>=0;
+       Z ← Q ← Q LCY 1,  DGOTO * IF Z>=0,  M ← T ← T + 1;
+       Q ← Q LCL 22,  GOTO *+1;
+       GOTO LLN2 ON XR ← M ← 0 - M < 0;
+       AR ← Q LCH 22,  GOTO ILOOP;
+LLN2:  XR ← 0,  Z ← R2,  DGOTO LLN3;
+       Q ← AR,  DGOTO SHFT1;
+
+
+*  PATCH SPACE
+ECHT1: STKP←Z-1, Q←NADB, GOTO CHTS0;
+       CALL PUNT;
+
+
+SICONT: SUBR ← ICONT,  GOTO STKLK;
+R2PNT: SSMREG ← M,  M ← R0;
+SAVST: STORE SAVER0;
+       M ← 0,  STORE BRKWAIT;
+       M←Z, STORE SAVEZ;
+       M←R1, STORE Z←SAVER0+1;
+       M←R2, IMS;
+       M←R3, IMS;
+       M←R4, IMS;
+       M←R5, IMS;
+       M←R6, IMS;
+       M←OS, IMS;
+       M←Q, STORE ADR+1;
+       Z←0, T←-NSKPAD, CALL XSKPD;
+
+*  STATE NOW STORED, WAIT FOR BREAKWAIT CELL TO BECOME NON-ZERO.
+
+       FETCH BRKWAIT;
+       GOTO *-1 ON M=0;
+
+*  NOW LOAD STATE
+
+LOADST:Z←0, T←-NSKPAD, CALL XSKPD;
+       FETCH SAVER0+1;
+       R1←M, CALL IAF;
+       R2←M, CALL IAF;
+       R3←M, CALL IAF;
+       R4←M, CALL IAF;
+       R5←M, CALL IAF;
+       R6←M, CALL IAF;
+
+*  LOAD OS BY DGOTO TRICK
+
+       DGOTO M, FETCH ADR+1, .VCY ← 1;
+       Q←M, FETCH ADR+1, CALL*+1;
+       Z←M, FETCH BREAK;
+       DGOTO M, FETCH SAVER0;
+       R0←M, M←SSMREG;
+
+*  INCREMENT ADR, FETCH
+
+IAF:   FETCH ADR+1, RETURN;
+
+*  EXCHANGE SCRATCHPAD WITH MEMORY
+*  T - - (NO OF REGISTERS TO EXCHANGE)
+*  Z - 0
+
+XSKPD: FETCH SAVESK, GOTO *+2;
+       FETCH ADR+1;
+       T1←SKZ;
+       SKZ←M, M←T1, DGOTO *-2;
+       INC(Z), RETURN ON INC(T)>=0, STORE;
+
+
+*  STACK LINK SUBROUTINE
+*  R6 - DEDICATED TO STACK POINTER (STKP)
+*  R5 - USED TO TRANSMIT SUBROUTINE ADDRESS AND FAIL ADDRESS (SUBR)
+*  R4 - CLOBBERED BY STLINK SUBROUTINE (T1)
+*  M,Q,Z UNAFFECTED
+*  LINK IS STACKED AT THE UPPER END OF SCRATCHPAD.
+STKLK: STKP ← Z,  Z ← STKP;
+       T1 ← Q,  Q ← OS;
+       SKZ ← Q,  Q ← SUBR,  CALL CAL1;
+RET:   STKP ← Z,  Z ← STKP + 1;
+       SUBR ← Q,  GOTO RETAPU ON Q ← SKZ < 0;
+       DGOTO Q,  Q ← SUBR;
+RET1:  Z ← STKP,  STKP ← Z;
+
+FRET:  SUBR ← Z,  Z ← SUBR;
+       DGOTO Z,  Z ← SUBR;
+       STKP ← STKP + 1;
+
+
+RETAPU: P ← NOT Q,  Q ← SUBR,  DGOTO RET1;
+       SKZ←0, DGOTO CALL3;
+
+
+CAL1:  DGOTO Q,  Q ← T1;
+       STKP ← Z - 1,  Z ← STKP;
+
+
+*  FAIL RETURNS OR DIRECTED GOTOS
+GQ:    GOTO Q;
+GZ:    GOTO Z;
+GM:    GOTO M;
+FRQ:   GRA(Q);
+FRZ:   GRA(Z);
+FRM:   GRA(M);
+FRA0:  GRA(FA0);
+FT1:GRA(T1);
+FT2:   GRA(T2);
+FT3:   GRA(T3);
+FT4:   GRA(T4);
+
+FT:    Z ← T,  GOTO GZ;
+
+
+*  PUNT CODE
+PNT:   SRQS2(2);
+       GOTO R2PNT;
+
+
+*      R0       R1       R2       R3       R4       R5       R6
+*      .        .        .        .        .        .        .
+*      ADR                NPTR             PPTR     SUBR     STKP
+
+*      CALL              SRET              FRET
+* M   UN0
+* Q   UN1                NADB
+* Z  FAIL ADDR       PTR TO NODE(NPTR)
+*  RETURN (BOTH NORMAL & FAIL):
+*      PPTR - PTR TO PREVIOUS NODE
+*      NPTR - PTR TO NODE (777777B ON FAILURE)
+
+FUNCTION(CHTSCH),UN0←M;
+          UN1←Q, OFFSET←DISP(CLP);
+       GOTO FRZ ON M OR Q = 0;
+       SUBR ← Z,  CALL CHTHSH;
+       PPTR←M,  Z ← DISP(CLP),  GOTO *+2;
+CHTS0:    PPTR←M←NPTR, Z←DISP(CLP);
+          FETCH M AND NOT Q+Z;
+*  NOTE:  WILL ATTEMPT TO FETCH 777777B ON FAILURE OF SUBROUTINE
+          ENDL (FRET, FETCH Z←NPTR←M AND NOT Q), Q←UN0;
+          GOTO *+2 ON M EOR Q#0, INC(ADR);
+          FETCH, Q←UN1, DR;
+          GOTO CHTS0 ON M EOR Q#0, Q←NADB;
+
+
+*  ENTER ENTRY IN CHT
+*      R0       R1       R2       R3       R4       R5       R6
+*      .        .        .        .        .        .        .
+*      ADR     NODE                                 SUBR     STKP
+
+*      CALL              SRET              FRET
+* M   UN0
+* Q  UN1
+* Z  - PTR TO CHT ENTRY
+* EW2  DISK ADDR
+* RETURN:  NODE - PTR TO ENTRY
+
+        FUNCTION (ECHT);
+          NODE←Z, Z←*+2, CALL CHTSCH;
+       Z←STKP, T←*+1, GOTO ECHT1;
+       M ← UN0;
+       HSTORE NODE;
+       M ← UN1;
+       STORE ADR+1;
+       M ← EW2, Q ← NKAD;
+       EW2←M←M AND NOT Q, STORE ADR+1;
+       T ← PPTR,  Z ← DISP(CLP), DR;
+       T1 ← NODE,  Q ← NADB,  CALL ECHT0;
+
+
+*  PUT PAGE ON FREE CORE LIST
+*  Q - PTR TO CHT ENTRY FOR PAGE
+*  ASSUMES FCLP(Q) = 0 IFF NOT ON FCL ALREADY
+
+FUNCTION(PPFCL);
+       T ← Q,  Z ← DISP(FCLP);
+       FETCH Q + Z,  Q ← NADB;
+       R ON M AND NOT Q # 0,  Q ← T;
+       MIN(NFCL);
+       M←FCL, DR;
+       OFFSET←DISP(FCLP), CALL SEL;
+
+
+*  CHT HASHING ROUTINE
+*  M - UN0
+*  Q - UN1
+*  RETURN:  ADR,M - PTR TO CHT1 ENTRY (-DISP(CLP))
+*           Q - NADB
+
+CHTHSH: T1 ← Q ← M EOR Q,  M ← 132B3;
+       M ← M EOR Q LCY 8,  Z ← -DISP(CLP)+CHTB;
+       M ← M EOR Q LCY 8 MRG 777774B2,  Q ← T1, .TCY,  DRETURN;
+       M ← M EOR Q + Z,  Q ← NADB;
+
+
+*  DHT HASHING ROUTINE
+*  M - DISK ADDRESS ONLY
+*  RETURN:  M - INDEX INTO DHT
+*           T - CONTAINS DISK ADDRESS
+*           Q - CONTAINS SIZE OF DHT (SZDHT)
+
+DHTHSH:T ← M,  Q ← NKAD;
+       M ← M AND NOT Q RCY 12,  Q ← T;
+       M ← M EOR Q,  Q ← 3152B;
+       M ← M EOR Q,  Q ← 7776B4;
+       M ← Z ← M AND NOT Q,  Q ← SZDHT;
+DHTH0: RETURN ON Z ← Z - Q < 0;
+       M ← Z,  GOTO DHTH0;
+
+
+*  DELETE CHT ENTRY
+*      R0       R1       R2       R3       R4       R5       R6
+*      .        .        .        .        .        .        .
+*      ADR              NPTR               PPTR     SUBR     STKP
+
+*      CALL              SRET              FRET
+* M   UN0
+* Q  UN1                NADB
+* Z  FAIL ADDR      PTR TO NODE
+
+        FUNCTION (DCHT);
+          FA0←Z, Z←FRA0, CALL CHTSCH;
+          M ← Z,  Z←DISP(CLP);
+          FETCH M+Z;
+          PPTR←M, M←PPTR;
+          FETCH M+Z, Z←PPTR, DR;
+          M←M AND Q ! Z AND NOT Q, STORE, Z←Q←NPTR;
+
+
+*  CLEAR CHT ENTRY
+*  Q- PTR TO CHT ENTRY
+*  RETURN Q, Z TO PTR TO CHT ENTRY
+*  T1 PTR TO FREE CORE LIST POINTER
+CCHTE: PREFETCH Q, Z←2;
+       PREFETCH M←Q+Z;
+       PREFETCH M+Z;
+       HSTORE T←Q,  M ← 0;
+       STORE ADR+1;
+       HSTORE ADR+1;
+       HFETCH ADR+1, Q←MASK(PG);
+       M←M AND Q, STORE;
+       HFETCH T1←ADR+1, Q←NADB;
+       M←M AND NOT Q, HSTORE, DRETURN,  Q ← Z ← T;
+       M←0, STORE ADR+1;
+
+
+*  GET FREE CORE PAGE
+
+*      R0       R1       R2       R3       R4       R5       R6
+*      .        .        .        .        .        .        .
+*      ADR      FCNTR    FCPTR                      SUBR     STKP
+
+*  Q - FAIL ADDRESS
+*  RETURN:  Q - PTR TO CHT ENTRY
+FUNCTION(GFC), FA0←Q;
+       PRO(2);
+          FCNTR←-DISP(FCLP)+FCL,  GOTO GFC0;
+GFC5:  M ← FCPTR,  Q ← FCL,  CALL REL;
+       ADR ← Q + Z,  M ← NPTRWD;
+       Q ← NADB;
+       M ← M AND Q,  STORE;
+       MDC(NFCL),  Q ← FCPTR;
+       FCNTR ← Q - Z;
+GFC0:     FCPTR←M←FCNTR, Z←DISP(FCLP);
+          ADR←M+Z, FETCH,  Q ← NADB;
+          ENDL(GFC6,FCNTR←Q←M AND NOT Q);
+       OFFSET ← Z,  Z ← DISP(SCH);
+       FETCH Q + Z,  Z ← GFC5,  DGOTO TESTF;
+*  TEST SCHED COUNT DIRTY BIT AND SOME BITS OF THE STATUS FIELD
+       T ← Q,  Q ← MASK(SCH) + 67B6 + 34B2,  DGOTO *+1;
+          Z←GFC5;
+          M←FCPTR, Q←FCL,  CALL REL;
+       MDC(NFCL);
+          ADR ← Q+1,  Z ← *+2,  FETCH;
+          Q←M, FETCH PEPW, CALL DCHT;
+       M←UN0;
+       Q←UN1;
+       GOTO *+2 ON M OR Q=0;
+       CLEARMAP;
+          Q←PEPW, CALL CCHTE, UNPRO(2);
+       M←0, STORE T1,R;
+GFC6:  UNPRO(2),  FRA(FA0);
+
+
+*  SEARCH DHT FOR DISK ADDRESS
+*  M - DISK ADDRESS
+*  Z - FAIL ADDRESS
+*  RETURN:  ADR - PTR TO ENTRY IN DHT1
+*           Z - PTR TO ENTRY IN DHT2
+*           DHT3,M - DISK ADDRESS WORD FROM CORE
+
+*  FALI RETURN:
+*  FAILS IF DISK ADDRESS IS 0,  M = 0
+*  FAILS IF TABLE FULL,  M = -1
+*  FAILS IF ENTRY NOT IN DHT
+*                ADR - PTR TO 0 IN DHT1
+*                Z - PTR TO ENTRY IN DHT2
+
+FUNCTION(DHTSCH),  FA0 ← Z;
+       GOTO FRA0 ON M = 0;
+       CALL DHTHSH;
+       Z ← DHT1B,  T1 ← 0-Q;
+       ADR ← M + Z,  Q ← DHT2B;
+       M ← M LCY 1;
+       Z ← M + Q,  FETCH;
+       Q ← T MRG NKAD,  T ← Q;
+
+DHTS0: GOTO FRA0 ON M ← DHT3 ← M = 0, M ← NKAD;
+       GOTO DHTS2 ON M EOR Q = 0,  M ← T;
+       Z ← ADR + 1,  ADR ← Z + 1;
+*  NOTE:  ASSUMES DHT2 IMMEDIATELY FOLLOWS DHT1
+       GOTO DHTS1 ON Z - M >= 0;
+       DGOTO DHTS0 ON INC(T1) < 0;
+       ADR ← Z,  Z ← ADR+1,  FETCH;
+       FRA(FA0),  M ← -1;
+DHTS1: ADR ← DHT1B,  GOTO DHTS0,  FETCH;
+DHTS2: M ← DHT3, R;
+
+
+
+*  MAKE DHT ENTRY.  FAIL IF IT ALREADY EXISTS, OR DHT FULL
+*  FAIL RETURN:  ADR - PTR TO ENTRY IN DHT1
+*                Z - PTR TO ENTRY IN DHT2
+*  RETURN:  Q - PTR TO ENTRY IN DHT1
+*           Z - PTR TO ENTRY IN DHT2
+*  CALL:
+*  Z - FAIL ADDRESS
+*  ENTRY IN DHT0,DHT1,DHT2 IN SCRATCHPAD
+
+
+DFUNCTIONX(EDHT), M←DHT0;
+       T2←Z, Q←NKAD;
+       CALL DHTSCH ON M←M AND NOT Q # 0, Z←EDHT0;
+       FRA(T2);
+EDHT0: GOTO *-1 ON NOT M = 0,  Q ← ADR;
+       M ← DHT0,  STORE;
+       M ← DHT1,  ADR ← Z,  HSTORE,  DR;
+       M ← DHT2,  ADR ← Z + 1,  STORE;
+
+
+*  DELETE DHT ENTRY
+*      R0       R1       R2       R3       R4       R5       R6
+*      .        .        .        .        .        .        .
+*      ADR     T4     T3                            SUBR     STKP
+
+*      CALL              SRET              FRET
+* M   DISK ADDR
+* Q   
+* Z   FAIL ADDR
+
+        FUNCTION (DDHT);
+          T2←Z, Z←FT2, CALL DHTSCH;
+       M ← 0,  T3 ← ADR+1,  STORE,  DGOTO DDHT1;
+       T4 ← Z + 1;
+DDHT0:    R ON M=0, Q←T4 + 1;
+          DHT0←M, M←0, STORE;
+          HFETCH Q, Q←ADR + 1;
+          DHT1←M, HFETCH T4 ← ADR + 1;
+          DHT2←M;
+          T3 ← Q,  Z ← PNT,  CALL EDHT;
+DDHT1:    Z ← ADR←T3, HFETCH;
+       Q ← DHT2B,  DGOTO DDHT0;
+       GOTO *+1 ON Z - Q >= 0;
+*  OVERFLOW INTO DHT2,  RESTORE T3 AND T4 TO POINT TO THE
+*  BEGINNING OF DHT
+       ADR ← T3 ← DHT1B,  HFETCH,  DGOTO DDHT0;
+       T4 ← Q - 1;
+
+
+*  APPEND ENTRY ONTO LIST (TYPE 2)
+*  M - HEADER
+*  Q - PTR TO ENTRY
+*  OFFSET - OFFSET OF PTR
+
+*      R0       R1       R2       R3       R4       R5       R6
+*      .        .        .        .        .        .        .
+*      ADR                        OFFSET   T1       T        STKP
+
+AELEQP:        OFFSET ← DISP(EQP);
+AEL:      Z←T1←Q, Q←NADB;
+          ADR←M AND NOT Q+1,  FETCH;
+       T ← M;
+       M ← M AND Q ! Z AND NOT Q,  STORE,  Z ← OFFSET;
+ECHT0: M ← T,  T ← LADB,  DGOTO AEL0;
+       ADR ← M AND NOT Q + Z,  HFETCH,  Z ← T1;
+
+
+*  STACK ENTRY ON LIST (TYPE 2)
+*  M - HEADER
+*  Q - NODE
+*  OFFSET - OFFSET OF PTR
+
+*      R0       R1       R2       R3       R4       R5       R6
+*      .        .        .        .        .        .        .
+*      ADR                        OFFSET            T        STKP
+
+SELEQP:        OFFSET← DISP(EQP);
+SEL:      T←Q, Q←NADB;
+          ADR←M AND NOT Q, HFETCH;
+          DENDL(SEL1, T←M), Z←T;
+AEL0:     M←M AND Q ! Z AND NOT Q, STORE, Z←OFFSET;
+SEL0:     ADR←M AND NOT Q+Z, Z←T, HFETCH,DRETURN;
+          M←M AND Q ! Z AND NOT Q, STORE;
+SEL1:     INC(ADR), STORE, GOTO SEL0;
+
+
+*  REL-REMOVE ENTRY FROM LIST (TYPE 2)
+*  M - PTR TO ENTRY PRECEEDING THE ENTRY TO BE REMOVED
+*  Q - PTR TO LIST HEADER
+*  Z - FAIL ADDRESS
+*  OFFSET - OFFSET OF PTR
+*  RETURN: M,Q,PEPW - PTR TO ENTRY REMOVED
+*          PEPA - PTR TO OF POINTER WORD OF PREVIOUS NODE
+*                 (PTR TO PREVIOUS NODE + OFFSET)
+
+*      R0       R1       R2       R3       R4       R5       R6
+*      .        .        .        .        .        .        .
+*      ADR      PEPW     PEPA      OFFSET   HEADER  SUBR,T   STKP
+*  Q-PTR TO HEADER
+RTEQP: OFFSET ← DISP(EQP);
+RTE:      SUBR←Z, Z←OFFSET, DGOTO REL2;
+             M←Q-Z;
+RELEQP:        OFFSET ← DISP(EQP);
+REL:      Z←OFFSET, SUBR←Z;
+REL2:     HEADER←Q, Q←NADB;
+          PEPA←ADR←M AND NOT Q+Z, FETCH;
+          ENDL(FT, PEPW←M);
+          ADR←M AND NOT Q+Z, FETCH;
+          ENDL(REL1,NPTRWD ← M);
+REL0:     Z←PEPW;
+          ADR←PEPA, M←M AND NOT Q ! Z AND Q, STORE;
+          M←PEPW, DRETURN;
+          M←PEPW ← Q←M AND NOT Q, Z←OFFSET;
+
+REL1:     T←M, M←PEPA;
+          ADR←HEADER+1, M←M-Z, STORE, DGOTO REL0;
+          M←T;
+
+
+@      NOLIST EXT
+       END;

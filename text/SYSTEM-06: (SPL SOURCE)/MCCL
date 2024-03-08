@@ -1,0 +1,385 @@
+       COMMON SCCL';
+       INCLUDE COMM,STDEC,STST,SCDEC,SGST,SDOPS;
+
+************
+*   SPL    *
+* COMPILER *
+* CLEANUP  *
+************
+
+
+
+
+***
+*** YCFD(N)
+***
+* CREATE A FUNCTION DESCRIPTOR FOR THE FNT ENTRY WITH TN N
+* LEAVE THE FNT SSELECTED
+* RETURN THE ADDRESS OF THE FUNCTION DESCRIPTOR
+***
+*** SCLFD(N)*
+***
+* SAME AS YCFD, BUT IN CURRENT IB
+
+
+
+       PROGRAM YCFD;
+       INCLUDE SCCL';
+
+       DP TP23,SP23,A23;
+
+FUNCTION YCFD(TN23);
+       SSELECT(1);
+       GOTO CFD1;
+ENTRY SCLFD(TN23);
+CFD1:  SSPTR(TN23:TP23,SP23);
+       A23←TAD(2)+GBASE;
+       PUT(A23+FNEWP,U(1,IWTRAP)+TN23);
+       SP23.SYVAL←A23←A23-GBASE;
+       RETURN A23;
+
+***
+*** YGFD(N)
+***
+* CREATE A FUNCTION DESCRIPTOR, IF NECESSARY,
+* FOR THE FUNCTION WHOSE TN IN THE CURRENT IB IS N
+* (IF N<0, -N IS THE FNT TN)
+* RETURN THE ADDRESS OF THE FUNCTION DESCRIPTOR,
+* AND THE TWO POINTERS RETURNED BY SSPTR
+* (IF N<0, RETURN THE ADDRESS OF THE FD, THE TYPE, AND THE DTYPE)
+* IF THE FUNCTION IS NOT IN THE FNT, DO NOT
+* INSERT IT, BUT TURN ON TKIMPL IN THE CURRENT IB
+
+
+
+       PROGRAM YGFD;
+       INCLUDE SCCL';
+
+       DI BTN24,T24,DT24,FTN24,W24;
+       DP TP24,SP24;
+
+FUNCTION YGFD(TN24);
+       BTN24←ICGTN;
+       IF TN24<0 DO;
+          SSELECT(1);
+          FTN24←-TN24;
+       ELSE DO;
+          FTN24←SSFGS(TN24,1,0);
+       ENDIF;
+       IF FTN24 DO;
+            SSPTR(FTN24:TP24,SP24);
+            IF SP24.FSIFN DO;
+                 W24←IQ(FTN24);
+            ELSEIF (W24←SP24.SYVAL)<0 DO;
+                 W24←IQ(W24);
+            ELSEIF W24=0 DO;
+                 W24←YCFD(FTN24);
+            ENDIF;
+       ELSE DO;
+            SSELECT(BTN24);
+            SSPTR(TN24:TP24,SP24);
+       ENDIF;
+       T24←TP24.TKTYPE;
+       DT24←SP24.SYDTYPE;
+       SSELECT(BTN24);
+       RETURN (W24,T24,DT24) IF TN24<0;
+       SSPTR(TN24:TP24,SP24);
+       TP24.TKTYPE←T24;
+       TP24.TKPARAM←1;
+       TP24.TKGLOB←1;
+       IF FTN24=0 DO;
+            TP24.TKIMPL←1;
+            W24←SCLFD(TN24);
+       ENDIF;
+       SP24.SYMODE←SMFUNC;
+       SP24.SYDTYPE←DT24;
+       SP24.SYVAL←W24;
+       RETURN (W24,TP24,SP24);
+
+***
+*** FZAP(N)
+***
+* REMOVE ENTRIES TO THE IB WITH TN N FROM THE FNT,
+* ALSO REPLACE FUNCTION DESCRIPTORS WITH TRAPS
+
+
+
+       PROGRAM FZAP;
+       INCLUDE SCCL';
+
+       DI I27,BTN27;
+       DP TP27,SP27,P27;
+
+FUNCTION FZAP(N27);
+       BTN27←ICGTN;
+       SSELECT(1);
+       FOR I27←1 TO ICLTT DO;
+            SSPTS(I27:TP27,SP27//FZAP1);
+            IF SP27.FSGTN=N27 DO;
+                 SP27.FSGTN←0;
+                 IF (P27←SP27.SYVAL)>0 DO;
+                      P27←P27+GBASE;
+                      PUT(P27+FNEWP,U(1,IWTRAP)+I27);
+                 ENDIF;
+            ENDIF;
+FZAP1: ENDFOR;
+       SSELECT(BTN27);
+       RETURN;
+
+***
+*** TIREL()
+***
+* RESET VARIABLES IN THE CURRENT IB BEFORE RECOMPILATION
+
+
+
+       PROGRAM TIREL;
+       INCLUDE SCCL';
+
+       DI I29,V29,T29,W29,X29,M29;
+       DP TP29,SP29,P29;
+
+FUNCTION TIREL();
+       FZAP(ICGTN) IF ICTYPE=IBTFN;
+       FOR I29←1 TO ICLTT DO;
+            SSPTS(I29:TP29,SP29//TSIRX);
+            IF TP29.TKSYM DO;
+                 V29←SP29.SYVAL;
+                 T29←(TP29.TKTYPE IF (M29←SP29.SYMODE)=SMVALUE
+               ELSE TMTTAB[M29]);
+                 IF T29=TTMAC DO;
+                      P29←STPTR(V29);
+                      SRSYM(P29.PTSIZE,V29);
+                 ELSEIF ICTYPE=IBTCB AND SP29.SYEQUIV=0
+               AND TP29.TKGLOB=0 AND V29$INSTAG=ATD DO;
+                      V29←V29$INSGD;
+                      IF V29>=BWGA AND V29<EWGA
+                    OR V29>=BOWGA AND V29<EOWGA DO;
+                           TRW(TTLTAB[T29],V29);
+                      ELSEIF V29>=BRSGA AND V29<ERSGA DO;
+                           P29←GBASE+V29;
+                           W29←GET(P29);
+                           IF W29$IWTYPE=IWTSTR DO;
+                                X29←GET(P29+FDISP(SU));
+                                X29←X29$SIWWA-(W29←W29$SIWWA);
+                                W29←W29+1;
+                           ELSEIF W29$IWTYPE=IWTARR AND (X29←
+                         GET(P29+FDISP(AIWADDR)))$IWTAG=ATX DO;
+                                M29←1-W29$AIWORG;
+                                M29←((W29$AIWLLIM+M29)*
+                              (W29$AIWLMULT+1) IF W29$AIWLEB
+                              ELSE (W29$AIWNLIM+M29)*
+                              (W29$AIWNMULT+1));
+                                W29←X29$IWGD;
+                                X29←M29;
+                           ELSE DO;
+                                GOTO TSIRD;
+                           ENDIF;
+                           W29←W29-GBASE;
+                           TRW(X29,W29) IF W29>=BWGA AND W29<EWGA
+                         OR W29>=BOWGA AND W29<EOWGA ELSE
+                         TRD(X29,W29) IF W29>=BRSGA AND W29<ERSGA;
+TSIRD:                     TRD(TTLTAB[T29],V29);
+                      ELSEIF V29>=20B AND V29<=FRMASK(BXBASE)/2
+                    DO;* FIELD DESCRIPTOR
+                           TFSSEQ(1,LGBIT,V29,1);
+                      ENDIF;
+                 ENDIF;
+                 SP29.SYVAL←0;
+                 SP29.SYFLAGS←0;
+                 TP29.TKFLAGS←U(1,TKSYM)$TKFLAGS;
+            ENDIF;
+TSIRX: ENDFOR;
+       RETURN;
+
+***
+*** TSINIT(L,R)
+***
+* INITIALIZE THE CODE OUTPUT MACHINERY.  THE GENERATED CODE
+* IS DESTINED FOR RELATIVE ADDRESS L IN THE CURRENT FUNCTION
+* RESET THE FUNCTION IFF R#0
+* RETURN NO VALUE
+
+
+
+       PROGRAM TSINIT;
+       INCLUDE SCCL';
+
+
+FUNCTION TSINIT(L19,R19);
+       IF R19 DO;
+            ICBA.IBBLR←3;
+            NORCSIZE←8;
+            FRETLR←INITSR←INITSF←NRETVAL←-1;
+            CFLOC←FLNORMAL;
+            ICGSP.GSFIXED←0;
+       ENDIF;
+       CURLR←BASLR←MAXLR←ICBA.IBBLR;
+       IF R19 DO;
+          LITLOC←0;
+       ELSE DO;
+          LITLOC←-ICLLIT;
+          UMOVE(ELITBUF-ICLLIT,@ICCODE[0],ICLLIT);
+       ENDIF;
+       RELORG←RELLOC←L19;
+       CFLAGS←U(1,CNDPF)+U(1,CFTF);
+       LASTB←RELLOC;
+       ABSLOC←-1;
+       RETURN IF R19=0;
+       TIREL();
+       SBCLEAR();
+       ICGSP.GSNEWL←ICNEWL←ICNEWL AA NN FMASK(FDCPR);
+       RETURN;
+
+***
+*** TSFIN(F)
+***
+* TERMINATE COMPILATION OF FUNCTION OR STATEMENT
+* STORE AN EXTRA ZERO WORD IF F=1
+
+
+
+       PROGRAM TSFIN;
+       INCLUDE SCCL';
+
+       DP P15,TP15,SP15,Q15,E15;
+       DI D15,I15,F15,L15,NL15,T15,DT15,W15,X15;
+
+FUNCTION TSFIN(S15);
+       F15←ICGTN;
+* MOVE NEW IMPLICIT FUNCTIONS INTO FNT
+       FOR I15←1 TO ICLTT DO;
+            SSPTS(I15:TP15,SP15//TSF2);
+            IF TP15.TKIMPL DO;
+                 IF SP15.SYMODE=SMFUNC DO;
+                      W15←SP15.SYVAL;
+                      DT15←SP15.SYDTYPE;
+                      T15←TP15.TKTYPE;
+                      SSPTR(SSFGS(I15,1,1):TP15,SP15);
+                      TP15.TKTYPE←T15;
+                      SP15.SYDTYPE←DT15;
+                      SP15.SYVAL←W15;
+                      SSELECT(F15);
+                 ENDIF;
+            ENDIF;
+TSF2:  ENDFOR;
+       RETURN IF ICTYPE#IBTFN;
+       TSW(0) IF S15;
+       P15←A(ICCODE,0);
+       E15←P15+ICLCODE;
+       L15←0 IF (L15←-LITLOC-ICLLIT)<0;
+       NL15←ICNEWL;
+* MAKE ROOM FOR CODE IF NECESSARY
+       IF (D15←RELLOC-LITLOC)>ICLCODE DO;
+            X15←(CODEXP+100 IF CODEXP>0 AND CODEXP<=100 ELSE 100);
+            D15←D15*X15/100-ICLCODE;
+* CODE AREA FULL ?
+            CERR(52) IF CODETOP+D15>CODELIM;
+            UMOVE(P15+ICLCODE+D15,P15+ICLCODE,
+          CODETOP+RELLOC-RELORG-P15-ICLCODE);
+            ICGSP.GSLCODE←ICLCODE←ICLCODE+D15;
+            CODETOP←CODETOP+D15;
+            SSELECT(0);
+            FOR I15←1 TO ICLTT DO;
+                 SSPTS(I15:,SP15//TSF3);
+                 SP15.GSADDR←S15+D15 IF (S15←SP15.
+               GSADDR)>P15 AND I15#F15;
+TSF3:       ENDFOR;
+       ELSE DO;
+            D15←0;
+       ENDIF;
+* ADJUST ENTRY ADDRESSES IN FNT
+       SSELECT(1);
+       FOR I15←1 TO ICLTT DO;
+            SSPTS(I15:TP15,SP15//TSF1);
+            Q15←SP15.SYVAL;
+            IF Q15>0 AND ((S15←GET(Q15+FNEWP)$FDNEWP)>=P15
+          WHERE Q15←Q15+GBASE) DO;
+                 IF SP15.FSGTN=F15 DO;
+                      PUT(Q15+FNEWL,GET(Q15+FNEWL) AA
+                    FMASK(FDCPA) VV NL15);
+                      PUT(Q15+FNEWP,S15+L15);
+                 ELSE DO;
+                      PUT(Q15+FNEWP,S15+D15);
+                 ENDIF;
+            ENDIF;
+TSF1:  ENDFOR;
+       SSELECT(F15);
+       IF L15 DO;
+            UMOVE(P15+L15,P15,ICECODE+ICLLIT);
+            ICBA.IBLLIT←-LITLOC;
+            ICGTN←-1;
+            SSELECT(F15);
+       ENDIF;
+       ICBA.IBECODE←ICECODE←RELLOC;
+       ICBA.IBMLR←MAXLR;
+       UMOVE(A(ICCODE,RELORG+ICLLIT),CODETOP,RELLOC-RELORG);
+       UCLEAR(A(ICCODE,RELLOC+ICLLIT),0,ICLCODE-RELLOC-ICLLIT)
+             IF ICLCODE-RELLOC-ICLLIT>0;
+       UMOVE(P15,ELITBUF+LITLOC,-LITLOC);
+       RETURN;
+
+***
+*** TEINCLUDE(A)
+***
+* CODE GENERATOR FOR INCLUDE
+
+
+
+       PROGRAM TEINCLUDE;
+       INCLUDE SCCL';
+
+       DP TP99,SP99,BTP99;
+       DI TN99,GTN99,BTN99;
+
+FUNCTION TEINCLUDE(POINTER A99);
+       GTN99←ICGTN;
+       SSPTR(TN99←A99.TO1:TP99,SP99);
+* NOT A BLOCK NAME ?
+       CERR(79) IF TP99.TKSYM=0 OR (BTN99←
+   SSFGS(TN99,0,0))=0;
+       SSPTR(BTN99:BTP99,SP99);
+* INCLUDED BLOCK MUST PRECEDE INCLUDE STATEMENT ?
+       CERR(103) IF SP99.GSRECOMP;
+* NOT A BLOCK NAME ?
+       CERR(79) IF SP99.GSTYPE#IBTCB;
+       SSELECT(GTN99);
+       SBFI(BTN99);
+       RETURN RNOVAL;
+
+***
+*** TEEND(A)
+***
+* CODE GENERATOR FOR END
+
+
+
+       PROGRAM TEEND;
+       INCLUDE SCCL';
+
+
+FUNCTION TEEND();
+       MAXLR←MAXLR+(MAXLR A' 1);
+       IF ICTYPE=IBTFN DO;
+            IF ICGSP.GSFIXED=0 DO;
+                 IF ICGSP.GSASGL DO;
+                      TRW(ICBA.IBMLR,ICNEWL$FWNEWL-GBASE);
+                      ICGSP.GSASGL←0;
+                 ENDIF;
+                 ICNEWL$FWSTK←1;
+                 ICNEWL$FWNEWL←MAXLR;
+            ELSEIF ICGSP.GSASGL DO;
+                 IF MAXLR>ICBA.IBMLR DO;
+                      TRW(ICBA.IBMLR,ICNEWL$FWNEWL-GBASE);
+                      ICNEWL$FWNEWL←TAW(MAXLR);
+                 ENDIF;
+            ELSEIF ICNEWL$FWSTK DO;
+                 ICNEWL$FWNEWL←TAW(MAXLR);
+                 ICNEWL$FWSTK←0;
+                 ICGSP.GSASGL←1;
+            ENDIF;
+            ICGSP.GSNEWL←ICNEWL;
+            TSW(U(ZHLT,INSOP)+IQ(-RELLOC));
+       ENDIF;
+       TSFIN(0);
+       RETURN RNOVAL;

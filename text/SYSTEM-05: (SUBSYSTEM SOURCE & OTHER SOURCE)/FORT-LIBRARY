@@ -1,0 +1,1792 @@
+ FILE
+LBEND  DATA    33266555B       END OF LIBRARY
+*
+*MESSAGES
+MSG1   ASC     '$FORTRAN LIBRARY MAINTENANCE (TYPE "H" FOR'
+       ASC     ' LIST OF COMMANDS)/'
+MSG2   ASC     '$FILE CANNOT BE OPENED/'
+MSG3   ASC     '$END-OF-FILE ENCOUNTERED, LIBRARY END ASSUMED/'
+MSG4   ASC     '$OPERATION COMPLETE/'
+MSG5   ASC     '$NAME NEVER FOUND/'
+MSG6   ASC     ' FROM FILE /'
+MSG7   ASC     '$INPUT FILE /'
+MSG8   ASC     '$OUTPUT FILE /'
+MSG9   ASC     ' PROGRAM NAME /'
+MSG10  ASC     '+/'
+MSG11  ASC     ' MAX OF 6 CHARACTERS TERMINATED BY "."$/'
+MSG12  ASC     '$I             INSERT'
+       ASC     '$D             DELETE'
+       ASC     '$L             LIST'
+       ASC     '$H             HELP'
+       ASC     '$F             FINISHED'
+       ASC     '$/'
+*
+*TEMPORARY STORAGE
+
+IPTYPE BSS     1               TYPE OF INSERTED SUBPROGRAM (FIRST WORD)
+NAME1  BSS     1
+NAME2  BSS     1
+NAMET  ASC     '$/'            NAME STRING TERMINATOR
+FN1    ZRO     0               FILE NAME
+FN2    ZRO     0
+FN3    ZRO     0
+PFN1P ZRO      FN1P,4
+FN1P   BSS     2
+FN1S   BSS     20
+PFN2P ZRO      FN2P,4
+FN2P   BSS     2
+FN2S   BSS     20
+
+
+*1ST 5 WORDS OF NEXT OLD SPROG
+W1     BSS     1
+W2     BSS     1
+W3     BSS     1
+W4     BSS     1
+W5     BSS     1
+
+
+
+
+*LINKS
+LNXWRD BSS     1
+
+
+
+*FLAGS
+FDEL   BSS     1
+FINS   BSS     1
+FLIST  BSS     1
+FNAME  BSS     1
+FOUND  BSS     1
+
+
+
+
+
+
+**********************************************************
+*****   WIO   ***** READ AND TYPE OCTAL WORDS
+OPEN   CLEAR
+       BRS     15
+       BRS     10
+       STA     INFLE
+WIO1   WIO     INFLE
+       SKE     =27657537B
+       BRU     WIO5
+EOF    ZRO     0
+WIO5   SKE     TEST
+       BRU     WIO10
+BOMB   ZRO     0
+WIO10  ABC
+       LDX     =-8
+WIO15  CLA
+       LSH     3
+       ADD     =20B
+       CIO     =1
+       BRX     WIO15
+       TCO     =155B
+       TCO     =152B
+       BRU     WIO1
+INFLE  BSS     1
+TEST   ZRO     0               TEST WORD
+       END
+LS     IDENT     940 FORTRAN II LIBRARY SYMBOLICS
+
+***********************
+*D I R E C T O R Y
+*ALOG 
+*ATAN 
+*EXP 
+*SQRT 
+*POWER
+*ABS
+*IABS
+*FLOAT
+*IFIX
+*AINT
+*SIGN
+*ISIGN
+*AMOD
+*MOD
+*MAX (AMAX,MAX0,MAX1,AMIN0,AMIN1,MIN0,MIN1)
+*DIM
+*IDIM
+*LOCF
+*IF
+*EXIT
+*SIN (COS)
+*IPOSIT
+*ISIZE
+*EOF
+*TIME
+*FORM
+
+***********************
+
+
+
+
+ALOG   IDENT              FLOATING POINT LOGARITHM
+*
+$ALOG  ZRO     RETURN
+       STX     TX
+       EAX*    E0IND
+       LDA     1,2
+       LDB     0,2
+       SKG    =0             IS ARGUMENT LESS THAN OR EQUAL TO
+       BRU     ERR1         YES, ERROR EXIT
+       STP     LIB1 
+       LDA     LIB2
+       ETR     =77777000B
+       STA     LIB2            SAVE FRACTIONAL PART
+       LSH     39           MOVE EXP TO LEFT PART OF A
+       SUB     =00040000B       I=2-I/2
+       ROV
+        LDX     =8
+       NOD     8               NORMALIZE INTEGER PART
+       STA     LIB3 
+       STX     LIB4          SAVE INTEGER PART
+       LDP     LIB1
+       FAD     LG1
+       STP     LIB5         (X+LSQ2)
+       FSB     LG2     (X-1/SQ2)
+       FDV    LIB5 
+       STP     LIB5         Y=(X-L/SQ2)/(X+1/SQ2)
+       FMP     LIB5   
+       STP    LIB7         (Y**2)
+       FMP     C7      C7*(YSQ)
+       FAD     C5           C5+C7*(YSQ)
+       FMP     LIB7         (C5+C7*(YSQ))YSQ
+       FAD     C3           C3+(C5+C7*(YSQ))YSQ
+       FMP     LIB7         (C3+(C5+C7*(YSQ))YSQ)YSQ
+       FAD     C1           (C1+(C3+(C5+C7(YSQ)YSQ)YSQ))
+       FMP    LIB5         (CL+(C3+(C5+C7(YSQ)YSQ)YSQ)Y)
+       FAD    LIB3         I+LOG(FRAC.PART)
+       FMP     LN2          (I+LOG F)*LN2 = LN(X)
+       LDX     TX
+       BRR     RETURN
+*
+ERR1   SBRM*   ERROR           RETURN 0
+       BRU     ERR3
+       ASC     ' LOG FUNCTION HAS A NON-POSITIVE ARGUMENT /'
+ERR3   CLAB
+       LDX     TX
+       BRR     RETURN
+*
+*
+LG1    DATA    26501171B     .707106781187
+       DATA    46377000B 
+LG2    DATA    26501171B       1.414213562374 = SQ2
+       DATA    46377001B
+C1     DATA    27052435B
+       DATA    43752002B
+C3     DATA    36616111B
+       DATA    44322000B
+C5     DATA    22346604B
+       DATA    01441000B
+C7     DATA   33625645B
+       DATA    51342777B
+LN2    DATA    26134413B     .693147180578
+       DATA    76771000B
+*
+TX     BSS     1
+RETURN BSS     1
+LIB1   BSS     1
+LIB2   BSS     1
+LIB3   BSS     1
+LIB4   BSS     1
+LIB5   BSS     2
+LIB7   BSS     2
+*
+E0IND  EQU     0402B
+ERROR  EQU     0413B
+       END
+
+
+
+
+
+ATAN   IDENT         FLOATING POINT ARC TANGENT SUBROUTINE
+*
+*
+*
+$ATAN  ZRO     RETURN
+       STX     TX
+       LDA     EADR1
+       SUB     =1
+       SKE     E0ADR
+       BRU     ATAN2
+       LDX*    E0ADR           ONLY ONE ARGUMENT
+       LDA     1,2
+       LDB     0,2
+       LDX     =-1
+       STX     LIB5          SET LIB5
+       LDX     =0
+       STA     LIB8            SET LIB8
+       SKA     =40000000B
+       FMP     ATF7            YES, Y=-Y
+ATFA   STP     LIB1            SAVE/Y/
+       FAD      ATF7             Y-1
+       STA    LIB6         SET FADG 4
+       SKG     =0              IS (1-Y)<0
+       BRU     *+2             NO
+       BRU     ATFC         YES, Y>1
+       LDP     LIB1         (A,B)=U=Y
+       BRU     ATFD
+*  
+ATFC    LDP     C1           (A,B)=1
+       FDV    LIB1         (A,B)=U=1/Y
+ATFD   STP     LIB1
+       RCY     9
+       RSH     15           SIGN EXTENDED EXPONENT
+       SKG     =-4          IS U<1/16
+       BRU     ATFE         YES, DO SERIES APPROXIMATION
+       LDP     LIB1
+       FAD     ATF6         V IN LOW ORDER BITS OF AV IKA     =1
+       ADD     =1           ROUND V TO NEAREST 1/8
+       STA     LIB3
+       ETR     =00000777B
+       CAX                     SAVE TABLE LOOK UP NUMBER IN INDEX
+       XAB
+       ETR     =00000777B
+       XAB
+       LDA     LIB3
+       FSB     ATF6         NORMALIZE V
+       STP     LIB3         SAVE V
+       FMP     LIB1    (A,B)=UV
+       FAD     C1           (A,B)=1+UV
+       XMA     LIB1         (A,B)=U, (AFT1)=(1+UV)
+       XAB
+       XMA     LIB2
+       XAB
+       FSB     LIB3         (A,B)=U-V
+       FDV     LIB1    (A,B)=(U-V)/(1+UV)
+       STP     LIB1    SAVE (U-V)/(1+UV)
+ATFE    LDP     LIB1
+       FMP     LIB1
+       STP     LIB3
+*
+*      DO SERIES APPROXIMATION
+*
+       FMP     C7
+       FAD     C5
+       FMP     LIB3
+       FAD     C3
+       FMP     LIB3
+       FAD     C1
+       FMP     LIB1
+       FAD     ATFT,2         ADD ARCTAN (U-V)
+       SKN     LIB5        IS THERE ONLY ONE ARGUMENT
+       BRU     ATFE2        NO
+       SKN     LIB6        IS Y<1
+       BRU     *+2          YES
+       BRU     ATFG         NO
+       STP     LIB1         SAVE THETA
+       LDP     ATF4         PI/1
+       FSB     LIB1         THETA=PI/2-THETA
+ATFG   SKN     LIB8        IS Y<O
+       BRU     *+2
+       FMP     ATF7            THETA = -THETA
+       LDX     TX
+       BRR     RETURN
+*
+ATAN2  LDX*    E0ADR
+       LDA     1,2
+       LDB     0,2
+       STA     LIB8           SET LIB8
+       SKA     =40000000B     IS Y<0
+       FMP     ATF7            YES, Y=-Y
+ATFA2  STP     LIB1         SAVE /Y/
+       LDX     EADR1
+       LDX     0,2
+       LDA     1,2
+       LDB     0,2
+       LDX     =0
+       STX     LIB5        SET FADG 3
+        STA     LIB7        SET FADG 5
+       SKA     =40000000B         IS X<0
+       FMP     ATF7            YES, SET X=-X
+ATFB2  STP     LIB3         SAVE /X/
+       FSB    LIB1         X-Y 
+       STA    LIB6        SET FADG 4
+       SKA     =40000000B      IS (X-Y)<0
+       BRU     ATFC2        YES, X<Y
+       SUB     LIB1      
+       SKE     LIB1         IS Y=(X-Y)=0
+       BRU     *+2          NO
+       BRU     EXIT         YES, X=Y=0, EXIT
+       LDP     LIB1            SET (A,B)=Y
+       FDV    LIB3         DIVIDE BY X
+       BRU     ATFD         (A,B)=U=(Y/X)
+* 
+ATFC2  LDP     LIB3            (A,B)=X
+       FDV     LIB1            (A,B)=U=(X/Y)
+       BRU     ATFD            
+*
+ATFE2  SKN     LIB6        IS X<Y
+       BRU     ATFF2        NO
+       STP     LIB1         SAVE THETA
+       LDP     ATF4         PI/2
+       FSB     LIB1         THETA=PI/1-THETA
+ATFF2   SKN     LIB7        IS X<0
+       BRU     ATFG2        NO
+       STP     LIB1 
+       LDP     ATF5         PI
+       FSB     LIB1         THETA=IP-THETA
+ATFG2   SKN     LIB8        IS Y<0
+       BRU     EXIT 
+       FMP     ATF7            YES, THETA = -THETA
+EXIT   LDX     TX
+       BRR     RETURN
+*
+ATF4   DATA    31103755B     PI/2
+       DATA    24203001B
+ATF5   DATA    31103755B      PI
+       DATA    24203002B
+ATF6   DATA    20000000B
+       DATA    00000023B
+ATF7   DATA    40000000B     -1
+       DATA    00000000B
+*
+C1     DATA    20000000B     1
+       DATA    00000001B 
+C3     DATA    52525252B     1/3
+       DATA    52525777B 
+C5     DATA    31463146B     1/5
+       DATA    31463776B 
+C7     DATA    55555555B     1/7
+       DATA    55556776B
+*
+ATFT   DATA    00000000B     ARCTAN(0)
+       DATA    00000000B
+       DATA    37653352B      .124354994547
+       DATA    32531775B
+       DATA    37266727B     .244978663127
+       DATA    71131776B
+       DATA    26754145B     .358770670271
+       DATA    01711777B
+       DATA    35530634B     .463647609001
+       DATA    05304777B
+       DATA    21700056B     .558599315344
+       DATA    53676000B
+       DATA    24457076B     .643501108793
+       DATA    43115000B
+       DATA    27001237B     .718829999622
+       DATA    05361000B
+       DATA    31103755B     .785398163397
+       DATA    24210000B
+*
+TX     BSS     1
+RETURN BSS     1
+LIB1   BSS     1
+LIB2   BSS     1
+LIB3   BSS     2
+LIB5   BSS     1
+LIB6   BSS     1
+LIB7   BSS     1
+LIB8   BSS     1
+*
+E0ADR  EQU     0400B
+EADR1  EQU     0403B
+ERROR  EQU     0413B
+       END
+
+
+
+EXP    IDENT          FLOATING POINT EXPONENTIAL
+$EXP   ZRO     RETURN
+       STX     TX
+       EAX*    E0IND
+       LDA     1,2
+       LDB     0,2
+       FMP     LOGE         X=X(LOGE)
+       STP     LIB4 
+       RCY     9
+       RSH     15
+       SKG     =8             IS .X.>256
+       BRU     EXFA         NO
+       SKN     LIB4         YES, IS X<0
+       BRU     ERR          NO, ERROR: X TOO LARGE
+       CLAB                    YES, EXP(X)=0
+       BRU     EXFC 
+*
+EXFA   LDP     LIB4         X/LN2
+       FAD     EXF6         SEPARATE I AND F, ADD 1 TO I
+       STB     EXF2+1       STORE I+1
+       FSB     EXF6         SUBTRACT 1 FROM I. FLOAT RESULT
+       STP     LIB2
+       LDP     LIB4
+       FSB     LIB2         I+F-I=F
+       STP     LIB2
+       FMP     LIB2
+       STP    LIB4         F SQUARED
+       FAD     E
+       STP     LIB6         FSQ+E
+       LDA     EXF2+1       I+1 AT 15
+       RSH    9            I+1 AT 23
+       ETR     =00000777B     CLEAR ALL BUT LOW ORDER 9 BITS
+       STA     EXF2+1        (1/2)*2**(I+1)=2**I
+       LDP     D
+       FDV     LIB6         D/(FSQ+E)
+       FAD     C
+       FAD     LIB4
+       STP     LIB6         FSQ+C-D/(FSQ+E)
+       LDP     B
+       FDV     LIB6 
+       FSB     LIB2 
+       FAD     A
+       STA     LIB6
+       CLA
+       RCH     110B
+       SUB     EXF5
+       RCH     104B
+       STB     LIB7            (A-F-B/FSQ+C-D/(FSQ+E)))/2
+       LDP     LIB2
+       FDV     LIB6
+       FAD     ONE
+       FMP     EXF2         MULTIPLY BY 2**I
+EXFC   LDX     TX
+       BRR     RETURN
+*
+ERR    SBRM*   ERROR
+       BRU     ERR3
+       ASC     ' ARGUMENT OF EXPONENTIAL FUNCTION > 176/'
+ERR3   LDP     LGE
+       LDX     TX
+       BRR     RETURN
+* 
+LGE    DATA    37777777B
+       DATA    77777377B
+*
+EXF2   DATA    20000000B
+       DATA    00000000B
+EXF5   DATA    00000001B
+EXF6   DATA    30000000B
+       DATA    00001046B
+LOGE   DATA    27052435B     LOGE
+       DATA    45127001B
+ONE    DATA    20000000B     1.
+       DATA    00000001B
+A      DATA    25507713B     43.2808512267
+       DATA    56662006B
+B      DATA    44717116B
+       DATA    31671017B 
+C      DATA    30254757B     778.81042962
+       DATA    02415012B
+D      DATA    56676316B     -8769.5960924
+       DATA    63175016B
+E      DATA    27656522B
+       DATA    51520007B
+*
+TX     BSS     1
+RETURN BSS     1
+LIB1   BSS     1
+LIB2   BSS     2
+LIB4   BSS     2
+LIB6   BSS     1
+LIB7   BSS     1
+*
+E0IND  EQU     0402B
+ERROR  EQU     0413B
+       END
+
+
+
+
+SQRT   IDENT         SQRT - FLOATING POINT SQUARE ROOT ROUTINE
+*
+$SQRT  ZRO     RETURN
+       STX     TX
+       EAX*    E0IND
+       LDA     1,2
+       LDB     0,2
+       SKA     =-1             EXIT IF ZERO ARG
+       BRU     *+3
+       LDX     TX
+       BRR     RETURN
+       STA     LIB1
+       STB     LIB2
+       SKN     LIB1           TEST ARG NEG
+       BRU     ARGPOS       NO
+       SBRM*   ERROR
+       BRU     SQRT7
+       ASC     ' SQUARE ROOT OF A NEGATIVE NUMBER ATTEMPTED/'
+SQRT7  LDP     LIB1           
+       FMP     C4              YES - MAKE POSITIVE
+       STP     LIB1
+ARGPOS XAB 
+       LCY     4
+       ETR     =00000023B 
+       STA     LIB6
+       LDX     LIB6 
+       LDA     LIB1
+       MUL     C3,2            PERFORM CUBIC FIT
+       ADD     C2,2
+       MUL     LIB1 
+       ADD     C1,2
+       MUL     LIB1
+       ADD     C0,2 
+       STA     LIB4          LIB4 = ROOT
+       LDA    LIB2 
+       ETR     =00000777B
+       SKA     =00000400B
+       MRG     =00001000B
+       ADD     =1           AE + 1
+       RSH     1 
+       STA     LIB6          SAVE EXPON
+       STB     LIB5
+       LDA     LIB1
+       LDB     LIB2
+       SKN     LIB5
+       RSH     1
+       RSH     2
+       DIV     LIB4          AH,AL/ROOT
+       STA     LIB3
+       BAC 
+       DIV     LIB4          REMAINDER/ROOT
+       LCY     1 
+       ETR     =77777000B
+       MRG     LIB6          INSERT EXPON
+       XAB
+       ETR     =1
+       SKA     =1           TEST NEG
+       MRG     =-1
+       ADD     LIB4
+       ADD     LIB3
+       LDX     TX
+       BRR     RETURN
+*
+C0     DATA    3571347B     C40
+       DATA    4105632B     C41
+       DATA    4377337B     C42
+       DATA    4653532B     C43
+C1     DATA    24035556B     C50
+       DATA    22100301B     C51
+       DATA    20524702B     C52
+       DATA    17404074B     C53
+C2     DATA    64040313B     C60
+       DATA    67137522B       C61
+       DATA    71114033B     C62
+       DATA    72364432B     C63
+C3     DATA    4201570B     C70
+       DATA    2442454B     C71
+       DATA    1540204B     C72
+       DATA    1133522B     C73
+       DATA    2511007B     C00
+       DATA    2731406B     C01
+       DATA    3134614B     C02
+       DATA    3326443B     C03
+       DATA    16135622B     C10
+       DATA    14642160B     C11
+       DATA    13621520B       C12
+       DATA    12756406B     C13
+       DATA    67436343B     C20
+       DATA    71611227B     C21
+       DATA    73117403B     C22
+       DATA    74060542B     C23
+       DATA    3003710B       C30
+       DATA    1641433B      C31
+       DATA    1143077B     C32
+       DATA    652664B     C33
+C4     DATA    40000000B
+       DATA    00000000B
+*
+TX     BSS     1
+RETURN BSS     1
+LIB1   BSS     1
+LIB2   BSS     1
+LIB3   BSS     1
+LIB4   BSS     1
+LIB5   BSS     1
+LIB6   BSS     1
+E0IND  EQU     402B
+ERROR  EQU     413B
+       END
+
+
+
+
+POWER  IDENT         SYSTEM SUBROUTINE
+*
+XMP    OPD     14000000B,2
+STD    OPD     10700000B,2
+FLM    OPD     14100000B,2
+FFA    OPD     11500000B,2
+FLN    OPD     14700000B,1
+LDP    OPD     12500000B,2
+FLA    OPD     13100000B,2
+FLS    OPD     13500000B,2
+$240SYS ZRO    RTN                SAVE SBRM MARKER
+       STX     TX                SAVE INDEX
+       LDX     E0ADR
+       LDA*    1,2                 SECOND ARG INTO A
+       LDB*    E0ADR               FIRST ARG MODE INDIC.
+       SKB     FLTIND              TEST 1ST ARG INTEGER
+       BRU     FLT
+       LDB*    E0IND               I INTO A
+       SKG     ZERO                TEST N>0
+       BRU     NZERO
+NPOSS   CNA                         NEGATE N
+       RCH     410B
+       BRU     MULT
+       XMP*    E0IND               MULTIPLY R BY I
+MULT   BRX     *-1               TEST IF (N-1) MULTS
+EXIT   LDX     TX                REPLACE INDEX
+       BRR     RTN
+NZERO  SKA     ONES                TEST N=0
+       BRU     NNEG
+       LDA     ONE                 R=1
+       SKB     ONES                TEST I=0
+       BRU     EXIT              EXIT: I**0
+       BRU     ERROR             ERROR: 0**0
+NNEG   RCH     412B                N TO X, 0 TO B, R = I
+IM1    SKE     ONES                TEST I=-1
+       BRU     I1
+       BRU     MULT              (-1) ** (-N)
+I1     SKE     ONE                 TEST I = 1
+       BRU     IZERO
+       BRU     EXIT              EXIT: I**(-N)
+IZERO  XAB                         R=0, I INTO B
+       SKB     ONES                TEST I = 0
+       BRU     EXIT              EXIT: I ** (-N)
+       LDA     MAX               R = MAXIMUM INTEGER
+       BRU     ERROR             ERROR: 0 ** (-N)
+FLT    LDX     1,2
+       LDB     1,2                 QH INTO B
+       LDX*    E0ADR
+       SKB     TWOH              TEST QH FOR 2.0
+       BRU     NOT2
+       SKE     TWOL              TEST QL FRO 2.0
+       BRU     NOT2
+       LDA     1,2                 PH INTO A
+       LDB     0,2                 PL INTO B
+       FLM*    E0IND               MULTIPLY BY P
+       BRU     EXIT              EXIT: P ** 2
+NOT2   STB     QTEMP+1           SAVE QH
+       STA     QTEMP             SAVE QL
+       LDA     1,2                 PH INTO A
+       SKG     ZERO                TEST P > 0.0
+       BRU     PZERO
+       LDB     0,2                 PL INTO B
+LOGP   STD     PTEMP
+       FFA     PTEMP
+       SBRM    ALOG              LOG OF P
+       FLM     QTEMP             MULTIPLY BY Q
+       STD     PTEMP
+       FFA     PTEMP
+       SBRM    EXP                 R=EXP(Q*LOG((P))
+       BRX     NEGR
+       BRU     EXIT              EXIT: P ** Q
+NEGR   FLN                         NEGATE RESULT
+       BRU     EXIT              (-P) ** (ODD INTEGER)
+PZERO  SKE     ZERO                TEST P = 0.0
+       BRU     PNEG
+       SKB     FLONE+1           TEST 0 NEG OR ZERO
+       BRU     QPOS
+       SKB     ONES                TEST Q = 0.0
+       LDP     MAXFL             R = MAXIMUM FLOATING
+       FLA     FLONE             R = MAX OR 1.0
+ERROR   SBRM*   RTERR               ERROR: 0**(0 OR NEG)
+       BRU     EXIT               EXIT
+       ASC     ' ZERO RAISED TO A NONPOSITIVE POWER/'
+QPOS   CAB                         R = 0.0
+       BRU     EXIT              EXIT: 0.0 ** Q
+PNEG   LDP     QTEMP             Q INTO A,B
+        SBRM*   FIXL                TRUNCATE Q TO INTEGER
+       STA     TRUNQ
+       SBRM*   FLOATL              RECONVERT TO FLOATING
+       FLS     QTEMP
+       SKA     ONES                TEST Q=INTEGER
+       BRU     ERNEG
+       LDA     1,2                 PH INTO A
+       LDB     TRUNQ
+       SKB     ONE                 TEST Q EVEN
+       LDX     NEGX
+       LDB*    E0IND               PL INTO B
+NEGP   FLN
+       BRU     LOGP
+ERNEG  LDP*    E0IND               P INTO A,B
+       SBRM*   RTERR               ERROR: (-P) **Q
+       BRU     NEGP
+       ASC     ' NEGATIVE NUMBER RAISED TO A NONINTEGRAL POWER/'
+NEGX   DATA    40000B
+TWOL   DATA    00000002B
+TWOH   DATA    57777777B
+FLONE  DATA    1B
+       DATA    20000000B
+MAXFL  DATA    77777377B
+MAX    DATA    37777777B
+TX     BSS     1
+TRUNQ  BSS     1
+PTEMP  BSS     1
+       BSS     1
+QTEMP  BSS     1
+       BSS     1
+ZERO   EQU    414B
+ONE    EQU    415B
+SIGN   EQU    417B
+ONES   EQU    420B
+E0ADR  EQU    400B
+E0IND  EQU    402B
+FLTIND EQU     405B
+FIXL   EQU     231B
+FLOATL EQU     232B
+RTERR  EQU    413B
+RTN    ZRO     0
+       END
+
+
+ABS    IDENT
+ABSF   EXT     0
+*
+FLN    OPD     14700000B,1
+$ABS   ZRO     RTN
+       LDB*    E0IND               ARGUMENT
+       LDA*    E0ADR               MODE INDICATOR
+       SKA     FLTIND              TEST MODE OF ARGUMENT
+       BRU     FLT               OK, FLOATING
+       XAB                         INTEGER, COPY INTO A
+       SBRM*   FLOATL              FLOAT ARGUMENT
+       BRU     TEST              PROCEED AS IF ARGUMENT FLOATING
+FLT    MIN*    E0ADR
+       LDA*    E0IND               MOST SIGNIFICANT
+TEST   SKG     ONES                ARG>0
+       FLN                         NO, NEGATE
+       BRR     RTN               YES, EXIT
+ONES   EQU     420B
+E0ADR  EQU     400B
+E0IND  EQU     402B
+FLTIND EQU     405B 
+FLOATL EQU     232B
+RTN    ZRO     0
+       END
+
+
+
+
+IABS   IDENT
+IABSF  EXT     0
+*
+$IABS  ZRO     RTN
+       LDA*    E0IND               ARGUMENT
+       LDB*    E0ADR               MODE INDICATOR
+       SKB     FLTIND              TEST MODE OF ARGUMENT
+       BRU     FIXARG              FLOATING
+INTEGR SKG     ONES                INTEGER>0
+       CNA                         NO, NEGATE
+       BRR     RTN
+FIXARG MIN*    E0ADR
+       LDB*    E0IND               MOST SIGNIFICANT PART
+       XAB
+       SBRM*     FIXL                CONVERT TO INTEGER
+       BRU     INTEGR            PROCEED AS IF ARGUMENT INTEGER
+ONES   EQU     420B
+E0ADR  EQU     400B
+E0IND  EQU     402B
+FLTIND EQU     405B
+FIXL   EQU     231B
+RTN    ZRO     0
+       END
+
+
+
+
+FLOAT  IDENT
+FLOATF EXT     0
+*
+$FLOAT ZRO     RTN
+       LDA*    E0IND               ARGUMENT INTO A
+       SBRM*     FLOATL              RUN-TIME FLOAT ROUTINE
+       BRR     RTN               EXIT
+E0IND  EQU     402B
+FLOATL EQU     232B
+RTN    ZRO     0
+       END
+
+
+
+
+IFIX   IDENT
+IFIXF  EXT     0
+INT    EXT     0
+*
+LDP    OPD     12500000B,2
+$IFIX  ZRO     RTN
+       LDP*    E0IND               ARGUMENT INTO A
+       SBRM*     FIXL                FIX ARGUMENT
+       BRR     RTN
+RTN    BSS     1
+E0IND  EQU     402B
+FIXL   EQU     231B
+       END
+
+
+
+AINT   IDENT   
+AINTF  EXT     0
+*
+$AINT  HLT     RTN
+       SBRM    IFIX              OBTAIN AND FIX ARGUMENT
+       SBRM*   FLOATL              FLOAT ARGUMENT
+       BRR     RTN
+E0IND  EQU     402B
+IFIX   EQU     231B
+FLOATL EQU     232B
+RTN    ZRO     0
+       END
+
+
+
+
+SIGN   IDENT
+SIGNF  EXT     0
+*
+FLN    OPD     14700000B,1
+LDP    OPD     12500000B,2
+$SIGN  ZRO     RTN
+       STX     TX                SAVE INDEX
+       LDX     E0ADR
+       LDA     1,2                 Q MODE INDICATOR
+       SKA     FLTIND              TEST Q FIXED
+       MIN     1,2                 NO, INCREMENT E1
+       LDA     0,2                 P MODE INDICATOR
+       SKA     FLTIND              TEST P FIXED
+       BRU     FLT               NO, FLOATING
+       LDA*    0,2                 YES, P INTO A
+       SBRM*     FLOATL              FLOAT P
+       BRU     *+2
+FLT    LDP*    E0IND               P INTO A,B
+       SKA     MINUS               TEST P POSITIVE
+       FLN                         MAKE P POSITIVE
+       SKN*    1,2                 TEST Q NEGATIVE
+       BRU     EXIT              BOTH POSITIVE, EXIT
+       FLN                         NEGATE P
+EXIT   LDX     TX                REPLACE INDEX
+       BRR     RTN
+TX     ZRO     0
+MINUS  EQU     417B
+E0ADR  EQU     400B
+E0IND  EQU     402B
+FLTIND EQU     405B
+FLOATL EQU     232B
+RTN    ZRO     0
+       END
+
+
+
+
+ISIGN  IDENT
+ISIGNF EXT     0
+*
+$ISIGN ZRO     RTN
+       STX     TX                SAVE INDEX
+       LDX     E0ADR
+       LDA     FLTIND
+       SKA     1,2                 TEST J FIXED
+       MIN     1,2                 NO, INCREMENT E1
+       SKA     0,2                 TEST I FIXED
+       BRU     FLT               NO, FLOATING
+       LDA*    0,2                 YES, I INTO A
+TEST   SKA     MINUS               TEST I POSITIVE
+       CNA                         MAKE I POSITIVE
+       SKN*    1,2                 TEST J NEGATIVE
+       BRU     EXIT               BOTH POSITIVE,  EXIT
+       CNA                        NEGATIVE I
+EXIT   LDX     TX                 REPLACE INDEX
+       BRR     RTN
+FLT    LDP*    E0IND               I INTO A,B
+       SBRM*     FIXL                FIX I
+       BRU     TEST
+TX     ZRO     0
+MINUS  EQU     417B
+E0ADR  EQU     400B
+E0IND  EQU     402B
+FLTIND EQU     405B
+FIXL   EQU     231B
+RTN    ZRO     0
+       END
+
+
+
+
+AMOD   IDENT
+AMODF  EXT     0
+*
+LDP    OPD     12500000B,2
+FLD    OPD     14500000B,2
+FLM    OPD     14100000B,2
+FLS    OPD     13500000B,2
+FLN    OPD     14700000B,1
+$AMOD  HLT     RTN
+       LDA     E0IND               LOCATION OF P
+       STA     QLOC
+       MIN     QLOC              LOCATION OF Q
+       LDP*    E0IND               P INTO A,B
+       FLD*    QLOC
+       SBRM*     FIXL                TRUNCATE TO INTEGER
+       SBRM*     FLOATL              FLOAT INTEGER
+       FLM*    QLOC
+       FLS*    E0IND
+       FLN
+       BRR     RTN
+QLOC   ZRO     0
+RTN    BSS     1
+E0IND  EQU     402B
+FIXL   EQU     231B
+FLOATL EQU     232B
+       END
+
+
+
+MOD    IDENT                   940 MOD SUBROUTINE
+*
+XDV    OPD     14400000B,2
+$MOD   HLT     RTN
+       STX     TX                SAVE INDEX
+       LDX     E0ADR
+       LDA*    0,2                 I INTO A
+       XDV*    1,2                 DIVIDE BY J
+       XAB                         REMAINDER INTO A
+       LDX     TX                REPLAACE INDEX
+       BRR     RTN
+TX     ZRO     0
+RTN    BSS     1
+E0ADR  EQU     400B
+       END
+
+
+
+
+*              AMAX, MAX, AMIN, MIN
+AMAX   IDENT
+STD    OPD     10700000B,2
+FLS    OPD     13500000B,2
+LDP    OPD     12500000B,2
+AMAX0  EXT     0
+AMAX1  EXT     0
+$AMAX  HLT     RTN
+       LDA     SMALL                  SET UP TO
+       LDB     SKG                  FIND MAXIMUM
+       SBRM    MAXMIN
+       BRR     RTN
+
+
+MAX0   EXT     0
+MAX1   EXT     0
+$MAX   HLT     ILNK
+       SBRM    AMAX
+       SBRM*     FIXL                FIX RESULT
+       BRR     ILNK
+
+AMIN0  EQU     *
+AMIN1  EQU     *
+$AMIN  HLT     RTN
+       LDA     LARGE                  SET UP TO
+       LDB     SKN                  FIND MINIMUM
+       SBRM    MAXMIN
+       BRR     RTN
+
+
+
+MIN0   EXT     0
+MIN1   EXT     0
+$MIN   HLT     ILNK
+       SBRM    AMIN              OBTAIN MINIMUM
+       SBRM*     FIXL                FIX RESULT
+       BRR     ILNK
+
+
+MAXMIN HLT     LMM
+       STA     RESULT+1          INITIAL MANTISSA
+       STB     COMPAR            MAX-MIN CONTROL
+       STX     TX                SAVE INDEX
+       LDA     EXP               MAXIMUM EXPONENT
+       STA     RESULT            INITIAL EXPONENT
+       LDA     EADR1               LOC OF LAST ARG
+       ADD     TAGBIT
+       STA     E1TAG
+       ADD     INDBIT            INDIRECT BIT
+       STA     E1TIND
+       LDA     E0ADR               LOC OF FIRST ARG
+       SUB     EADR1               LOC OF LAST ARG
+       STA     TEMP
+       LDX     TEMP              -[NUMBER OF ARGS]
+LOOP   LDA*    E1TAG             ARG MODE
+       SKA     FLTIND              TEST ARG FIXED
+       BRU     FLT               NO
+       LDA*    E1TIND            YES, ARG INTO A
+      SBRM*     FLOATL              FLOAT ARG
+       BRU     STORE
+FLT    LDB*    E1TIND            QL INTO B
+       MIN*    E1TAG
+       LDA*    E1TIND            QH INTO A
+STORE  STD     ARG               STORE ARG
+       FLS     RESULT
+       STA     TEMP
+COMPAR HLT     0                  (TEST NEW MAX OR MIN)
+       BRU     TEST              NO, CONTINUE
+       LDP     ARG               YES
+       STD     RESULT            MAX OR MIN = ARG
+TEST   BRX     LOOP              TEST MORE ARGS
+       LDP     RESULT            NO, MAX-MIN INTO A,B
+       LDX     TX                REPLACE INDEX
+       BRR     LMM
+SKG    SKG     ZERO                   MAX COMPARE
+SKN    SKN     TEMP                 MIN COMPARE
+EXP    DATA    77777377B
+INDBIT DATA    40000B
+ARG    DATA    0
+       DATA    0
+RESULT DATA    0,0
+ILNK   ZRO     0
+RTN    ZRO     0
+TX     DATA    0
+E1TAG  DATA    0
+E1TIND DATA    0
+TEMP   DATA    0
+LMM    BSS     1
+EADR1  EQU     403B
+ZERO   EQU     23
+SMALL  EQU     417B
+ADRMSK DATA    37777B
+E0ADR  EQU     400B
+TAGBIT DATA    20000000B
+FLTIND EQU     405B
+FIXL   EQU     231B
+FLOATL EQU     232B
+LARGE  DATA    37777777B
+       END
+
+
+
+
+DIM    IDENT                       DIFFERENCE
+DIMF   EXT     0
+*
+LDP    OPD     12500000B,2
+FLS    OPD     13500000B,2
+$DIM   ZRO     RTN
+       LDA     E0IND               LOCATION OF P
+       STA     QLOC
+       MIN     QLOC              LOCATION OF Q
+       LDP*    E0IND               P INTO A,B
+       FLS*    QLOC
+       SKA     SIGN                TEST P > Q
+       CLAB                        NO, RESULT = 0.0
+       BRR     RTN
+QLOC   ZRO     0
+RTN    BSS     1
+E0IND  EQU     402B
+SIGN   EQU     417B
+       END
+
+
+
+
+IDIM   IDENT                       DIFFERENCE
+IDIMF  EXT     0
+*
+$IDIM  HLT     RTN
+       STX     TX                SAVE INDEX REGISTER
+       LDX     E0ADR
+       LDA*    0,2                 I INTO A
+       SUB*    1,2                 SUBTRACT J
+       SKA     SIGN                TEST I > J
+       CLAB                       NO, RESULT = 0
+       LDX     TX                YES, REPLACE INDEX
+       BRR     RTN
+TX     ZRO     0
+RTN    ZRO     0               LINK
+SIGN   EQU     417B
+E0ADR  EQU     400B
+       END
+
+
+
+LOCF   IDENT
+*
+$LOCF  HLT     RTN
+       LDA*    E0ADR               LOC OF ARG INTO A
+       ETR     ADRMSK
+       BRR     RTN
+ADRMSK DATA    37777B
+RTN    BSS     1
+E0ADR  EQU     400B
+       END
+
+
+
+
+IF     IDENT
+*
+LDP    OPD     125000000B,2
+FLS    OPD     13500000B,2
+$IF    HLT     RTN
+       STX     TX                SAVE INDEX
+       LDA     EADR1               LAST ARG + 1
+       ADD     ADRMSK              IND BIT - 1
+       STA     E1IND             LAST ARG INDIRECT
+       SKE     E0IND               TEST ONE ARG
+       BRU     TWOARG            NO, TWO ARGS
+       LDP*    E0IND               YES, ARG INTO A,B
+       LDX     ZERO
+COMPEX STX     PEXP              STORE EXP OF P
+       RCH     120B                EXP OF Q INTO X
+       RCH     204B                X INTO A, A INTO B
+       ADD     DEC35             ADD 35
+       SKG     PEXP              TEST "EXP < 35
+       LDB     ZERO                NO, R = 0
+       XAB                         YES, R = P-Q
+       LDX     TX                REPLACE INDEX
+       BRR     RTN
+TWOARG LDP*    E0IND               P INTO A,B
+       RCH     120                 EXP INTO X
+       FLS*    E1IND
+       BRU     COMPEX
+DEC35  ZRO     35
+TX     ZRO     0
+E1IND  ZRO     0
+PEXP   EQU     E1IND
+EADR1  EQU     403B
+ZERO   EQU     414B
+ADRMSK DATA    37777B
+E0IND  EQU     402B
+RTN    BSS     1
+       END
+
+
+
+
+EXIT   IDENT
+*
+PRQ    OPD     10300000B,2
+$EXIT  HLT     RTN
+       PRQ     EXITQT
+       BRS     10
+EXITQT ASC     '$*EXIT*/'
+RTN    BSS     1
+       END
+
+
+
+
+*  SIN(COS)  - FLOATING POINT SINE
+*
+*
+*
+SIN    IDENT
+
+$COS   ZRO     RETURN
+       STX     TX
+       EAX*    E0IND
+       LDA     1,2
+       LDB     0,2
+       FAD     C1
+       BRU     SNFA
+
+
+$SIN   ZRO     RETURN
+       STX     TX
+       EAX*    E0IND
+       LDA     1,2
+       LDB     0,2
+SNFA   STB     LIB1
+       RCY     9
+       RSH     15           SIGN-EXTENDED EXPONENT TO A
+       SKG     =-13         CHECK FOR SMALL ANGLE
+       BRU     SNFX         RESTORE REGISTERS AND EXIT
+       LDA     =-1 
+       STA     LIB5          INITIALIZE LIB5
+       BAC 
+       LDB     LIB1         RESTORE REGISTERS
+       FMP     SNF2         2/PI. CONVERT ARGUMENT TO QUADRANT
+       STP     LIB1         MEASURE
+       FAD    SNF3    EXTRACT NO. SEMICIRCLES (2*QUADRAN
+       XAB   
+       SKA     SNF5            ROUND TO NEAREST SEMICERCLE
+       BRU     *+2
+       BRU     SNFC    1ST OR 3RD. ALREADY ROUNDED
+       ADD     SNF4+1          2ND OR 4TH
+       XAB
+       ADC     SNF4
+       SKA     SNF6         IF ARGUMENT NEGATIVES
+       BRU     *+3             SUBTRACT 1 (2 TO COMPENSATE FOR ADD)
+       XAB
+       BRU     SNFC
+       XAB     
+       SUB     SNF7+1
+       XAB
+       SUC     SNF7
+       XAB
+* 
+SNFC   SKA     SNF8         SET LIB5 IF 2ND OR 3RD QUADRANT
+       MIN     LIB5 
+       XAB 
+       FSB     SNF3         FLOAT RESULT (ARG ROUNDED TO 
+*                            NEAREST SEMICIRCLE
+       FSB     LIB1         REDUCED ARGUMENT
+       SKN     LIB5 
+       BRU     *+2          2ND OR 3RD
+       FMP     SNF6            1ST OR 4TH
+       STP     LIB1
+       FMP      LIB1
+       STP     LIB3
+       FMP     C15          POYNOMIAL APPROXIMATION
+       FAD     C13
+       FMP     LIB3
+       FAD     C11 
+       FMP     LIB3
+       FAD     C9
+       FMP     LIB3
+       FAD     C7
+       FMP     LIB3
+       FAD     C5
+       FMP     LIB3
+       FAD     C3
+       FMP     LIB3
+       FAD     C1
+       FMP     LIB1
+SNFR   LDX     TX
+       BRR     RETURN
+*
+SNFX   BAC                  SMALL ARGUMENT, RESTORE REGISTERS
+       LDB     LIB1
+       BRU     SNFR
+*
+SNF2   DATA    24276301B       2/PI
+       DATA    55624000B
+SNF3   DATA    30000000B
+       DATA    00000046B
+SNF4   DATA    0
+SNF5   DATA    01000B
+SNF6   DATA    4B7
+SNF7   DATA    0
+SNF8   DATA    00002000B
+*
+C1     DATA    31103755B       PI/2
+       DATA    24210001B
+C3     DATA    53250414B       -((PI/2)**3)/3
+       DATA    31665000B
+C5     DATA    24315361B       ((PI/2)**5)/5
+       DATA    47353775B
+C7     DATA    54645514B       -((P)**7)/7
+       DATA    61472771B
+C9     DATA    25017015B       ((PI/2)**9)/9
+       DATA    103757B
+C11    DATA    41637054B       -((PI/2)**11)/11
+      DATA    02057756B
+C13    DATA    36436415B       ((PI/2)**13)/13
+       DATA    14733750B
+C15    DATA    51027632B       -((PI/2)**15)/15
+       DATA    52021742B
+*
+TX     BSS     1
+LIB1   BSS     2
+LIB3   BSS     2
+LIB5   BSS     1
+RETURN BSS     1
+E0IND  EQU     402B
+       END
+ISIZE  IDENT
+*
+$ISIZE ZRO     RTN
+       STX     TX
+       LDA*    E0IND
+       LDB*    E0ADR
+       SKB     FLTIND
+       BRU     FIXARG
+INTEGR SBRM*   ISIZSL
+       LDX     TX
+       BRR     RTN
+FIXARG MIN*    E0ADR
+       LDB*    E0IND
+       XAB
+       SBRM*   FIXL
+       BRU     INTEGR
+E0ADR  EQU     400B
+E0IND  EQU     402B
+FLTIND EQU     405B
+TX     ZRO     0
+ISIZSL EQU     226B
+RTN    ZRO     0
+FIXL   EQU     231B
+       END
+EOF    IDENT
+*
+$EOF   ZRO     RTN
+       LDA*    E0IND
+       LDB*    E0ADR
+       SKB     FLTIND
+       BRU     EOFNIE
+       SBRM*   EOFSYL
+       BRR     RTN
+EOFNIE SBRM*   ERROR
+       BRR     RTN
+       ASC     ' NON-INTEGER LABEL VARIABLE/'
+ERROR  EQU     413B
+RTN    ZRO     0
+E0IND  EQU     402B
+E0ADR  EQU     400B
+FLTIND EQU     405B
+EOFSYL EQU     221B
+       END
+TIME   IDENT
+* 4 ARGUMENTS GET MONTH, DAY, HOUR, MINUTE. OPTIONAL 5TH AND 6TH
+* ARGUMENTS GET SECOND AND YEAR.
+STD    OPD     10700000B,2
+LDP    OPD     12500000B,2
+$TIME  ZRO     RTN
+       LDA     E0ADR
+       SUB     EADR1
+       STA     TEMP1
+       ADD     =7
+       SKG     =3
+       SKG     =0
+       BRU     ERR
+       BRS     39
+       RCY     16
+       STD     TEMP2
+       LDA     EADR1
+       ADD     INDX
+       STA     E1TIND
+       LDX     TEMP1
+LOOP   LDP     TEMP2
+       LCY     8
+       STD     TEMP2
+       ETR     =377B
+       STA*    E1TIND
+       BRX     LOOP
+       BRR     RTN
+ERR    SBRM*   ERROR
+       BRR     RTN
+       ASC     'LESS THEN 4 OR MORE THEN 6 ARGUMENTS/'
+ERROR  EQU     413B
+RTN    ZRO     0
+E0ADR  EQU     400B
+EADR1  EQU     403B
+TEMP1  ZRO     0
+TEMP2  ZRO     0
+       ZRO     0
+INDX   DATA    20040000B
+E1TIND ZRO     0
+       END
+FORM   IDENT
+*
+$FORM  ZRO     RTN
+       LDA     =154B
+       CIO     =1
+       BRR     RTN
+RTN    ZRO     0
+       END
+IPOSIT IDENT
+*
+$IPOSIT ZRO    RTN
+       STX     TX
+       LDA*    E0IND
+       LDB*    E0ADR
+       SKB     FLTIND
+       BRU     FIXARG
+INTEGR SBRM*   IPOSYL
+       LDX     TX
+       BRR     RTN
+FIXARG MIN*    E0ADR
+       LDB*    E0IND
+       XAB
+       SBRM*   FIXL
+       BRU     INTEGR
+E0ADR  EQU     400B
+E0IND  EQU     402B
+FLTIND EQU     405B
+TX     ZRO     0
+IPOSYL EQU     225B
+RTN    ZRO     0
+FIXL   EQU     231B
+       END
+
+
+BRS    IDENT
+* EXUCUTE BRS - 8 ARGUMENTS REQUIRED: 1=BRS NUMBER, 2-3-4=A-B-X INPUT,
+* 5-6-7=A-B-X OUTPUT, 8=0 OR 1 FOR SKIP OR NON-SKIP RETURN.
+$BRS   ZRO     RTN
+       LDA     E0ADR
+       SUB     EADR1
+       CAX
+       SKE     =-8
+       BRU     BRS1            8ARGUMENTS NOT PRESENT
+       LDA     EADR1
+       MRG     INDX
+       STA     E1TIND
+       CLA
+       STA     BRTN
+       STA     ECHOS
+       LDB     =-1
+       LDA*    E1TIND
+       SKE     =12
+       STB     ECHOS
+       ETR     =37777B
+       MRG     BRSOP
+       STA     BRSEX
+       BRX     *+1
+       LDA*    E1TIND
+       BRX     *+1
+       LDB*    E1TIND
+       BRX     *+1
+       LDX*    E1TIND
+BRSEX  BRS     0
+       MIN     BRTN
+       STX     TX
+       LDX     =-4
+       STA*    E1TIND
+       SKN     ECHOS
+       STA     ECHO2
+       BRX     *+1
+       STB*    E1TIND
+       BRX     *+1
+       LDA     TX
+       STA*    E1TIND
+       BRX     *+1
+       LDA     BRTN
+       STA*    E1TIND
+       BRR     RTN
+BRS1   SBRM*   ERROR
+       BRR     RTN
+       ASC     ' 8 ARGUMENTS REQUIRED FOR BRS CALL/'
+ECHOS  ZRO     0
+ECHO2  EQU     421B
+ERROR  EQU     413B
+RTN    ZRO     0
+E0ADR  EQU     400B
+EADR1  EQU     403B
+INDX   DATA    20040000B
+E1TIND ZRO     0
+BRTN   ZRO     0
+BRSOP  BRS     0
+TX     ZRO     0
+       END
+
+
+***********************
+*END OF 940 FORTRAN II LIBRARY SYMBOLICS
+→  $ZRO     0               LINK
+SIGN   EQU     417B
+E0ADR  EQU     400B
+       END
+
+
+
+LOCF   IDENT
+*
+$LOCF  HLT     RTN
+       LDA*    E0ADR               LOC OF ARG INTO A
+       ETR     ADRMSK
+       BRR     RTN
+ADRMSK DATA    37777B
+RTN    BSS     1
+E0ADR  EQU     400B
+       END
+
+
+
+
+IF     IDENT
+*
+LDP    OPD     125000000B,2
+FLS    OPD     13500000B,2
+$IF    HLT     RTN
+       STX     TX                SAVE INDEX
+       LDA     EADR1               LAST ARG + 1
+       ADD     ADRMSK              IND BIT - 1
+       STA     E1IND             LAST ARG INDIRECT
+       SKE     E0IND               TEST ONE ARG
+       BRU     TWOARG            NO, TWO ARGS
+       LDP*    E0IND               YES, ARG INTO A,B
+       LDX     ZERO
+COMPEX STX     PEXP              STORE EXP OF P
+       RCH     120B                EXP OF Q INTO X
+       RCH     204B                X INTO A, A INTO B
+       ADD     DEC35             ADD 35
+       SKG     PEXP              TEST "EXP < 35
+       LDB     ZERO                NO, R = 0
+       XAB                         YES, R = P-Q
+       LDX     TX                REPLACE INDEX
+       BRR     RTN
+TWOARG LDP*    E0IND               P INTO A,B
+       RCH     120                 EXP INTO X
+       FLS*    E1IND
+       BRU     COMPEX
+DEC35  ZRO     35
+TX     ZRO     0
+E1IND  ZRO     0
+PEXP   EQU     E1IND
+EADR1  EQU     403B
+ZERO   EQU     414B
+ADRMSK DATA    37777B
+E0IND  EQU     402B
+RTN    BSS     1
+       END
+
+
+
+
+EXIT   IDENT
+*
+PRQ    OPD     10300000B,2
+$EXIT  HLT     RTN
+       PRQ     EXITQT
+       BRS     10
+EXITQT ASC     '$*EXIT*/'
+RTN    BSS     1
+       END
+
+
+
+
+*  SIN(COS)  - FLOATING POINT SINE
+*
+*
+*
+SIN    IDENT
+
+$COS   ZRO     RETURN
+       STX     TX
+       EAX*    E0IND
+       LDA     1,2
+       LDB     0,2
+       FAD     C1
+       BRU     SNFA
+
+
+$SIN   ZRO     RETURN
+       STX     TX
+       EAX*    E0IND
+       LDA     1,2
+       LDB     0,2
+SNFA   STB     LIB1
+       RCY     9
+       RSH     15           SIGN-EXTENDED EXPONENT TO A
+       SKG     =-13         CHECK FOR SMALL ANGLE
+       BRU     SNFX         RESTORE REGISTERS AND EXIT
+       LDA     =-1 
+       STA     LIB5          INITIALIZE LIB5
+       BAC 
+       LDB     LIB1         RESTORE REGISTERS
+       FMP     SNF2         2/PI. CONVERT ARGUMENT TO QUADRANT
+       STP     LIB1         MEASURE
+       FAD    SNF3    EXTRACT NO. SEMICIRCLES (2*QUADRAN
+       XAB   
+       SKA     SNF5            ROUND TO NEAREST SEMICERCLE
+       BRU     *+2
+       BRU     SNFC    1ST OR 3RD. ALREADY ROUNDED
+       ADD     SNF4+1          2ND OR 4TH
+       XAB
+       ADC     SNF4
+       SKA     SNF6         IF ARGUMENT NEGATIVES
+       BRU     *+3             SUBTRACT 1 (2 TO COMPENSATE FOR ADD)
+       XAB
+       BRU     SNFC
+       XAB     
+       SUB     SNF7+1
+       XAB
+       SUC     SNF7
+       XAB
+* 
+SNFC   SKA     SNF8         SET LIB5 IF 2ND OR 3RD QUADRANT
+       MIN     LIB5 
+       XAB 
+       FSB     SNF3         FLOAT RESULT (ARG ROUNDED TO 
+*                            NEAREST SEMICIRCLE
+       FSB     LIB1         REDUCED ARGUMENT
+       SKN     LIB5 
+       BRU     *+2          2ND OR 3RD
+       FMP     SNF6            1ST OR 4TH
+       STP     LIB1
+       FMP      LIB1
+       STP     LIB3
+       FMP     C15          POYNOMIAL APPROXIMATION
+       FAD     C13
+       FMP     LIB3
+       FAD     C11 
+       FMP     LIB3
+       FAD     C9
+       FMP     LIB3
+       FAD     C7
+       FMP     LIB3
+       FAD     C5
+       FMP     LIB3
+       FAD     C3
+       FMP     LIB3
+       FAD     C1
+       FMP     LIB1
+SNFR   LDX     TX
+       BRR     RETURN
+*
+SNFX   BAC                  SMALL ARGUMENT, RESTORE REGISTERS
+       LDB     LIB1
+       BRU     SNFR
+*
+SNF2   DATA    24276301B       2/PI
+       DATA    55624000B
+SNF3   DATA    30000000B
+       DATA    00000046B
+SNF4   DATA    0
+SNF5   DATA    01000B
+SNF6   DATA    4B7
+SNF7   DATA    0
+SNF8   DATA    00002000B
+*
+C1     DATA    31103755B       PI/2
+       DATA    24210001B
+C3     DATA    53250414B       -((PI/2)**3)/3
+       DATA    31665000B
+C5     DATA    24315361B       ((PI/2)**5)/5
+       DATA    47353775B
+C7     DATA    54645514B       -((P)**7)/7
+       DATA    61472771B
+C9     DATA    25017015B       ((PI/2)**9)/9
+       DATA    103757B
+C11    DATA    41637054B       -((PI/2)**11)/11
+      DATA    02057756B
+C13    DATA    36436415B       ((PI/2)**13)/13
+       DATA    14733750B
+C15    DATA    51027632B       -((PI/2)**15)/15
+       DATA    52021742B
+*
+TX     BSS     1
+LIB1   BSS     2
+LIB3   BSS     2
+LIB5   BSS     1
+RETURN BSS     1
+E0IND  EQU     402B
+       END
+ISIZE  IDENT
+*
+$ISIZE ZRO     RTN
+       STX     TX
+       LDA*    E0IND
+       LDB*    E0ADR
+       SKB     FLTIND
+       BRU     FIXARG
+INTEGR SBRM*   ISIZSL
+       LDX     TX
+       BRR     RTN
+FIXARG MIN*    E0ADR
+       LDB*    E0IND
+       XAB
+       SBRM*   FIXL
+       BRU     INTEGR
+E0ADR  EQU     400B
+E0IND  EQU     402B
+FLTIND EQU     405B
+TX     ZRO     0
+ISIZSL EQU     226B
+RTN    ZRO     0
+FIXL   EQU     231B
+       END
+EOF    IDENT
+*
+$EOF   ZRO     RTN
+       LDA*    E0IND
+       LDB*    E0ADR
+       SKB     FLTIND
+       BRU     EOFNIE
+       SBRM*   EOFSYL
+       BRR     RTN
+EOFNIE SBRM*   ERROR
+       BRR     RTN
+       ASC     ' NON-INTEGER LABEL VARIABLE/'
+ERROR  EQU     413B
+RTN    ZRO     0
+E0IND  EQU     402B
+E0ADR  EQU     400B
+FLTIND EQU     405B
+EOFSYL EQU     221B
+       END
+TIME   IDENT
+* 4 ARGUMENTS GET MONTH, DAY, HOUR, MINUTE. OPTIONAL 5TH AND 6TH
+* ARGUMENTS GET SECOND AND YEAR.
+STD    OPD     10700000B,2
+LDP    OPD     12500000B,2
+$TIME  ZRO     RTN
+       LDA     E0ADR
+       SUB     EADR1
+       STA     TEMP1
+       ADD     =7
+       SKG     =3
+       SKG     =0
+       BRU     ERR
+       BRS     39
+       RCY     16
+       STD     TEMP2
+       LDA     EADR1
+       ADD     INDX
+       STA     E1TIND
+       LDX     TEMP1
+LOOP   LDP     TEMP2
+       LCY     8
+RZRO   EQU *-240B
+BCNT   BSS 1
+CHR    BSS 1
+FI     BSS 1
+PTR    BSS 2
+RBTL   BSS 1
+RBTFLG BSS 1
+SPTR   BSS 2
+SRCHL  BSS 1
+STRING BSS 10
+TYPEL  BSS 1
+
+       BSS 4000B-*+RZRO
+
+       DATA 0,1,0
+       DATA 6000B,0,0,0
+       BSS 34B
+       BSS 11B
+       DATA START
+       BSS 1
+       DATA -1
+M1     ASC "ESCRIBE /"
+M2     ASC "INISHED$/"
+M3     ASC "$/"
+ERM    ASC "   ?$/"
+NSTR   ASC "#2:HELP-TEXT:9SYM"
+NPTR   DATA NSTR*3-1,NSTR*3-1+17
+
+START  CLA; LDB =NPTR; LDX =-1; BRS 15; ZRO *; STA FI
+       LDA =-1; STA RBTFLG; LDA =RUBOUT; STA 201B; LDA =2B6; BRS 78
+STM1   SBRM TYPE
+ST0    LDA ='?'; CIO =1; CIO =0; LDB =-1; STB RBTFLG
+       SKE ='D'; BRU ST6
+       LDA =M1; LDB =-1; LDX =1; BRS 34
+       LDA =STRING; MUL =3; LSH 23; SUB =1; STA PTR; STA PTR+1
+ST1    CIO =0; SKE =141B; BRU ST2; LDA =76B; CIO =1
+       LDA PTR+1; SUB =1; SUB PTR
+       SKG =-1; BRU ST1; ADD PTR; STA PTR+1; BRU ST1
+ST2    SKE =155B; BRU *+2; BRU ST3; WCI PTR; BRU ST1
+ST3    SBRM SEARCH; BRU ST5; LDA ='@'; CIO =1
+ST4    GCI PTR; BRU STM1; CIO =1; BRU ST4
+ST5    LDA =ERM; LDB =-1; LDX =1; BRS 34; BRU ST0
+ST6    SKE ='F'; BRU ST5; LDA =M2
+       LDB =-1; LDX =1; BRS 34; BRS 10
+
+TYPE   ZRO TYPEL; CIO FI; SKE =137B; BRU *+2; SBRR TYPE
+       SKE =152B; BRU TYPE2; CIO FI; SKE ='@'; BRU TYPE1
+       LDA =152B; CIO =1; SBRR TYPE
+TYPE1  CAB; LDA =152B; CIO =1; CBA
+TYPE2  SKE =135B; BRU TYPE3; CIO FI; SUB =1; STA BCNT
+       CLA; CIO =1; SKR BCNT; BRU *-2; CIO FI
+TYPE3  CIO =1; BRU TYPE+1
+
+SEARCH ZRO SRCHL; CLA; LDB =10001B; LDX FI; BRS 144
+S1     CIO FI; SKE =137B; BRU *+2; SBRR SEARCH
+       SKE =152B; BRU S1; CIO FI; SKE ='@'; BRU S1
+       LDP PTR; STP SPTR
+S2     GCI SPTR; BRU S3; STA CHR; CIO FI; SKE CHR; BRU S1; BRU S2
+S3     MIN* SEARCH; SBRR SEARCH
+
+RUBOUT ZRO RBTL; SKN RBTFLG; BRS 10; LDA =2B6; BRS 78
+       LDA =M3; LDB =-1; LDX =1; BRS 34
+       CLA; STA RBTFLG; BRU ST0
+
+       END
+→   

@@ -1,0 +1,55 @@
+       DECLARE INTEGER CHAR, I, IFNO, OFNO,
+                       XFLAG;
+       DECLARE STRING INFNAM(20), OTFNAM(20);
+       DECLARE ARRAY XLINE[72];
+
+START: SOUT("&M&JINPUT FILE: "); SETS(INFNAM,0,0);
+       INNAME(INFNAM:START); IFNO←INFILE(INFNAM:START);
+ST1:   SOUT("&M&JOUTPUT FILE: "); SETS(OTFNAM,0,0);
+       OUTNAME(OTFNAM:ST1); OFNO←OUTFILE(OTFNAM,3B6:ST1);
+       CRLF();
+       XFLAG←1;
+
+* HANDLE AN INDEFINITE NUMBER OF LINES OF TEXT
+       WHILE 1 DO;
+          XLINE[I]←' ' FOR I←0 TO 71 IF XFLAG;
+          XFLAG←I←CHAR←0;
+
+* HANDLE INDIVIDUAL CHARACTERS OF A GIVEN LINE
+          WHILE CHAR#'&J' DO;
+             IF (CHAR←CIN(IFNO))=135B DO;       * BLANK COUNT CASE
+                I←I+(CHAR←CIN(IFNO));
+                COUT(135B,OFNO); COUT(CHAR,OFNO);
+             ELSEIF CHAR='&M' DO;               * CARRIAGE RETURN CASE
+                IF (CHAR←CIN(IFNO))='&J' DO;    * CR-LF.  END OF LINE
+                   XOUT(XLINE,XFLAG,OFNO) IF XFLAG ELSE CRLF(1,OFNO);
+                ELSE DO;                        * NOT REAL END OF LINE.
+                   COUT('&M',OFNO); COUT(CHAR,OFNO);
+                   COUT((CHAR←CIN(IFNO)),OFNO) WHILE CHAR#'&M';
+                   XOUT(XLINE,XFLAG,OFNO) IF XFLAG ELSE CRLF(1,OFNO);
+                   HALT() IF (CHAR←CIN(IFNO))#'&J';
+                ENDIF;
+             ELSEIF CHAR='←' DO;                * PUT < IN XLINE AT I
+                XLINE[I]←'<';
+                XFLAG←I;
+                COUT(CHAR,OFNO);
+                I←I+1;
+             ELSEIF CHAR=137B DO;               * END OF FILE.  QUIT.
+                COUT(CHAR,OFNO);
+                CLOSALL();
+                EXIT();
+             ELSE DO;                           * COPY ANY OTHER CHAR.
+                COUT(CHAR,OFNO);
+                I←I+1;
+             ENDIF;
+          ENDFOR;
+       ENDFOR;
+
+       DECLARE ARRAY LINE, INTEGER J;
+       FUNCTION XOUT(LINE,COLUMN,FILE);
+       COUT('&M',FILE);
+       COUT(LINE[J],FILE) FOR J←0 TO COLUMN;
+       CRLF(1,FILE);
+       RETURN;
+
+       END;

@@ -1,0 +1,984 @@
+       COMMON DRIV';
+       INCLUDE COMM,STDEC,STST,SCMWF;
+
+***************
+* M1CS DRIVER *
+***************
+
+
+
+
+
+***
+*** SPL
+***
+* STARTUP AND MAIN COMMAND LOOP
+
+* RANDOM DECLARATIONS
+       DQ DNHC←'=',DEHC←'-',ENHC←'*',EEHC←':';
+       DI VERSION←'1.0';
+       DI VRSN←1;* VERSION SEQUENCE NUMBER
+       DI NUMBER←1;* PATCH SEQUENCE NUMBER
+       DS ARRAY RNAMES[NRINGS]←("USER RING","UTILITY RING",
+   "MONITOR RING");
+* ADDRESS SPACE LAYOUT CONSTANTS
+       DECLARE ARRAY GBIA[NRINGS]←(0,403000B,600000B);
+       DECLARE ARRAY GCLI[NRINGS]←(360000B,6B5,1B6);
+       DECLARE ARRAY GBWS[NRINGS]←(200B,200B,160B);
+       DECLARE ARRAY GLWS[NRINGS]←(4B4,35000B,4B4);
+       DECLARE ARRAY GBDY[NRINGS]←(4B4,35000B,1B4);
+* STORAGE FOR COMMAND PROCESSOR
+       DI HCH,XT,IRING;
+       DS XTS←"* MS * PAGE FAULTS/";
+       DS CCSTR(80);
+       DS NUMS←"/SPL VERSION *.*  (7'/5'/73)/";
+* WORKING STORAGE FOR COMMANDS
+       DI CLCCC,CLCTI,CLCTJ;
+       DS CLCSTR(40);
+
+
+
+
+       PROGRAM SPL;
+       INCLUDE DRIV',SYSCALLS;
+
+       DS INLXS←"&/LINE TOO LONG";
+      DS INERS←"?";
+       DECLARE INTEGER NUMBER ← 11;
+        DS NUMS ← "/SPL VERSION *.*  (10'/12'/74)/";
+       DECLARE LABEL INQUIT' ← INQUIT;* KLUDGE
+       DECLARE LABEL INERX←INERR;* KLUDGE
+       DECLARE INTEGER PAGE'FAULT'COUNT;
+       DECLARE LONG TIME'1,TIME'2;
+
+FUNCTION SPL();
+       FMTO(NUMS); OUT(VRSN); OUT(NUMBER);
+       WINIT();
+       ICNPW←0;
+       XPANFAC←50;
+       CODEXP←15;
+       RING←-1;
+       REXISTS[IRING]←0 FOR IRING←0 TO NRINGS-1;
+       IF M1MODE DO;
+            DEM1(0);
+            CRING(0);
+       ELSE DO;
+            CRING(IRING) FOR IRING←NRINGS-1 BY -1 TO 0;*** ***
+       ENDIF;
+       EDINIT();
+       BRKTN←BRKSI←0;
+       SETS(CCSTR);
+       HERALD←EEHC;
+       GOTO IN;
+
+ENTRY CSPL();
+IN:    COUT('&/', -1);
+INP:   QUITF←0;
+       SETR(CCSTR,0);
+       CCSTR←ZEDIT(CCSTR,0,HERALD//INLX);
+       SCOPY(CSTR,CCSTR//INLX);
+       HCH←GCI(CSTR//INP);
+       IF HCH=ENHC OR HCH=EEHC OR HCH=DNHC OR HCH=DEHC DO;
+               HERALD←HCH;
+               HCH←GCI(CSTR//INP);
+       ENDIF;
+       ERRSET(INERR);
+       ERBCLR();
+       QUITMODE ← 0;
+       QUIT'SET(INQUIT);
+       IF HCH='.' AND HERALD#DEHC DO;
+               TIME'1←READ'CLOCK('CTC');
+               PAGE'FAULT'COUNT ← PAGE'FAULTS();
+               CXCOM(//INERR);
+               IF STATFLAG DO;
+                       FMTO(XTS);
+                       TIME'2←READ'CLOCK('CTC');
+                       OUT(MS'COMPUTE'TIME(TIME'1,TIME'2));
+                       OUT(PAGE'FAULTS() - PAGE'FAULT'COUNT);
+               ENDIF;
+       ELSEIF HERALD=DNHC OR HERALD=DEHC DO;
+               WCD(HCH,CSTR);
+               DECOM();
+       ELSE DO;
+               WCD(HCH,CSTR);
+               EDCOM(//INERR);
+       ENDIF;
+       GOTO INP;
+
+INLX:  CSOUT(INLXS);
+       GOTO IN;
+
+INERR: CSOUT(INERS);
+       GOTO IN;
+
+INQUIT:
+       CSOUT("&/ABORTED BY QUIT.&/");
+       GOTO IN;
+
+***
+*** WINIT()
+***
+* INITIALIZE WINDOW MACHINERY
+
+
+
+       PROGRAM WINIT;
+       INCLUDE DRIV';
+
+       DI B30;
+
+FUNCTION WINIT();
+       UPCTR←0;
+       ULVP←-1;
+       UPTTAB[B30]←UPPTAB[B30]←-1 FOR B30←0 TO NUPW-1;
+       RETURN;
+
+***
+*** CXCOM()
+***
+* THIS FUNCTION INTERPRETS ONE LINE IN COMMAND LANGUAGE MODE
+* IT FRETURNS IF THE COMMAND IS AMBIGUOUS OR UNRECOGNIZABLE
+
+
+
+       COMMON CXCOM';
+       INCLUDE DRIV';
+
+       DQ NCLCS←15;
+       DECLARE STRING ARRAY CLCSA[NCLCS]←(
+   "FINISHED","COMPILE","BOUNDARY","LIST",
+   "DUMP","RECOVER","ADDRESS","SET","ZERO","OCTAL",
+   "USE","GO","MOVE","PACK","ENTER");
+       DECLARE FUNCTN ARRAY CLCGO[NCLCS]←(CLFIN,CLCOMP,CLBDY,CLLIST,
+   CLDUMP,CLREC,CLADDR,CLSET,CLZERO,CLOCT,
+   CLUSE,CLGO,CLMOVE,CLPACK,CLENT);
+
+
+       PROGRAM CXCOM;
+       INCLUDE CXCOM';
+
+FUNCTION CXCOM(), FRETURN;
+       SETS(CLCSTR);
+       COMMAND(CSTR,CLCSA,0:CSTR,,CLCTI//FRETN);
+       CLCCC←LENGTH(CSTR);
+       (CLCGO[CLCTI])(//FRETN);
+       RETN;
+
+***
+*** WWD(A,S)
+***
+* WRITE THE CHARACTERS OF THE WORD A ON THE STRING S
+* FRETURN IF NO ROOM
+* RETURN TH  STRING NORMALLY
+
+
+
+       PROGRAM WWD;
+       INCLUDE DRIV';
+
+
+STRING FUNCTION WWD(WWDA,STRING WWDS), FRETURN;
+       WCI(WWDA RSH 16,WWDS//FRETN);
+       WCI(WWDA RSH 8,WWDS//FRETN);
+       WCI(WWDA,WWDS//FRETN);
+       RETN WWDS;
+
+       PROGRAM WTYPE;
+       INCLUDE DRIV';
+***
+*** WTYPE(T,S)
+***
+* WRITE MODE AND TYPE OF TOKEN T ON STRING S,
+* FAIL IF NOT ENOUGH ROOM
+
+       DA WTA[FRMASK(TKTYPE)]←(
+        '---',    0,'INT','FLT','DBL','CPX','STR',
+        'LAB','LNG','LLG','ARR','FLD','FNC','MAC');
+       DP WTTP,WTSP;
+       DI WTWD;
+
+STRING FUNCTION WTW(WTWI,STRING WTWS), FRETURN;
+       WCI(' ',WTWS//FRETURN);
+       IF WTWD←WTA[WTWI] DO;
+           WTWS←WWD(WTWD,WTWS//FRETURN);
+       ELSE DO;
+           WCI('#',WTWS//FRETURN);
+           FCNS(WTWI,WTWS,0,10//FRETURN);
+       ENDIF;
+       RETURN WTWS;
+
+STRING FUNCTION WTYPE(WTTN,STRING WTS), FRETURN;
+       SSPTR(WTTN:WTTP,WTSP);
+       WTS←WTW(WTTP.TKTYPE,WTS//FRETURN);
+       IF WTSP.SYMODE#SMVALUE DO;
+           WTS←WTW(TMTTAB[WTSP.SYMODE],WTS//FRETURN);
+       ENDIF;
+       RETURN WTS;
+
+***
+*** CINT(F)
+***
+* READ AN INTEGER FROM CSTR
+* FRETURN IF NO INTEGER PRESENT,
+* OR F#0 AND INTEGER DOES NOT EXHAUST CSTR
+
+
+
+       PROGRAM CINT;
+       INCLUDE DRIV';
+
+       DI CINTN,CINTC,CINTS,CINTO;
+
+FUNCTION CINT(CINTF), FRETURN;
+       CINTN←CINTO←0;
+       CINTS←1;
+CINT1: GOTO CINT1 IF (CINTC←GCI(CSTR//FRETN))=' ';
+       IF CINTC='-' DO;
+            CINTS←-1;
+            CINTC←GCI(CSTR//FRETN);
+       ENDIF;
+       FRETN IF CINTC<'0' OR CINTC>'9';
+CINT2: CINTN←CINTN*10+CINTC-'0';
+       CINTO←CINTO LSH 3+CINTC-'0';
+       CINTC←GCI(CSTR//CINT3);
+       GOTO CINT2 IF CINTC>='0' AND CINTC<='9'
+   ELSE (CINTN←CINTO & CINTC←GCI(CSTR//CINT3)) IF CINTC='B';
+       FRETN IF CINTC#' ' OR CINTF#0;
+CINT3: RETN CINTN*CINTS;
+
+***
+*** ZSPACK(F)
+***
+* REPACK THE CURRENT IB, DELETING EMPTY SPACE IN THE SYMTAB
+* ALSO FLUSH TOKENS WITH TKUSE OFF IF F=1
+* DO NOT REPACK IF ANY GLOBAL SI'S ARE POINTING INTO THIS IB
+
+
+
+       PROGRAM ZSPACK;
+       INCLUDE DRIV';
+
+       DI I13,N13,J13,K13,M13;
+       DP P13,Q13;
+
+FUNCTION ZSPACK(F13);
+       RETURN IF ICGTN=BRKTN OR ICGTN=DBKTN
+   OR ICGTN=ECLTN OR ICGTN=E1TN OR ICGTN=E2TN
+   OR ICGTN=EDUTN OR ICGTN=EDITN OR ICGTN=CPFTN;
+       GOTO SPK1 IF F13=0;
+* FLUSH UNUSED TOKENS
+       ICTFL←0;
+       FOR I13←1 TO ICLTT DO;
+            SSPTS(I13:P13,Q13//SPK2);
+            IF P13.TKUSE=0 DO;
+                 SRSYM(Q13.SYSIZE,P13.TKSI);
+                 $P13←ICTFL;
+                 ICTFL←I13;
+            ENDIF;
+SPK2:  ENDFOR;
+       ICBA.IBTFL←ICTFL;
+SPK1:  N13←0;
+       J13←1;
+* START OF MAIN LOOP
+       WHILE J13<=ICLSU DO;
+       GOTO SPK3 IF QUITF;
+            IF (K13←SFREEP(J13)) DO;
+                 N13←N13+K13;
+                 J13←J13+K13;
+            ELSE DO;
+                 P13←STPTR(J13);
+                 M13←(F(P13,PTSIZE) IF F(P13,BTYPE)=BTTEXT
+               ELSE F(P13,SYSIZE));
+                 IF N13 DO;
+                      IF F(P13,BTYPE)=BTTEXT DO;
+                           IF P13.PTBP=FRMASK(PTBP) DO;
+* MACRO
+                                SSPTR(P13.PTFP:,Q13);
+                                Q13.SYVAL←J13-N13;
+                           ELSE DO;
+* ORDINARY PPT
+                                IF F(P13,PTBP) DO;
+                                     Q13←STPTR(F(P13,PTBP));
+                                     E(Q13,PTFP,J13-N13);
+                                ELSEIF J13=ICFSTAT DO;
+                                     E(ICBA,IBFSTAT,ICFSTAT←J13-N13);
+                                ENDIF;
+                                IF F(P13,PTFP) DO;
+                                     Q13←STPTR(F(P13,PTFP));
+                                     E(Q13,PTBP,J13-N13);
+                                ELSEIF J13=ICLSTAT DO;
+                                     E(ICBA,IBLSTAT,ICLSTAT←J13-N13);
+                                ENDIF;
+                           ENDIF;
+                      ELSE DO;
+* SYMBOL
+                           Q13←A(ICTT,F(P13,SYTN));
+                           E(Q13,TKSI,J13-N13);
+                      ENDIF;
+                      MOVE(P13,P13-N13,M13);
+                 ENDIF;
+                 J13←J13+M13;
+            ENDIF;
+       ENDFOR;
+SPK3:  E(ICBA,IBLSU,ICLSU←J13-N13-1);
+       RETURN;
+
+
+***
+*** SFREEP(S)
+***
+* RETURN 0 IF THE BLOCK AT SI S IS IN USE
+* OTHERWISE THE NUMBER OF FREE WORDS STARTING THERE
+
+
+
+       PROGRAM SFREEP;
+       INCLUDE DRIV';
+
+       DP SQ12;
+
+FUNCTION SFREEP(SJ12);
+       SQ12←STPTR(SJ12);
+       RETURN (1 IF $SQ12=0 ELSE 0);
+
+       PROGRAM CLPACK;
+       INCLUDE DRIV';
+
+* 'PACK' COMMAND - PACK DATA BASE
+
+       DP CLPS,CLPD;
+       DI CLPN,CLPE;
+       DS CLPMS←"*-*=* WORDS/";
+
+FUNCTION CLPACK(),FRETURN;
+       FRETN IF CLCCC;
+       SUDEL();
+       FOR CLPS←CLPD←TABBOT, CLPS+CLPN WHILE CLPS<TABTOP DO;
+           ICGTN←-1;
+           ICWBA←TWBA;
+           SSELA(CLPS);
+           SSELECT(CLPN←ICBA.IBGTN);
+           CLPN←ICBA.IBSIZE;
+           ZSPACK(0);
+           IF (CLPE←ICLST-ICLSU*(100+XPANFAC)/100)>0 DO;
+               ICBA.IBSIZE←CLPN-CLPE;
+           ELSE DO;
+               CLPE←0;
+           ENDIF;
+           IF CLPD#CLPS DO;
+               WMOVE(CLPD,CLPS,CLPN-CLPE);
+               ICGSP.GSIBA←CLPD;
+           ENDIF;
+           CLPD←CLPD+CLPN-CLPE;
+       ENDFOR;
+       CLPN←CLPD;
+       WHILE CLPN$VPA<TABTOP$VPA DO;
+           CLPN←CLPN+U(1,VPA);
+           SDPG(CLPN$VPA,RING);
+       ENDFOR;
+       FMTO(CLPMS);
+       OUT(TABTOP-TABBOT);
+       OUT(CLPS-CLPD);
+       TABTOP←CLPD;
+       OUT(TABTOP-TABBOT);
+       RETN;
+
+* 'GO' COMMAND - START BARE MACHINE
+
+
+       PROGRAM CLGO;
+       INCLUDE DRIV';
+
+
+FUNCTION CLGO(), FRETURN;
+       FRETN IF CLCCC;
+       DBGO();
+       RETN;
+
+
+* 'FINISHED' COMMAND
+ENTRY CLFIN(), FRETURN;
+       FRETN IF CLCCC;
+       DEM1(-1) IF M1MODE;* 5/31/73 JF - CHANGED FROM ZDEM1(1) . . .
+       EXIT();
+
+* 'COMPILE' COMMAND - COMPILE EVERYTHING OR SELECTED BLOCKS
+
+
+       PROGRAM CLCOMP;
+       INCLUDE DRIV';
+
+       DECLARE ARRAY CLNA[20];
+       DI CLNI,CLNN,CLNT;
+
+FUNCTION CLCOMP(), FRETURN;
+       IF CLCCC=0 DO;
+            ZRECOMP(0,0);
+       ELSEIF (CLCCC←GCI(CSTR//FRETN))='*' DO;
+            IF LENGTH(CSTR) DO;
+                 CLCSTR←CGETF(CLCSTR//FRETN);
+                 ZRECOMP(-1,CLNN←OPEN'SEQ'FILE(CLCSTR,1));
+                 CLOSE'SEQ'FILE(CLNN);
+            ELSE DO;
+                 ZRECOMP(-1,0);
+            ENDIF;
+       ELSE DO;
+            WCD(CLCCC,CSTR);
+            SSELECT(0);
+            ZPPDS(CSTR,20100B//FRETN);
+            CLNN←0;
+            FOR CLNI←LASTHW(PPTA) BY -1 TO PTTO DO;
+                 CLNT←GHW(PPTB,CLNI);
+                 FRETN IF CLNT>ICLTT OR CLNN=20;
+                 CLNA[CLNN]←CLNT;
+                 CLNN←CLNN+1;
+            ENDFOR;
+            FOR CLNN←CLNN-1 BY -1 TO 0 DO;
+                 SUDEL() IF EDUTN=CLNA[CLNN];
+                 ZCOMPF(CLNA[CLNN],STATFLAG,0//CLCP1);
+CLCP1:           GOTO CLCP2 IF QUITF;
+            ENDFOR;
+       ENDIF;
+CLCP2: RETN;
+
+* 'BOUNDARY' COMMAND - SET BOUNDARY BETWEEN RSGS AND CS
+
+
+       PROGRAM CLBDY;
+       INCLUDE DRIV';
+
+       DI CLBV;
+
+FUNCTION CLBDY(), FRETURN;
+       CLCTI←CINT(0//FRETN);
+       FRETN IF CLCTI<200B OR CLCTI>777600B;
+       CLCTJ←(0 IF CLCTI<4B5 ELSE 1 IF CLCTI<6B5 ELSE 2);
+       IF LENGTH(CSTR)=0 DO;
+            CLBV←GBIA[CLCTJ];
+       ELSE DO;
+            CLBV←CINT(1//FRETN);
+            FRETN IF CLBV<GBIA[CLCTJ] OR CLBV>GCLI[CLCTJ]-4000B;
+       ENDIF;
+       CLCTI←CLCTI-CLBV;
+       FRETN IF CLCTI<GBWS[CLCTJ];
+       DRGFIX();
+       RESETR(CLCTJ,CLCTI,CLBV,0);
+       RETN;
+
+
+* 'ADDRESS' COMMAND - SET RING
+
+FUNCTION CLADDR(), FRETURN;
+       CLCTI←CINT(1//FRETN);
+       FRETN IF CLCTI<0 OR CLCTI>=NRINGS;
+       DRGFIX();
+       CRING(CLCTI);
+       RETN;
+
+
+* 'ENTER' COMMAND - ENTER OCTAL VALUE
+
+FUNCTION CLENT(), FRETURN;
+       CLCTI←CINT(0//FRETN);
+       FRETN IF CLCTI<0 OR CLCTI>1B -1;
+       PUT(CLCTI,CINT(1//FRETN));
+       RETN;
+
+***
+*** CRING(N)
+***
+* SET UP FOR RING N, CREATING IT IF NECESSARY
+
+
+
+       PROGRAM CRING;
+       INCLUDE DRIV';
+
+
+FUNCTION CRING(CRN);
+       IF REXISTS[CRN] DO;
+          SRING(CRN);
+       ELSE DO;
+          RESETR(CRN,GBDY[CRN],GBIA[CRN],1);
+          DEINIT() IF M1MODE=0;
+       ENDIF;
+       RETURN;
+
+* 'USE' COMMAND - SELECT SECONDARY STORAGE FILE
+
+
+       PROGRAM CLUSE;
+       INCLUDE DRIV';
+
+
+FUNCTION CLUSE(), FRETURN;
+       CLOSE(SMFILE) IF OPENP(SMFILE)#0;
+       SMFILE←0;
+       CLCSTR←CGETF(CLCSTR//FRETN);
+       SMFILE←OOF(CLCSTR,42B);
+       RETN;
+
+
+* 'OCTAL' COMMAND - PRINT CORE RANGE IN OCTAL
+
+
+       PROGRAM CLOCT;
+       INCLUDE DRIV';
+
+       DF CLOPA(0:0,12),CLOWA(0:13,23);
+       DP CLOX,CLOY,CLOP;
+       DI CLOC;
+       DS CLOS←"# #/";
+
+FUNCTION CLOCT(), FRETURN;
+       IF CLCCC=0 DO;
+            CLOX←0;
+            CLOY←N' 4B7;
+       ELSE DO;
+            CLOY←CLOX←CINT(0//FRETN);
+            CLOY←CINT(1//FRETN) IF LENGTH(CSTR);
+            FRETN IF CLOX>CLOY OR CLOX<0;
+       ENDIF;
+       FOR CLOP←CLOX A' FMASK(CLOPA) TO CLOY DO;
+            IF CLOP$CLOWA=0 DO;
+                 CLOP←SGNP(CLOP$CLOPA-1,-1)@CLOPA;
+                 RETN IF CLOP<0;
+            ENDIF;
+            IF CLOP>=CLOX AND CLOP<=CLOY AND (CLOC←GET(CLOP))#0 DO;
+                 FMTO(CLOS);
+                 OUT(CLOP);
+                 OUT(CLOC);
+            ENDIF;
+       ENDFOR;
+       RETN;
+
+* 'LIST' COMMAND
+
+
+       COMMON CLLIST';
+       INCLUDE DRIV';
+
+       DECLARE STRING ARRAY CLLSA[8]←(
+   "UNDEFINED","MAP","STATISTICS","VARIABLES","FLAGS","PHYSICAL",
+   "TOKEN","CODE");
+       DECLARE FUNCTN ARRAY CLLGO[8]←(
+   CLUND,CLMAP,CLSTAT,CLVAR,CLFLAG,CLPHYS,
+   CLTKN,CLCODE);
+
+
+
+       PROGRAM CLLIST;
+       INCLUDE CLLIST';
+
+FUNCTION CLLIST(), FRETURN;
+       COMMAND(CSTR,CLLSA,0:CSTR,,CLCTI//FRETN);
+       CLCCC←LENGTH(CSTR);
+       (CLLGO[CLCTI])(//FRETN);
+       RETN;
+
+* 'SET' AND 'ZERO' COMMANDS - SET OR RESET FLAG
+
+       COMMON CLSET';
+       INCLUDE DRIV';
+
+       DQ NCLFG←10;
+       DECLARE STRING ARRAY CLSSA[NCLFG]←(
+   "CODE","PPT","TREE","BARE","EMPTY",
+   "FORMAT","MARGIN","INDENT","OFFSET","STATISTICS");
+       DECLARE REFERENCE ARRAY CLSWA[NCLFG]←(
+   @CODEFLAG,@PPTFLAG,@TREEFLAG,@BARE,@CODEXP,
+   @EFORMAT,@EMARGIN,@EINDENT,@ECONTSP,@STATFLAG);
+       DECLARE ARRAY CLSVA[NCLFG]←(
+   1,1,1,-1,0,0,0,0,0,1);
+
+
+       PROGRAM CLSET;
+       INCLUDE CLSET';
+
+       DI CLSI,CLFI,CLFQ;
+       DS CLFH←" */";
+
+FUNCTION CLSET(), FRETURN;
+       CLSI←-1;
+       GOTO CLZ1;
+ENTRY CLZERO(), FRETURN;
+       CLSI←0;
+CLZ1:  COMMAND(CSTR,CLSSA,0:CSTR,,CLCTI//FRETN);
+       CLSI←CINT(-1//FRETN) IF CLSI#0 AND (CLSI←CLSVA[CLCTI])=0;
+       FRETN IF LENGTH(CSTR);
+       $CLSWA[CLCTI]←CLSI;
+       RETN;
+
+* 'LIST FLAGS' COMMAND
+ENTRY CLFLAG(), FRETURN;
+       FRETN IF CLCCC;
+       FOR CLFI←0 TO NCLFG-1 DO;
+            CSOUT(CLSSA[CLFI]);
+            CLFQ←$CLSWA[CLFI];
+            FMTO(CLFH);
+            OUT(1 IF CLFQ#0 AND CLSVA[CLFI]#0 ELSE CLFQ);
+       ENDFOR;
+       RETN;
+
+
+* 'LIST PHYSICAL' COMMAND - LIST PHYSICAL MAP
+ENTRY CLPHYS(), FRETURN;
+       FRETN IF CLCCC;
+       DPPM();
+       RETN;
+
+* 'LIST VARIABLES' COMMAND - PRINT VARIABLES
+
+       PROGRAM CLVAR;
+       INCLUDE DRIV';
+
+       DI CLVT;
+
+FUNCTION CLVAR(), FRETURN;
+       IF CLCCC=0 DO;
+            FRETN IF ECLTN=0;
+            PMAP(ECLTN,-1);
+       ELSE DO;
+            SSELECT(0);
+            ZPPDS(CSTR,20100B//FRETN);
+            FRETN IF LASTHW(PPTA)#PTTO;
+            CLVT←GHW(PPTB,PTTO);
+            FRETN IF CLVT>ICLTT;
+            PMAP(CLVT,-1);
+       ENDIF;
+       RETN;
+
+* 'LIST UNDEFINED' COMMAND - LIST UNDEFINED FUNCTIONS
+
+       PROGRAM CLUND;
+       INCLUDE DRIV';
+
+       DS CLUS(64);
+       DI CLUI,CLUW;
+       DP CLUTP,CLUSP;
+
+FUNCTION CLUND(), FRETURN;
+       FRETN IF CLCCC;
+       SETS(CLUS,0,0);
+       SSELECT(1);
+       FOR CLUI←1 TO ICLTT DO;
+            SSPTS(CLUI:CLUTP,CLUSP//CLUD1);
+            IF CLUSP.FSGTN=0 AND CLUSP.SYVAL>0 DO;
+CLUD3:           CLUW←GETW(CLUS);
+                 WCI(' ',CLUS//CLUD2);
+                 CLUS←SWSYM(CLUI,CLUS//CLUD2);
+            ENDIF;
+CLUD1: ENDFOR;
+       CSOUT(CLUS);
+       COUT('&/', -1);
+       RETN;
+CLUD2: SETW(CLUS,CLUW);
+       CSOUT(CLUS);
+       COUT('&/', -1);
+       SETS(CLUS,0,0);
+       GOTO CLUD3;
+
+* 'LIST STATISTICS' COMMAND - COMPUTE AND PRINT STATISTICS
+
+       PROGRAM CLSTAT;
+       INCLUDE DRIV';
+
+       DS CTS2A←"* IB''S, *+* CELLS:/";
+       DS CTS2B←"HEADERS: *, TOKENS *+* (* GLOBAL)/ SYMBOL TABLES *+*:";
+       DS CTS2C←"   * (SYMS) * (PPT)/";
+       DI CTGTI,CTTI,CTSI,CTLEN;
+       DP CTTP,CTSP;
+       DI CTIBC,CTICC,CTICU,CTHDC,CTTTC,CTTTU,
+   CTTGC,CTSTC,CTSTU,CTSYC,CTPTC;
+
+FUNCTION CLSTAT(), FRETURN;
+       FRETN IF CLCCC;
+       CTIBC←CTHDC←CTTTC←CTTTU←CTTGC←CTSTC←CTSTU←CTSYC←CTPTC←0;
+       SSELECT(0);
+       FOR CTGTI←0 TO ICLTT DO;
+            GOTO CLST2 IF QUITF;
+            IF CTGTI#0 DO;
+                 SSPTS(CTGTI:CTTP,CTSP//CLSTX);
+                 GOTO CLSTX IF CTSP.GSTYPE#IBTFN AND
+               CTSP.GSTYPE#IBTCB;
+            ENDIF;
+            SSELECT(CTGTI);
+            CTIBC←CTIBC+1;
+            CTHDC←CTHDC+ICBA.IBLHEAD;
+            FOR CTTI←1 TO ICLTT DO;
+                 SSPTS(CTTI:CTTP,CTSP//CLST1);
+                 CTTTC←CTTTC+1;
+                 CTSYC←CTSYC+CTSP.SYSIZE;
+                 CTTGC←CTTGC+1 IF CTTP.TKGLOB;
+                 GOTO CLST0;
+CLST1:           CTTTU←CTTTU+1;
+CLST0:      ENDFOR;
+            CTSTU←CTSTU+ICLST-ICLSU;
+            CTSI←1;
+            WHILE CTSI<ICLSU DO;
+                 CTSP←STPTR(CTSI);
+                 IF CTLEN←SFREEP(CTSI) DO;
+                      CTSTU←CTSTU+CTLEN;
+                 ELSEIF CTSP.BTYPE=BTTEXT DO;
+                      CTSTC←CTSTC+(CTLEN←CTSP.PTSIZE);
+                      CTPTC←CTPTC+CTLEN;
+                 ELSE DO;
+                      CTSTC←CTSTC+(CTLEN←CTSP.SYSIZE);
+                 ENDIF;
+                 CTSI←CTSI+CTLEN;
+            ENDFOR;
+            SSELECT(0);
+CLSTX: ENDFOR;
+       CTICC←TABTOP-TABBOT-(CTICU←CTTTU+CTSTU);
+       FMTO(CTS2A);
+       OUT(CTIBC);  OUT(CTICC);  OUT(CTICU);
+       FMTO(CTS2B);
+       OUT(CTHDC);  OUT(CTTTC);  OUT(CTTTU);  OUT(CTTGC);
+       OUT(CTSTC);  OUT(CTSTU);
+       FMTO(CTS2C);
+       OUT(CTSYC);  OUT(CTPTC);
+CLST2: RETN;
+
+* 'LIST TOKEN' COMMAND - PRINT TT AND ST ENTRIES FOR TOKEN STRING
+
+       PROGRAM CLTKN;
+       INCLUDE DRIV';
+
+       DI CLTI,CLTL,CLTJ,CLTN,CLTT;
+       DP CLTTP,CLTSP;
+       DS CLTTS←": #:",CLTWS←"/  #";
+
+FUNCTION CLTKN(), FRETURN;
+       SSELECT(ECLTN);
+       IF ECLTN=0 DO;
+            FRETN;
+       ELSEIF CLCCC DO; 
+            ZPPDS(CSTR,02220000B//FRETN);
+       ELSEIF ECLSI=0 DO;
+            FRETN;
+       ELSE DO;
+            CLTSP←STPTR(ECLSI);
+            PCCOPY(PPTA,CLTSP,CLTSP.PTSIZE);
+       ENDIF;
+       CLTL←LASTHW(PPTA);
+       FOR CLTI←PTTO TO CLTL DO;
+            CLTT←GHW(PPTB,CLTI);
+            FIOUT(CLTT,-1,0,8);
+            IF CLTT>0 AND CLTT<=ICLTT DO;
+                 SSPTR(CLTT:CLTTP,CLTSP);
+                 FMTO(CLTTS);  OUT(CONTENTS(CLTTP));
+                 CLTN←CLTSP.SYSIZE;
+                 FOR CLTJ←0 TO CLTN-1 DO;
+                      FMTO(CLTWS);  OUT(CONTENTS(CLTSP+CLTJ));
+                 ENDFOR;
+            ENDIF;
+            COUT('&/', -1);
+       ENDFOR;
+       RETN;
+
+* 'LIST MAP' COMMAND - PRINT SHORT STORAGE MAP
+
+       PROGRAM CLMAP;
+       INCLUDE DRIV';
+
+       DS CMS0←" &/";
+       DS CMS1←"   WGS # OF #-#";
+       DS CMS2←"   RSGS # OF #-#";
+       DS CMS3←"   CS #-#";
+       DS CMS4←"   G''=#";
+       DI CMCW,CMCRS,CMBRS,CMERS,CMTW;
+       DP CMFL,CMFP;
+
+FUNCTION CLMAP(), FRETURN;
+       FRETN IF CLCCC;
+       CSOUT(RNAMES[RING]);
+       CSOUT(CMS0);
+       CMFL←WGDESC;
+       CMFP←CMFL←CMFL.GFLIST;
+       CMCW←EWGA-BWGA;
+       GOTO CLMP2 IF CMFL=0;
+CLMP1: CMCW←CMCW-CMFP.GFCNT;
+       GOTO CLMP1 IF (CMFP←CMFP.GFPTR)#CMFL;
+CLMP2: IF EWGA>BWGA DO;
+            FMTO(CMS1);
+            OUT(CMCW);  OUT(GBASE+BWGA);  OUT(GBASE+EWGA-1);
+       ENDIF;
+       CMBRS←GBASE+BRSGA;
+       CMERS←GBASE+ERSGA-1;
+       CMFL←RSGBIT+(ERSGA-LRSGA-1)/24;
+       CMCRS←CMERS-CMBRS+1;
+       FOR CMFP←RSGBIT TO CMFL DO;
+            CMCRS←CMCRS-FCOB(CMTW) WHERE CMTW←$CMFP;
+       ENDFOR;
+       IF CMERS>=CMBRS DO;
+            FMTO(CMS2);
+            OUT(CMCRS);  OUT(CMBRS);  OUT(CMERS);
+       ENDIF;
+       COUT('&/', -1);
+       IF CODETOP>CODEBOT DO;
+            FMTO(CMS3);  OUT(CODEBOT);  OUT(CODETOP-1);
+       ENDIF;
+       IF GBASE#GBIA[RING] DO;
+            FMTO(CMS4);  OUT(GBASE);
+       ENDIF;
+       COUT('&/', -1);
+       RETN;
+
+***
+*** PMAP(T,F)
+***
+* PRINT MAP FOR IB WITH GNT TN T ON FILE F
+
+       PROGRAM PMAP;
+       INCLUDE DRIV';
+
+       DI PMTN,PMFNF,PMLEX,PMMLX,PMLTN,PMMTN,PMVAL;
+       DP PMTP,PMSP;
+       DS PMWS(SYMAXCN+8);
+       DS PMS0←"<@> COMMON//DECLARED NAMES:/";
+       DS PMS1←"<@> ORIGIN=# LITS:# CS:# L:#//";
+       DS PMS2←"#: # #";
+       DP PMFDA;
+       DS PMSH←"&/LOCAL ENVIRONMENT:&/";
+       DS PMS3←"# @";
+       DS PMSG←"&/GLOBAL VARIABLES USED:&/";
+
+FUNCTION PMAP(PMGTN,PMAPF);
+       SSELECT(PMGTN);
+       PMTN←-PMGTN;
+       COUT('&L',PMAPF) IF PMAPF#-1;
+       IF (PMFNF←(ICTYPE=IBTFN))=0 DO;
+            FFMTO(PMS0,PMAPF);  OUT(PMTN);
+            GOTO PMAP8;
+       ENDIF;
+       FFMTO(PMS1,PMAPF);  OUT(PMTN);
+       OUT(A(ICCODE,0)+ICLLIT);  OUT(ICLLIT);
+       OUT(ICLCODE-ICLLIT);  OUT(ICBA.IBMLR);
+       SSELECT(1);
+       FOR PMTN←1 TO ICLTT DO;
+            GOTO PMAP9 IF QUITF;
+            SSPTS(PMTN:PMTP,PMSP//PMAP3);
+            IF PMSP.FSGTN=PMGTN DO;
+                 SETS(PMWS,0,0);
+                 PMWS←SWSYM(PMTN,PMWS//FTLERR);
+                 WCI(' ',PMWS);
+                 FSOUT(PMWS,PMAPF);
+                 IF (PMFDA←PMSP.SYVAL)>0 DO;
+                      PMFDA←PMFDA+GBASE;
+                      FFMTO(PMS2,PMAPF);  OUT(PMFDA);
+                      OUT(GET(PMFDA+FNEWP));  OUT(GET(PMFDA+FNEWL));
+                 ENDIF;
+                 COUT('&/',PMAPF);
+            ENDIF;
+PMAP3: ENDFOR;
+       SSELECT(PMGTN);
+       FSOUT(PMSH,PMAPF);
+       PMLEX←0;
+PMAP1: PMMLX←2B7;
+       PMLTN←0;
+PMAP2: PMMTN←0;
+       FOR PMTN←PMLTN+1 TO ICLTT DO;
+            SSPTS(PMTN:PMTP,PMSP//PMAP4);
+            PMVAL←PMSP.SYVAL;
+            IF PMVAL$INSTAG=ATREL AND PMVAL$INSST=ASTLR
+          AND PMVAL$INSLRD>=PMLEX AND PMVAL$INSLRD<PMMLX DO;
+                 PMMLX←PMVAL$INSLRD;
+                 PMMTN←PMTN;
+            ENDIF;
+PMAP4: ENDFOR;
+       IF PMMTN DO;
+            FFMTO(PMS3,PMAPF);  OUT(PMMLX);  OUT(PMMTN);
+            SETS(PMWS);
+            PMWS←WTYPE(PMMTN,PMWS//FTLERR);
+            FSOUT(PMWS,PMAPF);
+            COUT('&/',PMAPF);
+            PMLTN←PMMTN;
+            PMMLX←PMMLX+1;
+            GOTO PMAP2;
+       ELSEIF PMLTN DO;
+            PMLEX←PMMLX;
+            GOTO PMAP1;
+       ENDIF;
+       FSOUT(PMSG,PMAPF);
+PMAP8: FOR PMTN←1 TO ICLTT DO;
+            GOTO PMAP9 IF QUITF;
+            SSPTS(PMTN:PMTP,PMSP//PMAP5);
+            IF PMTP.TKGLOB=PMFNF AND (PMTP.TKTYPE#TTUND OR PMSP.SYMODE#
+          SMVALUE) AND PMSP.SYMODE#SMFUNC AND PMTP.TKSYM#0 DO;
+                 SETS(PMWS,0,0);
+                 PMWS←SWSYM(PMTN,PMWS//FTLERR);
+                 PMWS←WTYPE(PMTN,PMWS//FTLERR);
+                 FSOUT(PMWS,PMAPF);
+                 IF PMFNF=0 AND (PMVAL←PMSP.SYVAL)$INSTAG=ATD DO;
+                      COUT(' ',PMAPF);
+                      FIOUT(PMVAL$INSGD,PMAPF,0,8);
+                 ENDIF;
+                 COUT('&/',PMAPF);
+            ENDIF;
+PMAP5: ENDFOR;
+       COUT('&/',PMAPF);
+PMAP9: RETURN;
+
+* 'LIST CODE' - LIST VARIABLES AND CODE FOR BLOCKS
+
+       PROGRAM CLCODE;
+       INCLUDE DRIV';
+
+       DI CLCB1,CLCB2;
+
+FUNCTION CLCODE(), FRETURN;
+       CLCSTR←CGETF(CLCSTR//FRETN);
+       SSELECT(0);
+       ZPPDS(CSTR,20100B//FRETN);
+       FRETN IF LASTHW(PPTA)#PTTO+1;
+       CLCB1←GHW(PPTB,PTTO);
+       CLCB2←GHW(PPTB,PTTO+1);
+       FRETN IF CLCB1>ICLTT OR CLCB2>ICLTT;
+       CLCTI←OPEN'SEQ'FILE(CLCSTR,1);
+       VDUMP(CLCB1,CLCB2,CLCTI);
+       COUT(137B,CLCTI);
+       CLOSE'SEQ'FILE(CLCTI);
+       RETN;
+
+***
+*** VDUMP(B1,B2,F)*
+***
+* LIST CODE AND VARIABLES FOR BLOCKS B1-B2 ON FILE F
+
+       PROGRAM VDUMP;
+*****
+* 5/6/73  JACK FREEMAN
+* HAD TO ADD PPDEC TO THE FOLLOWING INCLUDE LIST JUST TO GET
+* THE DEFINITION OF CHMB1.
+*****
+       INCLUDE DRIV', PPDEC;
+
+       DI VBLK,VSTAT,VCODE,VW,VLEN;
+       DP VSP;
+       DS VSQS←"???",VSBS←"B,";
+
+FUNCTION VDUMP(VB1,VB2,VF);
+       VBLK←VB1;
+VD0:   PMAP(VBLK,VF);*DOES SSELECT(VBLK)
+       VCODE←A(ICCODE,ICLLIT);
+       FOR VSTAT←ICFSTAT, SNEXT(VSTAT) WHILE VSTAT DO;
+          GOTO VD2 IF QUITF;
+          FIOUT(VCODE,VF,6,8);
+          FSOUT(VSBS,VF);
+          VSP←STPTR(VSTAT);
+          VCODE←VCODE+(VLEN←VSP.PTLCODE);
+          VW←(26-FLLO(VLEN VV 1))/3;
+          FIOUT(VLEN,VF,VW,8);
+          (COUT('B',VF) & VW←VW+1) IF VW>1;
+          COUT(CHMB1+5-VW, VF) IF 5-VW > 0;
+          ZUNPSI(VSTAT,ICGTN,0);
+          FSOUT(UPS,VF);
+VD4:      COUT('&/',VF);
+       ENDFOR;
+       IF VBLK#VB2 DO;
+          VBLK←SGNEXT(VBLK//VD2);
+          GOTO VD0;
+       ENDIF;
+VD2:   RETURN;
+VD3:   FSOUT(VSQS,VF);
+       GOTO VD4;

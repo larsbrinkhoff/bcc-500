@@ -1,0 +1,362 @@
+            ORG 2000B;
+*
+BLLBASE:   R0←0;
+           Z←0;                         *  1: INTEGER
+           Z←1;                         *  2: LONG
+           Z←1B4, CALL BLL86;           *  3: REAL
+           Z←3;                         *  4: DOUBLE
+           Z←3;                         *  5: COMPLEX
+           Z←3;                         *  6: LONGLONG
+           Z←3, R0←BITS, GOTO BLL42;    *  7: STRING
+           IR←NOT M LCY 4, GOTO BLL44;  *  8: LABEL
+           Z←1;                         *  9: POINTER
+*
+*
+*  Z CONTAINS THE BITS WHICH DISTINGUISH
+*  BETWEEN THE FOLLOWING VERSIONS:
+*
+*  OPERATION,   BITS IN Z,      NEWG,      Q
+     
+*    BLL        16               G         Q
+*    BLLN       0,16             G         Q
+*    UCAL       1,2,16,18     403000B   IA(403010B)
+*    UCALN      0,1,2,16,18   403000B   IA(403010B)
+*    MCAL       1,2,16,18,23  600000B   IA(604000B)
+*    MCALN      0,1,2,16,18,23600000B   IA(604000B)
+*    POP        -                G       IA(G)
+*  BIT 3 IN BITS CONTROLS THE SKIP IF FTN=1
+*  BIT 18 IS THE RETURN BIT
+*
+*
+*  START OF COMMON BLL CODE.  NEWG HAS BEEN SET.
+*    THE FIRST WORD OF THE BRANCH DESCRIPTOR IS IN M.
+*    R6=Q, Q=77B6
+BLL1:      BITS←Z, R0←Q←16B6, GOTO BLL1TRP IF M[5];
+           NEWP←Z←M AND NOT Q, R0←R6+1, CALL BLL85 IF M[4];
+           MFETCH, R0←E1, .VCY, Q←77B6, GOTO BPAGEF IF Y<0;
+           SSOURCE, BRD←M, R0←P;
+           MAP, R0←E1, .VCY, DGOTO BLL3;
+           IR←R0←M, Z←R6, GOTO *+1 IF R0[1];
+           M←GR, Q←14B, SSOURCE;
+           R0←M+Q, Q←BITS MRG 40B, CALL BLODX;
+           BITS←Q, Q←77B6;
+           NEWG←M, M←IR;
+BLL3:      SSOURCE, Q←S←M AND NOT Q, GOTO BLL4 IF M[1];*  IF STK=1
+           Q←NEWP, Q, GOTO BLL5 IF LB=0;
+*  Q=NEWP, M=BRD, S=NEWL, SP IS SET IF STK=1
+BLL6:      Z←S;                                        *  IF CLL=0
+*  M=BRD, Z=NEWL, R6=Q, SOURCE=Q(+1)
+BLL10:     R0←NEWP;
+BLL12:     MAPSS, .VCY, R0←E1, NEWL←Z;
+           Z←NEWP, Q←M LCY 2, DGOTO BLL13 IF X>=0;
+           M←P+1, SETBA, GOTO BMACC1 IF R0[1];
+*  CPA=1, Z=NFW, M=NAW, SOURCE=NEWP
+BLL14:     R0←NFW←Z, Q←17B5;
+           NAW←S←M, Z←P, CALL BLODX;
+           R6←Q AND M, Z←BITS, SSOURCE;
+*  M=FORMAL PARAM, R6=FTYPE, SOURCE=P, Z=BITS
+           M←NI, IR←M, CALL BLL72 IF XPAGE, .TSPY←0;
+BLL71:     Q AND M, Q←IR, DGOTO BLL73 IF LB=0;
+           FP←Q, R0←S, GOTO BLL39 IF NZ[16];
+           Q←Q EOR M, GOTO BLL2TRP IF Z<0;
+BLL33:     R0←Q LCY 8, Q←17B5;
+           Q←M AND Q, Z←R6, GOTO BLL2TRP IF R0[1];
+*  M=ACTUAL PARAM, Q=ATYPE, IR=FP, Z=R6=FTYPE
+*  THE END FLAGS DO MATCH.
+BLL76:     Z←Q EOR Z, Q←IR, CLEARA, DGOTO BLL16 IF M[4];
+           Z←Q LCY 4, Q←16B5, GOTO BLL74 IF Z#0;
+*  STR=0 OR STR=2, Z[0]=FSTR, M=AP
+           M LCY 3, Q←IR←NAW, GOTO BLL17 IF X>=0;
+*  STR=2, IR=NAW
+           Q←IR+1, IR←M, DGOTO BLL16 IF Z<0;
+BLL70:     R0←NAW←Q, CALL 376B;
+           Q←BRD, Z←1B6;
+           Z←Q AND Z, Q←BITS, CLEARA, DGOTO 374B;
+           BITS←Q MRG 4B6, Q←IR, GOTO BLL3TRP IF Z=0;
+BLL17:     Z←4B7, SETA, GOTO BLL70 IF Z<0;
+*  M=AP, (Z[0]=FSTR, STR=1 OR 3)
+BLL16:     AP←M, Q←07740000B, GOTO BLL3TRP IF Z>=0;
+           M AND NOT Q, Q←7B7, GOTO BLL19 IF LB=0;
+*  M=AP, SOURCE=NAW, R6=FTYPE, S=NAW
+           Z←M AND Q LCY 4 MRG BASEAD, IR←XR, CALL BLL48;
+*  R0=ARGADR, R6=FTYPE, M=FIELD IF B
+           M←FP, Q←2B6;
+           M LCY 3, GOTO BLL30 IF X<0;                    *  CVAL=1
+           Q←R6, IR←NOT M, DGOTO BLL36 IF B;
+           Q←Q LCY 8, S←R0, GOTO BLL29 IF A;
+*  Q=FTYPE/2, S=ARGADR, IR=NOT FP
+BLL27:     MFETCH, .VCY, R0←E1, GOTO BPAGEF IF Y<0;
+BLL28:     R6←Q←Q LCY 1, Z←10;
+           Z←Q-Z, Q←E1, READS;
+BLL50:     XSRC←Q, Q←IR MRG 77774000B, GOTO BLL4TRP IF Z>=0;
+           Z←NEWL;
+           Q←IR, K←NOT Q+Z, CALL ITSG IF Y<0;
+           Q←R6, Q LCY 4, GOTO BLL40 IF X<0;
+           DGOTO Q MRG BLLBASE, Z←NEWP;
+           Q←FP, SSOURCE, DGOTO BLL31;
+*  K=CPYADDR, S=ARGADDR, Q=FP, SOURCE=NEWP, Z=COUNT
+BLL31:     R0←K, SETA, CALL BSTR1;
+           Z←XSRC, R0←IR←Z-1;
+           K←K+1, GOTO BLL32 IF R0<0;
+           R0←S←S+1, SSOURCE, CALL BLODX;
+           Z←NEWP, DGOTO BLL31 IF A;  
+           Z←IR, SSOURCE;
+BLL32:     Z←NAW, M←4B4;
+           Q AND M, S←NFW, DGOTO BLL14 IF LB=0;
+           M←Z+1, Z←S+1, .LRN←6, SETBA, GOTO TOSP IF INTRPT1;* R6←0
+*  Z=NFW+1, M=RETURN, SOURCE=NEWP, R6=0
+*
+BLL34:     Q←Z←BRD, S←Z, SETA, DGOTO BLL22 IF Y<0;     *  CLL=1
+           Q LCY 1, GOTO BLL23 IF X<0;                 *  STK=1
+*  CLL=0, STK=0
+           Z←Q←BITS, GOTO BLL21;
+*  CLL=1, R6=FSTK(STK)
+BLL22:     Z←Q LCY 3, R0←K←NEWL, CALL BSTR1;
+           Q←LR, DGOTO BLL25 IF Z>=0;
+           Q←Q, Q←R6;
+           Q←Q MRG 1B7;
+BLL25:     Q←BITS, M←Q, CALL BSTRX;
+           Z←P, Q LCY 2, CALL BLL63 IF X<0;
+           M←SP, Z←Q, GOTO BLL21 IF A;
+           R0←SPAD, CALL BSTR1;
+BLL21:     R0←Z, M←BRD, SETA, CALL MON IF Z[18];
+           Z←NEWG;
+           GR←Z, R0←P←Z←S, CALL BLL18 IF M[5];
+BLL20:     Q←NEWL, SETBA, DGOTO NX5 IF A;
+           LR←Q, SABCDE0;
+*  XMON OR XUTIL TRAP
+           SETBA, Q←0, GOTO FIXTRP;
+*
+*  FTN=1
+BLL18:     Q LCY 3, RETURN IF X<0;
+           R0←P←Z←S+1, RETURN;
+*
+*  STK=1
+BLL23:     Z←P, R6←2B7, CLEARA, GOTO BLL22 IF Z<0;
+*  STK=1, CLL=0
+           Q←GR, Z←2, SSOURCE;
+           R0←Q+Z, M←SP, CALL BSTR1;
+           Z←Q←BITS, GOTO BLL21;
+*  S=E, M=BRD, STK=1
+BLL4:      R0←M LCY 3, Q←LR, GOTO BLL7 IF R0<0;
+*  CLL=0
+           SP←Q, Z←S, DGOTO BLL6;
+           Q←NEWP, R0←M, GOTO BLL8 IF R0<0;
+*  CLL=0, UWSTK=1, SOURCE=Q(+1)
+BLL8:      SP←Z, R0←S+1;
+           MAP, .VCY, R0←E1, Q←77B6, GOTO BPAGEF IF Y<0;
+           FETCH, IR←M;
+           S←M AND NOT Q, M←IR, DGOTO BLL6;
+           R0←M, Q←NEWP;
+*
+*  STK=1, CLL=1, SOURCE=Q(+1)
+BLL7:      M←NEWG, Z←2;
+           R0←SPAD←IR←M+Z, CALL BLODX;
+           R0←IR+1, Q←M, CALL BLODX;
+           Z←S, S←Q;
+           Z←SP←Q+Z;
+           R0←M←BRD, Z←Z-M, DGOTO BLL6;
+           Q←NEWP, GOTO STAKOV IF Z>0;
+STAKOV:    IR←9, Q←0, SETBA, GOTO RDTRAP;
+*
+*  STK=0, NEWL=0
+BLL5:      S←LR, GOTO BLL6;
+*
+*  PAGE CROSSING IN AAW SEQUENCE, R6=NEW
+BLL72:     R0←S+1;
+           MAP, DRETURN;
+           R0←E1, TAKE, GOTO BPAGEF IF Y<0;
+*
+*  JUMP TYPE AAW, M=ACTUAL PARAM
+BLL73:     Q←7B7, GOTO BLL2TRP IF Z<0;
+           Z←M AND Q LCY 4 MRG BASEAD, IR←XR, CALL BLL48;
+           R6←Q←R0, GOTO BLL5TRP IF A;
+           MFETCH, NAW←Q, R0←E1, .VCY, GOTO BPAGEF IF Y<0;
+           R0+1, TAKE;
+           Z←IR←FP, Q←17B5, DGOTO BLL71;
+           Z←BITS, R6←Q AND Z, GOTO BLL72 IF XPAGE;
+*
+*  Q=16B5, M=AP, R6=FTYPE, TYPE MISMATCH
+BLL74:     AP←M;
+           M←Q EOR M, Q←17B5;
+           M AND Q, Q←16B5, GOTO BLL75 IF LB=0;
+           R6←Q, M←R6;
+           M EOR Q, GOTO BLL3TRP IF LB#0;
+BLL75:     M←AP, Q←Z←0, GOTO BLL76;
+*
+*  TEST TRANSITION TO HIGHER RING
+BLL63:     Z←R0←NEWP, SSOURCE;
+           MAPSS, M←NEWG;
+           R0←E1, Z←14B, SSOURCE, DRETURN;
+           R0←M+Z, M←GR, GOTO BSTR1 IF R0<0;
+*
+*  REL BIT IS SET IN BRD
+BLL85:     Z←R6, Q←777B5, DRETURN IF M[9];
+           NEWP←Z←Z+M OR Q;
+           NEWP←Z←Z-Q, RETURN;
+*
+*  DISPATCH ON ADDRESSING MODE
+BLL48:     SETC, GOTO ILIM←Z, Q←37777B;
+*
+*  POP, Q=FP, Z=BITS, R0=NAW
+BLL39:     MAP, M←POPW, Q←200B;
+           BITS←Z OR Q, E1, TAKE;
+           Z←IR, Q←374B4;
+           M←M AND NOT Q ! Z AND Q, Z←NAW, DGOTO BLL33;
+           S←NAW←Z-1, Q←0;
+*
+*  CPA=0, Z=NEWP, M=PR+1, SOURCE =NEWP
+BLL13:     R0←BITS, DGOTO BLL34;
+           R6←0, GOTO BLL2TRP IF R0>=0;
+*
+*  IMMEDIATE, CVAL=0, Q=FTYPE, M=FP, R0=ARGADR
+BLL29:     M LCY 4, M←4B7, GOTO BLL5TRP IF X>=0;
+           Z←Q EOR M, M←R0, DGOTO BLL28;
+           GOTO BLL5TRP IF Z#0;
+*
+*  FIELD, M=FP, IR=THE FIELD
+BLL36:     M←4B7;
+           Q EOR M, M←IR, GOTO BLL28 IF LB=0;
+           GOTO BLL27;
+*
+*  CVAL=1, R0=ARGADR, NOTE THAT Z IS LEFT NEGATIVE
+BLL30:     M←R0, IR←NOT M AND NOT Q, GOTO BLL87 IF A;
+           Z←AP, Q←6B6;
+           Q←NOT Q ! Q AND Z, MAP, GOTO BLL38 IF D;
+           NOT Q, R0←E1, DGOTO BLL50 IF LB#0;
+BLL38:     R6←Z←40000001B, SETBA, GOTO BMACC1 IF R0[1];
+           M←M, M←1B7, GOTO BLL50;
+*  CVAL=1, IMMEDIATE
+BLL87:     Q←3777B, DGOTO BLL38;
+           M←M AND Q MRG 1634B4, R0←0, DGOTO BLL50;
+*
+*  ARGUMENT IN CENTRAL REGISTER, R6=FTYPE, A=(STR=0)
+*
+BLL19:     Q←R6, Z←7B5, GOTO BLL4TRP IF A;
+           R0←Z←Z-Q, M←FP;
+           Z←M LCY 3, R0←R0+1, GOTO BLL82 IF Z<=0;
+BLL81:     IR←NOT M, Z←NEWP, SETC, GOTO BLL5TRP IF Z<0;
+           M←Q LCY 8, Q←IR MRG 77774000B;
+           M←AR, DGOTO M LCY1 MRG BLLBASE;
+           SSOURCE, DGOTO BLL51;
+BLL51:     Z←NEWL, R6←NOT Z, DGOTO BLL83 IF R0<0;
+           IR, K←NOT Q+Z, CALL ITSG IF Y<0;
+           R0←K, CALL BSTR1;
+           Z←R6+1;
+           Q←FP, GOTO BLL32 IF Z=0;
+           Z←Z+1, M←BR, CALL BSTRX;
+           GOTO BLL32 IF Z=0;
+           M←CR, CALL BSTRX;
+           M←DR, CALL BSTRX;
+           GOTO BLL32;
+*  CHECK IF POINTER TYPE
+BLL82:     R0←Z←R0+1, DGOTO BLL81;
+           Z←M LCY 3, GOTO BLL4TRP IF Z#0;
+*
+*  STORE FLOATING ACCUMULATOR
+BLL83:     R6←R0←K, Q←M, SETBA, DGOTO STFX;
+           MAP, R0←E1, .VCY, GOTO PAGEF IF Y<0;
+*
+*  TEST FOR FLOATING OVERFLOW, M=EXPONENT
+BLL84:     Q←FP, DGOTO TFO1;
+           GOTO BLL32 IF M[0]=M[1];
+*
+*  TEST FOR UNDEFINED FLOATING NUMBER
+BLL86:     Z←M-Z, R0←4B7, DRETURN;
+           Z←1, GOTO UFN IF Z=0;
+*
+*  FTYPE=STRING, R0=BITS, M=FIRST STRING WORD
+*  K=CPYADR, S=ARGADR
+*
+BLL42:     IR←0, GOTO BLL31 IF NR0[2];
+           Q←14B6, DGOTO BLL53;
+           R6←M AND Q MRG 40000003B;
+BLL55:     SSOURCE, R0←S←S+1, CALL BLODX;
+           K←K+1;
+BLL53:     Z←S, Q←77B6;
+           R0←M AND NOT Q, Z←IR, SSOURCE, DGOTO BMACC;
+           MAP, .VCY, R0←E1, DGOTO *+1;
+           Z←R0←M AND NOT Q-Z AND NOT Q;
+           Q←3B6, Z←IR, DGOTO BLL54 IF Z=0;
+BLL54:     R0←M AND Q-Z AND Q, Z←NEWP, GOTO BLL6TRP IF R0<0;
+           Z←R6, Q←74B6, SSOURCE;
+           M←M AND NOT Q ! Z AND Q, R0←K, CALL BSTR1;
+           R6←Z←Z-1, Q←FP, DGOTO BLL32;
+           IR←M, Z←XSRC, GOTO BLL55 IF NZ[16];
+*  FTYPE=LABEL, IR[0]=NOT REL
+*
+BLL44:     Z←S, Q←777B5, DGOTO BLL46 IF M[9];
+           Z←M OR Q+Z, IR, SSOURCE, GOTO BLL45 IF Y<0;
+           Z←Z-Q, GOTO BLL46;
+BLL45:     Q←77B6;
+           Z←M AND NOT Q;
+BLL46:     R0←BITS, Q←75B6;
+           R0←M←M AND Q ! Z AND NOT Q, Z←NEWP, GOTO BLL47 IF NR0[2];
+           MAP, R0←E1, .VCY;
+           SETBA, R6←4B7, GOTO BMACC1 IF R0[1];
+BLL47:     SSOURCE, R0←K, CALL BSTR1;
+           Z←XSRC, Q←57B6;
+           R0←S←S+1, SSOURCE, CALL BLODX;
+           Z←NEWP, M AND NOT Q, DGOTO BLL57 IF LB#0;
+           SSOURCE, Z←M, Q←BRD;
+           Q←NEWL MRG 24B6, Q LCY 1, DGOTO *+1 IF X>=0;
+           Z←M OR Q, Q←LR;
+           R6, Q←4B7, GOTO BLL58 IF Y<0;
+BLL49:     Q←FP, M←Z, CALL BSTRX;
+           GOTO BLL32;
+*
+BLL57:     DGOTO BLL49;
+           R6, GOTO BLL6TRP IF Y<0;
+BLL58:     Z←Z AND NOT Q, GOTO BLL49;
+*
+*  FSTR=0, CVAL=1
+BLL40:     Z←NEWP, Q←6B7;
+           R0←K, SSOURCE, CALL BSTR1;
+           R0←BITS, SETC, NOT M AND Q, GOTO BLL6TRP IF LB#0;
+           ILIM←0, Z←R6←S, GOTO BLL59 IF NR0[2];
+           M LCY 4, Q←774B5, DGOTO BLL60 IF X<0;
+BLL60:     IR←M AND NOT Q, Q←7776B4, SSOURCE;
+           SETBA, CALL IASUB;
+           MAP, .VCY, R0←E1;
+           ILIM←0, Z←R6, CLEARA, GOTO BMACC IF R0[1];
+BLL59:     S←R0←R6+1, Q←16B6, SSOURCE, CALL BLODX;
+           Q←NOT M OR NOT Q LCY 2, IR←0;
+           SETBA, CALL BASEIA;
+           MAP, .VCY, Q←E1, M←12B6, DGOTO BLL61 IF D;
+           Z←BITS, GOTO BLL6TRP IF A;
+           M←4B6;
+BLL61:     R0←Z AND Q, Z←R0;
+           Z←NEWP, R0←Z, GOTO BMACCQ IF R0[1];
+           M←M, M←R0, SSOURCE, CALL BSTRX;
+           Q←FP, GOTO BLL32;
+*
+*  IR= NOT FP
+ITSG:      Z←NEWG;
+           Q←IR MRG 7774B4, DRETURN;
+           K←NOT Q+Z, Q←IR;
+*
+BLL1TRP:   Q←1B6, GOTO BLLTRAP;
+BLL2TRP:   Q←NAW MRG 2B6, GOTO BLLTRAP;
+BLL3TRP:   Q←NAW MRG 3B6, GOTO BLLTRAP;
+BLL4TRP:   Q←NAW MRG 4B6, GOTO BLLTRAP;
+BLL5TRP:   Q←NAW MRG 5B6, GOTO BLLTRAP;
+BLL6TRP:   Q←NAW MRG 6B6, GOTO BLLTRAP;
+BLLTRAP:   IR←10, SETBA, GOTO RDTRAP;
+*
+*  SUBROUTINE M←CONTENTS(R0)
+BLODX:     MFETCH, R0←E1, .VCY, DRETURN;
+BPAGEF:    SETBA, GOTO PAGEF IF R0<0;
+*
+*  SUBROUTINE CONTENTS(K←K+1)←M
+BSTRX:     R0←K←K+1;
+BSTR1:     MAP, .VCY, R0←E1, GOTO BCSTORE IF STERR;
+           STORE, RETURN;
+BCSTORE:   SETBA, GOTO CSTORE;
+*
+*
+*  STORE NAW MRG 1B6 IF FTNAT
+BLL64:     M←FP, Q←R0←2B6, DGOTO BLL38;
+           IR←NOT M AND NOT Q, M←NAW MRG 1B6, DGOTO BLL50;
+            R0←R0+1, GOTO 157B;
+       SETBA, CALL 1776B;      *ILLEGAL MICROINSTRUCTION
+            END;

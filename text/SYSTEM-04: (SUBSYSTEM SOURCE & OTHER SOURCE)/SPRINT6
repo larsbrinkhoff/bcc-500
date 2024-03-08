@@ -1,0 +1,959 @@
+       COMMON DEFS;
+
+*MCALL DEFINITIONS
+
+       MONITOR SETAC ← 3;
+       MONITOR CRNE ← 6;
+       MONITOR CRPG ← 24;
+       MONITOR FPGPMT ← 27;
+       MONITOR ACQPMT ← 50;
+       MONITOR CLRPMT ← 53;
+       MONITOR READ'SPCS ← 96;
+       MONITOR SET'MAP'BYTE ← 102;
+       MONITOR SP'RETURN ← 116;
+       MONITOR MODIFY'CALL ← 120;
+       MONITOR READ'STRING ← 182;
+       MONITOR WRITE'STRING ← 183;
+       MONITOR READ'PROC'PARAM ← 211;
+
+*UCALL DEFINITIONS
+
+       UTILITY GET'PARAM ← 2;
+       UTILITY GET'COM'LINE ← 3;
+       UTILITY ABRV'LKP ← 4;
+       UTILITY NAME'SEARCH ← 10;
+       UTILITY OPEN'FILE ← 16;
+       UTILITY CLOSE'FILE ← 17;
+       UTILITY READ'SPT'FIELD ← 35;
+       UTILITY SET'SPT'FIELD ← 36;
+       UTILITY SET'CIOS'FIELD ← 42;
+
+
+
+       END;
+
+       COMMON GLOBAL;
+*GLOBAL DEFINITIONS
+       INCLUDE DEFS;
+       DECLARE OA;
+       DECLARE SPTX←-1;        *SPT INDEX
+       DECLARE C,D;            *ERROR CODES
+       DECLARE QUIT'FLAG;      *RUBOUT BEING PROCESSED
+
+
+
+       END;
+
+       COMMON PAGE'ALLOC;
+       INCLUDE GLOBAL;
+       DECLARE MAP0←32;        *START OF ALLOCATION SPACE
+       DECLARE MAPN←39;        *END OF ALLOCATION SPACE
+       DECLARE MAPLEN←MAPN-MAP0+1;
+*ARRAY GIVING THE STATUS OF EACH PAGE OF THE ALLOCATION SPACE
+*0=FREE,-1=OCCUPIED
+       DECLARE ARRAY MAPA[MAPLEN];
+*ARRAY GIVING THE PMT INDICES CORRESPONDING TO THE PAGES
+*OF THE ALLOCATION SPACE
+       DECLARE ARRAY PMT[MAPLEN];
+       DECLARE MAPX;           *THE HIGHEST NUMBERED PAGE
+*                              REFERENCED SO FAR
+
+
+
+       END;
+
+
+
+
+***********************
+
+
+
+
+       PROGRAM INIT'ALLOC;
+*INIT'ALLOC
+*INITIALIZE PAGE ALLOCATION SYSTEM
+*RETURN
+       INCLUDE PAGE'ALLOC;
+       DECLARE I;
+
+
+
+       FUNCTION INIT'ALLOC();
+       FOR I←0 TO MAPLEN-1 DO;
+       MAPA[I]←PMT[I]←0;
+       ENDFOR; MAPX←0;
+       RETURN;
+
+
+
+       END;
+
+       PROGRAM GET'PAGE;
+*GET'PAGE
+*PUT SPECIFIED PAGE OF A FILE INTO A FREE MAP BYTE
+*AND RETURN THE ADDRESS OF THE ACQUIRED PAGE
+*A1:  FILE NUMBER
+*A2:  PAGE OF FILE
+*RETURN R1
+*R1:  STARTING ADDRESS OF ACQUIRED PAGE
+*FRETURN IF NO AVAILABLE PAGE OR PAGE DID NOT EXIST IN FILE
+       INCLUDE PAGE'ALLOC;
+       DECLARE I;
+       DECLARE NO'PAGE←5;
+
+
+
+       FUNCTION GET'PAGE(FILE,PAGE), FRETURN;
+       FOR I←0 TO MAPLEN-1 DO;
+       GOTO CAL0 IF MAPA[I]=0;
+       ENDFOR; FRETURN;
+CAL0:  IF PMT[I]=0 DO;
+       PMT[I]←ACQPMT(-1//P'(7):C,D);
+       ENDIF;
+       FPGPMT(FILE,PAGE,PMT[I]//CAL2:C,D);
+       SET'MAP'BYTE(SPTX,MAP0+I,PMT[I]//CAL1:C,D);
+       MAPA[I]←-1; MAPX←(I+MAP0 IF I+MAP0>MAPX ELSE MAPX);
+       RETURN 2048*(MAP0+I);
+CAL1:  CLRPMT(PMT[I]//P'(9):C,D); P'(8);
+CAL2:  FRETURN IF D=NO'PAGE ELSE P'(5);
+
+
+
+       END;
+
+       PROGRAM P';
+       INCLUDE DEFS;
+       DECLARE FAIL'LOC=L'[0];
+
+
+
+       FUNCTION P'(A);
+       SOUT("PUNT "); SOUT("INFINITY") IF A=4B7-1 ELSE IOUT(A,10);
+       CRLF(1); SOUT("LOCATION = "); IOUT(FAIL'LOC,8); TCO('B');
+       BREAK();
+
+
+
+       END;
+
+       COMMON FIDDLE'LOGIC;
+*SAVE STATE AND LOAD REGISTERS
+       INCLUDE GLOBAL;
+
+          MACRO SAVE'STATE(MA) ← .STX MA[6], .EAX MA[0], .STORS;
+       MACRO LOAD'REGISTERS(MA) ←
+           .EAX R'[4], .STX MA[0], .EAX MA[0], .LOADS;
+          DECLARE OCTAL ARRAY TRSTATE[10];
+          DECLARE OCTAL ARRAY SPCS[5];
+       DECLARE ARRAY STACK[1000B];
+       DECLARE INITIAL'SP←@STACK[0],INITIAL'SL←@STACK[777B];
+
+
+
+       END;
+
+       PROGRAM TRAP'FCN;
+*SP'ENTRIES, TRAP AND INTERRUPT LOGIC
+       INCLUDE FIDDLE'LOGIC;
+       UTILITY BREAK'FCN ← 0;
+       DECLARE FIELD CSPC(0:6,23);
+
+       FUNCTION TRAP'FCN(TRAPNO,TRAPPAR);
+       SET'SPT'FIELD(SPTX,'TM',2B7+1//PUNT():C,D);
+       SP'RETURN(//PUNT():C,D) IF QUIT'FLAG;
+       IF TRAPNO=23 DO;
+       QUIT'FLAG←-1;
+       MODIFY'CALL(0,C←@TRP82,0,0,0//PUNT():C,D);
+       SP'RETURN(//PUNT():C,D);
+       ELSEIF TRAPNO=1 DO; CRLF(1);
+       SOUT("PAGE READ ONLY AT ");
+       READ'SPCS(0,SPCS//PUNT():C,D);
+       IOUT(SPCS[0]$CSPC,8); SOUT("B - PARAMETER = ");
+       IOUT(TRAPPAR,8); TCO('B'); CRLF(1);
+       ENDIF; BREAK'FCN();
+TRP82: QUIT'FLAG←0; XRUN();
+
+
+
+       END;
+
+        PROGRAM SP'ENTRIES;
+        INCLUDE FIDDLE'LOGIC;
+        DECLARE SP=G'[2], SL=G'[3];
+        DECLARE RET=L'[0], LL=L'[1];
+
+
+
+        ENTRY TRAP(), SP'ENTRY ← 0;
+          SAVE'STATE(TRSTATE);
+          TRAP'FCN(RET,LL);
+
+
+
+        ENTRY INTERRUPT(), SP'ENTRY ← 1;
+          SAVE'STATE(TRSTATE);
+          SOUT("YOU INTERRUPTED PRINT, IGNORED!");
+          SP'RETURN(//PUNT():C,D);
+
+
+
+        ENTRY SP'ENTRY'2(), SP'ENTRY ← 2; GOTO ENTER;
+
+
+
+        ENTRY SP'ENTRY'3(), SP'ENTRY ← 3;
+ENTER: SP←INITIAL'SP;
+       SL←INITIAL'SL;
+          RUN();
+
+
+
+          END;
+
+       PROGRAM ONAME;
+       DECLARE STRING OX;
+       DECLARE CH;
+
+
+
+       ENTRY ONAME(ARRAY ARR,INTEGER INDX);
+       SETUP(OX,16,@ARR[INDX],6);
+       SETW(OX,16);
+CAL1:  CH←GCI(OX//CAL3); GOTO CAL3 IF CH=' ';
+       TCO(CH); GOTO CAL1;
+CAL3:  SETUP(OX,4,@ARR[INDX+4],6); SETW(OX,4);
+       TCO(':'); SOUT(OX); RETURN;
+
+
+
+       END;
+
+       PROGRAM GET'LINE;
+       INCLUDE DEFS;
+       DECLARE CHR,C,D;
+
+
+
+       STRING FUNCTION GET'LINE(HERALD,STRING INP);
+       SET'CIOS'FIELD(-1,'EST',0//PUNT():C,D);
+CAL0:  SETS(INP,0,0);
+LOOP:  CHR←TCI();
+       GOTO EXIT IF CHR='&M';
+       GOTO CAL1 IF CHR='&A'; GOTO CAL2 IF CHR='&Q';
+       TCO(CHR); WCI(CHR,INP//CALF); GOTO LOOP;
+CAL1:  GCD(INP//LOOP); TCO('↑'); GOTO LOOP;
+CAL2:  TCO('←'); CRLF(1); TCO(HERALD) IF HERALD; GOTO CAL0;
+CALF:  CRLF(1); SOUT("LINE TOO LONG"); GOTO CAL2;
+EXIT:  CRLF(1); SET'CIOS'FIELD(-1,'EST',1//PUNT():C,D);
+       RETURN INP;
+
+
+
+       END;
+
+       PROGRAM CIO;
+       INCLUDE DEFS;
+       MONITOR BLOCK ← 170;
+       DECLARE FIELD NCHF(0:0,1);
+       DECLARE C,D;
+       DECLARE STRING STR(2);
+       DECLARE MEC, MEM, NCH;
+
+
+
+       ENTRY TCO(CHAR);
+       SETS(STR, 0, 0);
+       IF CHAR<=77B DO; CHAR←CHAR+240B;
+       ELSE DO; CHAR←CHAR-140B;
+       ENDIF;
+       WCI(37B,STR//CIO80)&WCI(CHAR+40B,STR//CIO80) IF
+       CHAR<40B ELSE WCI(CHAR,STR//CIO80);
+CIO10: WRITE'STRING(-1,-1,STR:STR,NCH//CIO80:MEC,MEM);
+       GOTO CIO10 IF NCH>0;
+       RETURN;
+
+
+
+       ENTRY TCI();
+       SETS(STR, 0, 0);
+CIO20: READ'STRING(-2,1,0,STR:STR,NCH//CIO80:MEC,MEM);
+       BLOCK(4B7 RSH 7//PUNT():C,D) IF NCH$NCHF=1;
+       CHAR ← GCI(STR//CIO20);
+       IF CHAR=37B DO;
+       CHAR ← GCI(STR//CIO80) A' 37B;
+       ELSEIF CHAR<40B DO;
+       GOTO CIO80;
+       ENDIF;
+       CHAR←CHAR A' 177B;
+       CHAR←(CHAR-40B IF CHAR>=40B ELSE CHAR+340B);
+       RETURN CHAR;
+CIO80: PUNT();
+
+
+
+       END;
+
+       COMMON DATE'DECS;
+       DECLARE YEAR, MONTH, WDAY, MDAY, HOUR, MIN, SEC;
+
+
+
+       END;
+
+
+
+
+********************
+
+
+
+
+       PROGRAM DATE;
+       DECLARE STRING LINE(40);
+
+
+
+       FUNCTION DATE();
+       SETS(LINE,0,0);
+       APPEND'DATE(LINE); SOUT(LINE);
+       RETURN;
+
+
+
+       END;
+
+
+
+********************
+
+
+
+       PROGRAM APPEND;
+       DECLARE STRING STR;
+       DECLARE STRING FIELD STFLD(0);
+
+
+
+       FUNCTION APPEND(STRING @P,STRING SOURCE);
+       STR←P.STFLD;
+X0:    WCI(GCI(SOURCE//X1),STR//X1); GOTO X0;
+X1:    P.STFLD←STR; RETURN;
+
+
+
+       END;
+
+       PROGRAM SEQ;
+
+
+
+       FUNCTION SEQ(STRING S1,S2), FRETURN;
+       FRETURN IF LENGTH(S1)#LENGTH(S2);
+       FRETURN IF GCI(S1//RETURN)#GCI(S2//RETURN) WHILE 1;
+
+
+
+       END;
+
+
+
+
+********************
+
+
+
+
+       PROGRAM PUNT;
+       INCLUDE DEFS;
+       DECLARE PUNT'LOC=L'[0];
+
+
+
+       FUNCTION PUNT();
+       CRLF(1); SOUT("PUNT AT LOCATION "); IOUT(PUNT'LOC,8);
+       TCO('B');
+       BREAK();
+
+
+
+       END;
+
+       PROGRAM BREAK;
+       INCLUDE GLOBAL;
+
+
+       FUNCTION BREAK();
+CAL0:  .HLT 0;
+
+
+
+       END;
+
+       COMMON APP'DECS;
+       DECLARE STRING ARRAYONE STRING'DAY[7]←
+               ("SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY",
+                "THURSDAY", "FRIDAY", "SATURDAY");
+       DECLARE STRING ARRAYONE STRING'MONTH[12]←
+           ("JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY",
+            "AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER");
+
+
+
+       END;
+
+
+
+
+*********************
+
+
+
+
+       PROGRAM APPEND'DATE;
+       INCLUDE DATE'DECS,APP'DECS;
+       UTILITY SYS'TIME'NUM ← 80;
+       DECLARE STRING TS;
+       DECLARE STRING FIELD STF(0);
+
+
+
+       FUNCTION APPEND'DATE(STRING @ST);
+       TS←ST.STF;
+       SYS'TIME'NUM(:YEAR, MONTH, WDAY, MDAY, HOUR, MIN, SEC);
+       APPEND(TS,STRING'DAY[WDAY]);
+       APPEND(TS,"  ");
+       APPEND(TS,STRING'MONTH[MONTH]);
+       WCI(0,TS);
+       IOUT'S(MDAY,10,TS);
+       APPEND(TS,", ");
+       IOUT'S(YEAR,10,TS);
+       APPEND(TS,"  ");
+       IOUT'S(HOUR,10,TS);
+       WCI(':',TS);
+       IOUT'S(MIN,10,TS);
+       WCI(':',TS);
+       IOUT'S(SEC,10,TS);
+       ST.STF←TS;
+       RETURN;
+
+
+
+       END;
+
+       PROGRAM IIN;
+       DECLARE SUM,CHR,SIGN;
+       MACRO IN'CHAR ← GCI(STR//FINI);
+
+
+
+       FUNCTION IIN(STRING STR,INTEGER RADIX);
+       SUM←0;
+       CHR←IN'CHAR; (SIGN←-1&GOTO LOOP) IF CHR='-' ELSE
+           (SIGN←1&GOTO LOOP1);
+LOOP:  CHR←IN'CHAR;
+LOOP1: GOTO FINI IF CHR<20B OR CHR>=20B+RADIX;
+       SUM←SUM*RADIX+CHR-20B; GOTO LOOP;
+FINI:  RETURN SUM*SIGN;
+
+
+
+       END;
+
+       PROGRAM IOUT;
+       DECLARE STRING ST(15);
+       DECLARE A1,A2,I,FLAG;
+       DECLARE STRING FIELD STFLD(0);
+       DECLARE STRING ISTR;
+
+
+
+       FUNCTION IOUT(A,RADIX); FLAG←0; GOTO XX;
+
+
+
+       ENTRY IOUT'S(A,RADIX,STRING @STR); FLAG←-1;
+       ISTR←STR.STFLD;
+XX:    SETS(ST,0,0); I←0;
+       IF A<0 AND RADIX=8 DO;
+       IF FLAG DO;
+       WCI(((A RSH ((8-I)*3)) A' 7)+20B,ISTR) FOR I←1 TO 8;
+       GOTO X3;
+       ELSE DO;
+       TCO(((A RSH ((8-I)*3)) A' 7)+20B) FOR I←1 TO 8;
+       ENDIF;
+       RETURN;
+       ELSEIF A<0 DO; A←-A; I←-1;
+       ENDIF;
+X0:    A1←A/RADIX; A2←A-RADIX*A1; A←A1;
+       WCI(A2+20B,ST//X1A);
+       IF A=0 DO; WCI('-',ST//X1A) IF I<0; GOTO X1A;
+       ELSE DO; GOTO X0;
+       ENDIF;
+X1:    TCO(GCD(ST//RETURN)); GOTO X1;
+X1A:   GOTO X1 IF FLAG=0;
+X2:    WCI(GCD(ST//X3),ISTR); GOTO X2;
+X3:    STR.STFLD←ISTR; RETURN;
+
+
+
+       END;
+
+       PROGRAM CRLF;
+       DECLARE K;
+
+
+
+       FUNCTION CRLF(I);
+       (TCO('&M')&TCO('&J')) FOR K←1 TO I;
+       RETURN;
+
+
+
+       END;
+
+
+
+
+**********************
+
+
+
+
+       PROGRAM SOUT;
+       DECLARE CHR;
+
+
+
+       FUNCTION SOUT(STRING ST);
+X1:    CHR←GCI(ST//RETURN);
+       IF CHR>77B DO;
+       TCO(CHR) IF CHR='&M' OR CHR='&J'; GOTO X1;
+       TCO('&&');
+       ENDIF; TCO(CHR A' 77B);
+       GOTO X1;
+
+
+
+       END;
+
+       COMMON CRUN;
+       INCLUDE GLOBAL;
+       MACRO GP←GET'PARAM(INP:PAR);
+       DECLARE STACK,SP=G'[2];
+       DECLARE I,J,K,X1,X2,X3,CHR,FINI'FLAG;
+       DECLARE ARRAY A1[10],A2[10];
+       DECLARE NCMD1←8, KDF'USER←1;
+       DECLARE STRING INP(70),PAR;
+
+* COMMAND TABLES
+
+       DECLARE STRING ARRAY TABLE1[NCMD1]←(
+           "DELETE-COMMAND","CHANGE-PRINT","DATE",
+           "FINISH","HELP","MESSAGE","PRINT","QUEUE");
+
+       DECLARE STRING ARRAY HELP'TEXT[NCMD1]←(
+           "DELETES THE FILE FROM THE PRINT WAITING LIST",
+           "CHANGES THE FILE TO BE PRINTED",
+           "PRINTS THE SYSTEM DATE AND TIME",
+           "EXITS PRINT SUBSYTEM RETURNING YOU TO EXEC(@)",
+           "PRINTS THIS MESSAGE",
+           "SENDS A MESSAGE OVER TO THE SYSTEM TELETYPE",
+           "PRINTS THE FILE ON THE IOMEC LINE PRINTER",
+           "DISPLAYS THE FILES WAITING TO BE PRINTED, IF ANY");
+
+
+       DECLARE FUNCTION ARRAY CMD1[NCMD1]←(
+           DELETE'COMMAND,CHANGE'PRINT,DATE,FINISH,
+           HELP,MESSAGE,PRINT,QUEUE);
+       END;
+
+       PROGRAM RUN;
+       INCLUDE CRUN;
+
+
+
+       FUNCTION RUN(); STACK←SP; INITX();
+       FINI'FLAG←0;
+       GET'COM'LINE(INP:INP//PUNT():C,D);
+       GP;
+       GOTO INLINE IF LENGTH(INP) = 0;
+       FINI'FLAG ← -1;
+       PRINT();
+       GOTO FINISHED;
+
+
+
+       ENTRY XRUN(); SP←STACK;
+       RUB: GOTO RUB WHILE TCI()#'&K';
+
+INLINE: CRLF(1); TCO('%'); GET'LINE('%',INP:INP); GP;
+       GOTO INLINE IF LENGTH(PAR)=0;
+       (CMD1[I←ABRV'LKP(PAR,TABLE1//CAL1:C,D)])();
+FINISHED:SP'RETURN(//PUNT():C,D) IF FINI'FLAG ELSE GOTO INLINE;
+CAL1:  IF C='NNF' DO; SOUT("COMMAND NOT FOUND");
+       ELSEIF C='NAM' DO; SOUT("AMBIGUOUS");
+       ELSE DO; TCO('?') IF LENGTH(PAR)#0;
+       ENDIF; GOTO INLINE;
+
+
+
+* FINISH
+
+       ENTRY FINISH(); FINI'FLAG←-1; RETURN;
+
+
+
+* HELP
+
+       ENTRY HELP();
+       FOR I ← 1 TO NCMD1-1 DO;
+           SOUT(TABLE1[I]);
+           TCO(' ') FOR J ← 1 TO 17-LENGTH(TABLE1[I]);
+          (SOUT(HELP'TEXT[I]) & CRLF(1));
+       ENDFOR;
+       RETURN;
+
+
+
+       END;
+
+       COMMON QUEUE'DEFS;
+* QUEUE'DEFS
+       INCLUDE CRUN;
+       DECLARE PRT←1,CPR←2,MSG←3;  /* OPERATION CODES */
+       DECLARE SSP←0,DSP←1,ASP←2;  /* OPTION CODES */
+       DECLARE NO'LINE ← 0, LINE ← 1;
+       DECLARE FIELD LK(0),RP(1),WP(2);
+       DECLARE FIELD   OPT(0:0,2),  /* OPTION FIELD */
+                       OPR(0:3,5),  /* OPERATION FIELD */
+                       USE(0:6,6),  /* FILE IN USE BY KDF */
+                   LINE'NO(0:7,7),  /* LINE NUMBERS WANTED? */
+                 TTY'LINE(0:8,15),  /* TTY THAT ISSUED PRINT COMMAND */
+                 PROC'NO(0:16,23),  /* PROCESS # OF TTY ABOVE */
+                            FN(1);  /* FILE NAME STARTS HERE */
+       DECLARE INT'WORD,Q,QF;
+       DECLARE INTNO ← 11;
+       DECLARE ARRAY M30COM[8]←(KDF'USER,0,0,
+           6'M30C',6'OM  ',0,0,6'PROC');
+       DECLARE ARRAY Q'NAME[8]←(KDF'USER,0,0,
+           6'KDF-',6'QUEU',6'E   ',0,6'QUEU');
+
+
+
+       END;
+
+       PROGRAM QUEUE;
+* QUEUE
+       INCLUDE QUEUE'DEFS;
+       DECLARE STRING STR;
+       DECLARE READ,WRITE;
+       DECLARE QQ←2048*40;
+       DECLARE ARRAY AR[8];
+       MACRO NUM←IOUT((READ-QQ+6)/9,10)&SOUT(": ");
+
+
+
+       FUNCTION QUEUE(); BCOPY(QQ,Q,2048); $QQ←0; LOCK(QQ);
+       READ←QQ.RP; WRITE←QQ.WP;
+CAL0:  IF READ=WRITE DO; GOTO CALE; ENDIF;
+       IF READ.OPR=PRT DO; BCOPY(@AR[0],@(READ.FN),8);
+       NUM; SOUT("PRINT ");
+       TCO('#'); IOUT(1 IF AR[0]=-1 ELSE AR[0],10); TCO(':');
+       ONAME(AR,3); TCO(' ');
+       SOUT("SINGLE") IF READ.OPT=SSP ELSE
+       SOUT("DOUBLE") IF READ.OPT=DSP ELSE
+       SOUT("ABSOLUTE") IF READ.OPT=ASP;
+       SOUT(" WITH LINE-NUMBERING") IF READ.LINE'NO = LINE;
+       CRLF(1);
+       ELSEIF READ.OPR=CPR DO; BCOPY(@AR[0],@(READ.FN),8);
+       NUM; SOUT("CHANGE PRINT "); TCO('#');
+       IOUT(1 IF AR[0]=-1 ELSE AR[0],10); TCO(':');
+       ONAME(AR,3); SOUT(" #"); BCOPY(@AR[0],@(READ.FN)+9,8);
+       IOUT(1 IF AR[0]=-1 ELSE AR[0],10); TCO(':'); ONAME(AR,3);
+       SOUT(" SINGLE") IF READ.OPT=SSP ELSE
+       SOUT(" DOUBLE") IF READ.OPT=DSP; CRLF(1);
+       ELSEIF READ.OPR=MSG DO;
+       SETUP(STR,READ.OPT,@(READ.FN)); SETW(STR,READ.OPT);
+       NUM; SOUT(STR); CRLF(1);
+       ENDIF;
+       READ←(9 IF READ.OPR#CPR ELSE 18)+READ;
+       READ←QQ+3 IF READ>=QQ+3+200*9;
+       GOTO CAL0;
+CALE:  RETURN;
+
+
+
+       END;
+
+       PROGRAM DELETE'COMMAND;
+* DELETE-COMMAND
+       INCLUDE QUEUE'DEFS;
+       DECLARE ITEM, OPERATION;
+
+
+
+       FUNCTION DELETE'COMMAND(); GP;
+       TCO('?')&RETURN IF LENGTH(PAR)=0;
+       LOCK(Q); ITEM←Q+IIN(PAR,10)*9-6;
+       IF ITEM.USE=1 DO;
+       UNLOCK(Q);
+       SOUT("TOO LATE!! COMMAND IS BEING PROCESSED ALREADY");
+       RETURN;
+       ENDIF; OPERATION←ITEM.OPR;
+       $ITEM←0; $(ITEM+9)←0 IF OPERATION=CPR;
+       UNLOCK(Q);
+       RETURN;
+
+
+
+       END;
+
+       PROGRAM MESSAGE;
+* MESSAGE
+       INCLUDE QUEUE'DEFS;
+       DECLARE STRING LINE(60),STR;
+       DECLARE ARRAY AR[9];
+       DECLARE ITEM,CNT,CHR;
+
+
+
+       FUNCTION MESSAGE(); ITEM←@AR[0];
+       GET'LINE(0,LINE:LINE);
+CAL0:  SETUP(STR,24,@(ITEM.FN)); CNT←0;
+       (WCI(CHR←GCI(LINE//CALE),STR//CAL1)&CNT←CNT+1) WHILE 1;
+CAL1:  ITEM.OPR←MSG; ITEM.OPT←CNT;
+       PUT'QUEUE(AR); WCD(CHR,LINE); GOTO CAL0;
+CALE:  ITEM.OPR←MSG; ITEM.OPT←CNT+2;
+       WCI('&M',STR); WCI('&J',STR);
+       PUT'QUEUE(AR);
+       INTERRUPT'KDF();
+       RETURN;
+
+
+
+       END;
+
+       PROGRAM PRINT;
+       INCLUDE QUEUE'DEFS;
+       DECLARE ARRAY AR[9], NAME[8];
+       DECLARE ITEM;
+       DECLARE INTEGER TNO;
+
+
+
+       FUNCTION PRINT();
+       ITEM←@AR[0];
+       ITEM.OPR←PRT;
+       GET'NAME(NAME,"M1");
+       BCOPY(@(ITEM.FN),@NAME[0],8);
+       ITEM.OPT ← GET'OPTION();
+       ITEM.LINE'NO ← GET'LINE'OPT();
+       TNO ← READ'PROC'PARAM('TNO'//PUNT():C,D);
+       TNO ← TNO RSH 1;
+       ITEM.TTY'LINE ← TNO;
+       ITEM.PROC'NO ← READ'PROC'PARAM('PRT'//PUNT():C,D);
+       PUT'QUEUE(AR);
+       INTERRUPT'KDF();
+       RETURN;
+
+
+
+       END;
+
+       PROGRAM CHANGE'PRINT;
+* CHANGE-PRINT
+       INCLUDE QUEUE'DEFS;
+       DECLARE ARRAY AR1[9],AR2[9],NAME[8];
+       DECLARE ITEM1,ITEM2;
+
+
+
+       FUNCTION CHANGE'PRINT();
+       ITEM1←@AR1[0]; ITEM2←@AR2[0];
+       GET'NAME(NAME,"OLD");
+       BCOPY(@(ITEM1.FN),@NAME[0],8);
+       GET'NAME(NAME,"NEW");
+       BCOPY(@(ITEM2.FN),@NAME[0],8);
+       ITEM1.OPR←ITEM2.OPR←CPR;
+       ITEM1.OPT←ITEM2.OPT←GET'OPTION();
+       ITEM1.LINE'NO ← ITEM2.LINE'NO ← 0;
+       PUT'QUEUE(AR1); PUT'QUEUE(AR2);
+       INTERRUPT'KDF();
+       RETURN;
+
+
+
+       END;
+
+       PROGRAM GET'NAME'OPT;
+       INCLUDE QUEUE'DEFS;
+       DECLARE K,T;
+
+
+
+       FUNCTION GET'NAME(ARRAY NAME, STRING STR);
+GET'FILE'NAME:
+       GET'PARAM(INP:PAR);
+       GOTO FILE'NAME IF LENGTH(PAR) # 0;
+AGN'FILE:
+       SOUT(STR);
+       SOUT(" FILE NAME: ");
+       GET'LINE(' ',INP:INP);
+       GOTO GET'FILE'NAME;
+FILE'NAME:
+       NAME'SEARCH(PAR,NAME,0,6'9SYM',-1//BAD'FILE:C,D);
+       OPEN'FILE(-1,NAME,'RO',-1:CHR//BAD'FILE:C,D);
+       CLOSE'FILE(CHR//PUNT():C,D);
+       RETURN;
+BAD'FILE:
+       SOUT("BAD FILE NAME");
+       CRLF(1);
+       GOTO AGN'FILE;
+
+
+
+       FUNCTION GET'OPTION();
+GET'OPT:
+       GET'PARAM(INP:PAR);
+       RETURN SSP IF LENGTH(PAR) = 0;
+OPTION'S:
+       SEQ(PAR,"S",//OPTION'D);
+       RETURN SSP;
+OPTION'D:
+       SEQ(PAR,"D"//OPTION'A);
+       RETURN DSP;
+OPTION'A:
+       SEQ(PAR,"A"//BAD'OPTION);
+       RETURN ASP;
+BAD'OPTION:
+       SOUT("  ?");
+       CRLF(1);
+       SOUT("SINGLE OR DOUBLE? ");
+       GET'LINE(' ',INP:INP);
+       GOTO GET'OPT;
+
+
+
+       FUNCTION GET'LINE'OPT();
+LINE'OPT:
+       GET'PARAM(INP:PAR);
+       RETURN NO'LINE IF LENGTH(PAR) = 0;
+       SEQ(PAR,"Y"//OPTION'NO);
+       RETURN LINE;
+OPTION'NO:
+       SEQ(PAR,"N"//BAD'ENTRY);
+       RETURN NO'LINE;
+BAD'ENTRY:
+       SOUT("  ?");
+       CRLF(1);
+       SOUT("LINE NUMBERING? ");
+       GET'LINE(' ',INP:INP);
+       GOTO LINE'OPT;
+
+
+
+       END;
+
+       PROGRAM LOCK;
+* LOCK AND UNLOCK
+       INCLUDE QUEUE'DEFS;
+
+
+
+       FUNCTION LOCK(BUF);
+CAL0:  GOTO CAL1 IF BUF.LK#0; BUF.LK←-1;
+       INT'WORD←0; GOTO CAL2;
+CAL1:  BUF.LK←-1 IF (INT'WORD←BUF.LK)>0;
+       GOTO CAL2 IF INT'WORD>0;
+       I←I FOR I←1 TO 2000; GOTO CAL0;
+CAL2:  BUF.RP←BUF.RP+BUF; BUF.WP←BUF.WP+BUF;
+       RETURN;
+
+
+
+       ENTRY UNLOCK(BUF);
+       BUF.RP←BUF.RP-BUF; BUF.WP←BUF.WP-BUF;
+       BUF.LK←INT'WORD;
+       RETURN;
+
+
+
+       END;
+
+       PROGRAM INTERRUPT'KDF;
+* INTERRUPT'KDF
+       INCLUDE QUEUE'DEFS;
+       MONITOR SETPIW ← 163;
+       DECLARE PR;
+       DECLARE ARRAY NAME[8];
+
+
+
+       FUNCTION INTERRUPT'KDF();
+       BCOPY(@NAME[0],@M30COM[0],8);
+       OPEN'FILE(-1,NAME,'RW',-1:PR//PUNT():C,D);
+       SETPIW(PR,4B7 RSH INTNO//PUNT():C,D);
+       CLOSE'FILE(PR//PUNT():C,D);
+       RETURN;
+
+
+
+       END;
+
+
+
+
+*********************
+
+
+
+
+       PROGRAM PUT'QUEUE;
+* PUT'QUEUE
+       INCLUDE QUEUE'DEFS;
+
+
+
+       FUNCTION PUT'QUEUE(ARRAY AR);
+       LOCK(Q);
+       BCOPY(Q.WP,@AR[0],9); Q.WP.USE←0;
+       Q.WP←Q.WP+9;
+       Q.WP←Q+3 IF Q.WP>=Q+3+200*9;
+       UNLOCK(Q);
+       RETURN;
+
+
+
+       END;
+
+       PROGRAM INITX;
+* INITX
+       INCLUDE QUEUE'DEFS;
+       DECLARE ARRAY NAME[8];
+
+
+
+       FUNCTION INITX(); QUIT'FLAG←0;
+       BCOPY(@NAME[0],@Q'NAME[0],8);
+       SET'SPT'FIELD(SPTX,'TM',2B7+1//PUNT():C,D);
+       SET'SPT'FIELD(SPTX,'SB',1B6 V'
+           READ'SPT'FIELD(SPTX,'SB'//PUNT():C,D)//PUNT():C,D);
+       SET'CIOS'FIELD(-1,'EST',1//PUNT():C,D);
+       SET'CIOS'FIELD(-1,'BWS','ALL'//PUNT():C,D);
+       OA←READ'SPT'FIELD(SPTX,'UAK'//PUNT():C,D);
+       INIT'ALLOC();
+       OPEN'FILE(-1,NAME,'RW',-1:QF//CAL0:C,D); GOTO CAL1;
+CAL0:  CRNE(NAME,0,OA//PUNT():C,D);
+       SETAC(NAME,357B,OA//PUNT():C,D);
+       OPEN'FILE(-1,NAME,'RW',-1:QF//PUNT():C,D);
+       CRPG(QF,0//PUNT():C,D);
+       Q←GET'PAGE(QF,0//PUNT());
+       Q.LK←0; Q.RP←Q.WP←3;
+       RETURN;
+CAL1:  Q←GET'PAGE(QF,0//PUNT());
+       RETURN;
+
+
+
+       END;

@@ -1,0 +1,1185 @@
+DECLARE PARAMETER ORG←13631047B,ORR←13631062B,ENN←11227044B,
+  REP←14422460B,IFN←12223056B,IFZ←12223072B,XIF←16024446B,
+  DEF←11022446B,ABS←10221063B,EQU←11230465B,ASC←10231443B,
+  DEC←11022443B,OCT←13621464B,BSS←10431463B,UNL←15227054B,
+  LST←13031464B,SKP←14625460B,SPC←14630043B,SUP←14632460B,
+  UNS←15227063B,HED←12022444B;
+DECLARE PARAMETER BOC←42B;
+DECLARE INTEGER NOOP,II, FIELD WP(2), BP(0);
+DECLARE OC,BC,I,J,K,H,SMB;
+DECLARE INTEGER A,B,LL,TT,N,Z,EFN,SN;
+DECLARE ARRAY TBCD[127],TOPCD[127],OPCD[9],SYMT1[2011],
+               SYMT2[2011];
+DECLARE STRING CHR, LABL(6);
+DECLARE STRING ARRAY OPND[9]←
+"                                                                          ",
+"                                                                          ",
+"                                                                          ",
+"                                                                          ",
+"                                                                          ",
+"                                                                          ",
+"                                                                          ",
+"                                                                          ";
+DECLARE STRING FNAME(20), SNAME(20), STMT(80), TSTMT(80),
+       CHAR(6), HEADER(80);
+       
+DECLARE INTEGER FIELD E4(0:0,5), E5(0:0,7),E6(0:8,23);
+DECLARE INTEGER LC,OLDLC,TORR,TNZ, CH, TLC, LISTO,
+       NREP,BCD,FNO,LFN,BFN,RIP,BNCD,JIP,VW,LAB,HEDFLAG;
+DECLARE INTEGER LINECT, PAGENO;
+GROT:  GOTO BEGIN;
+       FUNCTION FIRSTBLOCK();
+       DECLARE FIELD B815(0:8,15), B1623(0:16,23);
+       DECLARE FIXED INTEGER NULL ← 0;
+       DECLARE FIXED INTEGER SAVEWP, BLKCNT, COUNT, CHECKSUM, XLC;
+       DECLARE FIXED STRING STR(300);
+
+       SETS(STR, 0, 0);
+       WCI(NULL, STR) FOR COUNT ← 1 TO 100;* WRITE LEADER
+       SOUT(STR, BFN);
+
+* INITIALIZE FOR BLOCK
+       SETW(STR, 2);
+       BLKCNT ← CHECKSUM ← 0;
+       RETURN;
+
+       FUNCTION NEXTBLOCK();
+
+       RETURN IF BLKCNT = 0;
+
+* CLOSE UP CURRENT BLOCK
+       SAVEWP ← LENGTH(STR);
+       SETW(STR, 0);
+       WCI(BLKCNT, STR); WCI(NULL, STR);
+
+* WRITE CHECKSUM
+       SETW(STR, SAVEWP);
+       WCI(CHECKSUM$B815, STR); WCI(CHECKSUM$B1623, STR);
+
+* WRITE INTERBLOCK NULLS
+       WCI(NULL, STR) FOR COUNT ← 1 TO 8;
+       SOUT(STR, BFN);
+
+* INITIALIZE FOR NEXT BLOCK
+       BLKCNT ← CHECKSUM ← 0;
+       SETS(STR, 0, 2);
+       RETURN;
+
+       FUNCTION BRITE(BNCD, BFN, ILC);
+
+       IF BLKCNT > 126 AND ILC = 1 DO;
+* START NEW BLOCK
+          NEXTBLOCK();
+          XLC ← LC - 1;  * SINCE LC ALREADY INCREMENTED
+          WCI(XLC$B815, STR); WCI(XLC$B1623, STR);
+          WCI(BNCD$B815, STR); WCI(BNCD$B1623, STR);
+          CHECKSUM ← XLC + BNCD;
+          BLKCNT ← BLKCNT + 1;
+       ELSEIF ILC = 1 DO; * 1 WORD GENERATED
+          WCI(BNCD$B815, STR); WCI(BNCD$B1623, STR);
+          CHECKSUM ← CHECKSUM + BNCD;
+          BLKCNT ← BLKCNT + 1;
+       ELSEIF ILC = 0 DO; * ORG OR ORR
+          NEXTBLOCK();
+          WCI(LC$B815, STR); WCI(LC$B1623, STR);
+          CHECKSUM ← LC;
+       ELSEIF ILC > 1 DO;
+* START NEW BLOCK (NON-CONTIGUOUS LOADING)
+          NEXTBLOCK();
+          WCI(LC$B815, STR); WCI(LC$B1623, STR);
+          CHECKSUM ← LC;
+       ELSEIF ILC = -1 DO; * END
+          NEXTBLOCK();
+          SETS(STR, 0, 0);
+          WCI(NULL, STR) FOR COUNT ← 1 TO 100;*  WRITE TRAILER
+          SOUT(STR, BFN);
+       ENDIF;
+       RETURN;
+
+FUNCTION NEWLINE(INTEGER NMBR, FILENO);
+* OUTPUT A CRLF & CHECK TO SEE IF 57 LINES ON THE PAGE: IF SO, NEW PAGE
+       DECLARE INTEGER NEWCT;
+       IF NMBR<57 DO; * IS AN SPC OPERATION
+           IF HEDFLAG DO;
+               FOR NEWCT←1 TO NMBR DO;
+                   CRLF(1,FILENO);
+                   LINECT←LINECT+1;
+                   IF LINECT>57 DO;
+                       COUT(154B,FILENO);
+                       SETR(HEADER,0);
+                       SOUT("PAGE ",FILENO);
+                       IOUT(PAGENO,FILENO);
+                       SOUT(" - ",FILENO);
+                       SOUT(HEADER,FILENO);
+                       CRLF(3,FILENO);
+                       PAGENO←PAGENO+1;
+                       LINECT←3;
+                       NEWCT←NMBR;
+                   ENDIF;
+               ENDFOR;
+           ELSE DO;
+               CRLF(NMBR,FILENO);
+           ENDIF;
+       ELSE DO;     * THIS CASE IS FOR SKPS
+           COUT(154B,FILENO);
+           LINECT←0;
+           IF HEDFLAG DO;
+               SETR(HEADER,0);
+               SOUT("PAGE ",FILENO);
+               IOUT(PAGENO,FILENO);
+               SOUT(" - ",FILENO);
+               SOUT(HEADER,FILENO);
+               CRLF(3,FILENO);
+               PAGENO←PAGENO+1;
+               LINECT←3;
+           ENDIF;
+       ENDIF;
+RETURN;
+
+FUNCTION WRITE(STRING STMT, INTEGER TLC);
+* WRITE A LINE TO THE LISTING FILE
+       DECLARE INTEGER NBLANK;
+       SETR(STMT,0);
+       NBLANK←LEN10(SN);
+       WSPACE(4 - NBLANK); IOUT (SN,LFN);
+       SOUT("  ",LFN);
+       NBLANK←LEN8(TLC);
+       WSPACE(5 - NBLANK); IOUT(TLC,LFN,8);
+       BNCD ← BNCD$E6; * REDUCE BNCD TO 16 BITS;
+       NBLANK←LEN8(BNCD);
+       SOUT(" ",LFN);
+       WSPACE(6 - NBLANK); IOUT(BNCD,LFN,8);
+       SOUT("  ",LFN);
+       SOUT(STMT,LFN);
+       NEWLINE(1,LFN);
+RETURN;
+
+FUNCTION COMW(STRING STMT, INTEGER TLC);
+* WRITE A COMMENT TO THE LISTING FILE
+       SETR(STMT,0);
+       NBLANK←LEN10(SN);
+       WSPACE(4 - NBLANK); IOUT(SN,LFN);
+       SOUT("                ", LFN);
+       SOUT(STMT,LFN);
+       NEWLINE(1,LFN);
+RETURN;
+
+FUNCTION LEN10(INTEGER PVAR);
+* DETERMINE THE LENGTH OF A DECIMAL NUMBER
+       RETURN 4 IF PVAR>999;
+       RETURN 3 IF PVAR>99;
+       RETURN 2 IF PVAR>9;
+       RETURN 1;
+
+FUNCTION LEN8(INTEGER PVAR); 
+* DETERMINE THE LENGTH OF AN OCTAL NUMBER
+       RETURN 6 IF PVAR>77777B;
+       RETURN 5 IF PVAR>7777B;
+       RETURN 4 IF PVAR>777B;
+       RETURN 3 IF PVAR>77B;
+       RETURN 2 IF PVAR>7B;
+       RETURN 1;
+
+FUNCTION WSPACE(INTEGER NSPACE);
+* WRITE OUT "NSPACE" ZEROES FOR PADDING
+       DECLARE INTEGER IVY;
+       FOR IVY←1 TO NSPACE DO;
+               SOUT("0",LFN);
+       ENDFOR;
+RETURN;
+
+FUNCTION READ (INTEGER FNO);
+
+       SETS(STMT,0,0);
+RED:   CH←CIN(FNO);
+       RETURN STMT IF CH=155B;
+       WCI(CH,STMT) IF CH#152B;
+       GOTO RED;
+
+
+FUNCTION FLINE (INTEGER FNO);
+       A←0; B←0; LL←0; TT←0;
+       N←0; Z←0; SMB←0;
+       STMT←READ(FNO);
+BERG:  CH←GCI(STMT:FORD);
+       GOTO BERG IF CH#41B;
+       FOR I←1 TO 3 DO;
+          CH←GCI(STMT:FORD);
+          SMB←(SMB LSH 8) + CH;
+       ENDFOR;
+       IF SMB#14626442B DO;
+          PUTERR("ASMB IS NOT CORRECT");
+          RETURN;
+       ENDIF;
+MORG:  CH←GCI(STMT:DORK);
+       IF CH = 41B DO; A←1;
+       ELSEIF CH = 42B DO; B←1;
+       ELSEIF CH = 54B DO; LL←1;
+       ELSEIF CH = 64B DO; TT←1;
+       ELSEIF CH = 56B DO; N←1;
+       ELSEIF CH = 72B DO; Z←1;
+       ENDIF;
+       GOTO MORG;
+DORK:  RETURN;
+FORD:  PUTERR ("ASMB IS LACKING BADLY");
+       RETURN;
+
+
+FUNCTION INSYM(STRING SYMB, INTEGER TLN);
+       DECLARE FIXED INTEGER LAL,LA2,LBL;
+       LAL←0; LA2←0; LBL←0;
+       SETR(SYMB,0);
+       FOR I ← 1 TO 4 DO;
+          CH←GCI(SYMB:MUGG);
+          LBL←(LBL LSH 4) + CH;
+          LAL←(LAL LSH 6) + CH;
+       ENDFOR;
+       CH←GCI(SYMB:MUGG);
+       LBL←(LBL LSH 4) + CH;
+       LA2←CH LSH 16;
+MUGG:  LBL←LBL MOD 2011;
+       IF SYMT1[LBL] = 0 DO;
+          SYMT1[LBL] ← LAL;
+          SYMT2[LBL] ← LA2 OR TLN;
+       ELSEIF SYMT1[LBL] = LAL AND SYMT2[LBL]$E5 = LA2$E5 DO;
+          PUTERR("REPEAT OF SAME SYMBOL");
+       ELSE DO;
+          LBL ← LBL + 127;
+          GOTO MUGG;
+       ENDIF;
+       RETURN;
+
+
+
+FUNCTION OUTSYM(STRING SYMB);
+       SETR(SYMB,0);
+       LBL ← 0; LAL ← 0; LA2←0;
+       FOR I ← 1 TO 4 DO;
+          CH ← GCI(SYMB:HIT);
+          LBL ← (LBL LSH 4) + CH;
+          LAL ← (LAL LSH 6) + CH;
+       ENDFOR;
+       CH ← GCI(SYMB:HIT);
+       LBL ← (LBL LSH 4) + CH;
+       LA2 ← CH LSH 16;
+HIT:   LBL←LBL MOD 2011;
+       IF SYMT1[LBL] = LAL AND SYMT2[LBL]$E5=LA2$E5 DO;
+          RETURN SYMT2[LBL]$E6;
+       ELSEIF SYMT1[LBL] = 0 DO;
+          RETURN -1;
+       ELSE DO;
+          LBL ← LBL + 127;
+          GOTO HIT;
+       ENDIF;
+
+
+
+
+
+FUNCTION HCODE (INTEGER OCD);
+       K←OCD;
+LNA:   K←K MOD 127;
+       IF TOPCD[K] = OCD DO;
+          RETURN TBCD[K];
+       ELSEIF TOPCD[K] = -1 DO;
+          RETURN -1;
+       ELSE DO;
+          K ← K + 23;
+          GOTO LNA;
+       ENDIF;
+
+
+
+FUNCTION PARSE (STRING STMT);
+       DECLARE FIXED ARRAY ALPH[256]←1,0,0,0,0,0,0,0,0,0,0,0,
+          1,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+          2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+          0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+          0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+          0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+          0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+          0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+         0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+          0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+          0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;
+**PARSE OUT LABEL AS STRING OF LENGTH LESS THAN 6
+       SETR(STMT,0);
+       SETS(LABL,0,0);
+       FOR I←0 TO 7 DO;
+          OPCD[I]←0;
+          SETS(OPND[I],0,0);
+       ENDFOR;
+       CHR←GCI(STMT:AOK);
+       I←0;
+       IF ALPH[CHR] = 2 DO;
+LBLP:     WCI(CHR,LABL);
+          CHR←GCI(STMT:NOK);
+          I←I+1;
+          GOTO LBLP IF ALPH[CHR]#1 AND I<5;
+          IF I = 5 AND ALPH[CHR] # 1 DO;
+               PUTERR("LABEL IS TOO LONG");
+AZAG:          CHR←GCI(STMT:NOK);
+               GOTO AZAG IF ALPH[CHR]#1;
+          ENDIF;
+       ENDIF;
+       CH←CHR;
+       CH←GCI(STMT:AOK) IF CH = 135B;
+ELMB:  CH←GCI(STMT:AOK);
+       GOTO ELMB IF CH = 0;
+**PARSE OUT OPCODE
+       IF ALPH[CH] = 2 DO;
+          J ← 1;
+NXOC:     OPCD[0]← J;
+          FOR I ← 1 TO 3 DO;
+               OPCD[J] ← (OPCD[J] LSH 8) + CH;
+               CH←GCI(STMT:AOK);
+          ENDFOR;
+          IF CH = 14B DO;
+               CH←GCI(STMT:NOK);
+               J←J+1;
+               GOTO NXOC;
+          ENDIF;
+       ELSE DO;
+          PUTERR("ILLEGAL CODE");
+          RETURN -1;
+       ENDIF;
+*PARSE OUT THE OPERAND FIELD;
+       I←0;
+       CHR←GCI(STMT:NOPD) IF CH =135B;
+ELIB:  CHR←GCI(STMT:NOPD);
+       GOTO ELIB IF CHR = 0;
+       I←1;
+ONLP:  WCI(CHR,OPND[I]);
+       CHR←GCI(STMT:NOPD);
+       GOTO ONLP IF ALPH[CHR] # 1;
+       IF CHR = 14B DO;
+               I←I+1;
+               CHR←GCI(STMT:ILPD);
+               GOTO ONLP;
+       ENDIF;
+NOPD:  RETURN I;
+ILPD:  PUTERR("AN OPERAND SHOULD FOLLOW THE COMMA ");
+       RETURN 0;
+NOK:   PUTERR("THIS STATEMENT IS VOIDED.");
+       RETURN -1;
+AOK:   RETURN 0;
+
+FUNCTION PUTERR(STRING SMSG);
+       IOUT(SN,EFN);
+       SOUT("   ",EFN);
+       SOUT(SMSG,EFN);
+       CRLF(1,EFN);
+       RETURN;
+
+FUNCTION HSET();
+       DECLARE STRING ARRAY T[73]←"ADA","ADB","ALF","ALR","ALS",
+               "AND","ARS","ASL","ASR","BLF","BLR","BLS","BRS",
+               "CCA","CCB","CCE","CLA","CLB","CLC","CLE","CLF",
+               "CLO","CMA","CMB","CME","CPA","CPB","ELA","ELB",
+               "ERA","ERB","HLT","INA","INB","IOR","ISZ","JMP",
+               "JSB","LDA","LDB","LIA","LIB","LSL","LSR","MIA",
+               "MIB","NOP","OTA","OTB","RAL","RAR","RBL","RBR",
+               "RRL","RRR","RSS","SEZ","SFC","SFS","SLA","SLB",
+               "SOC","SOS","SSA","SSB","STA","STB","STC","STF",
+               "STO","SZA","SZB","XOR";
+       DECLARE FIXED INTEGER ARRAY BAD[73]←40000B,44000B,1727B,
+               1424B,1020B,10000B,1121B,100020B,101020B,5727B,
+               5424B,5020B,5121B,3400B,7400B,2300B,2400B,6400B,
+               106700B,40B,103100B,103101B,3000B,7000B,2200B,
+               50000B,54000B,1626B,5626B,1525B,5525B,102000B,
+               2004B,6004B,30000B,34000B,24000B,14000B,60000B,
+               64000B,102500B,106500B,100040B,101040B,102400B,
+               106400B,0B,102600B,106600B,1222B,1323B,
+               5222B,5323B,100100B,101100B,2001B,2040B,102200B,
+               102300B,10B,4010B,102201B,102301B,2020B,
+               6020B,70000B,74000B,102700B,102100B,102101B,
+               2002B,6002B,20000B;
+       FOR I←0 TO 127 DO;
+               TOPCD[I]←-1;
+               TBCD[I]←0;
+       ENDFOR;
+       FOR I←0 TO 72 DO;
+               H←0;
+               FOR J←1 TO 3 DO;
+                 K←GCI(T[I]);
+                 H←(H LSH 8) + K;
+               ENDFOR;
+               K←H;
+COLN:          K←K MOD 127;
+               IF TOPCD[K] = -1 DO;
+                 TOPCD[K]←H;
+                 TBCD[K]←BAD[I];
+               ELSE DO;
+                 K←K + 23;
+                 GOTO COLN;
+               ENDIF;
+       ENDFOR;
+       RETURN;
+
+*REGISTER REFERENCE INSTRUCTIONS
+
+FUNCTION RRI(INTEGER RBCODE);
+       DECLARE FIXED INTEGER IX,FCLE,FSLA,FSLB,FAB,FAS,CAB,CAS;
+       DECLARE FIXED INTEGER BHASH;
+       DECLARE FIXED INTEGER CCE←2300B,CLE←40B,CME←2200B,NOP←0,
+               RSS←2001B,SEZ←2040B,SLA←10B,SLB←4010B;
+       DECLARE FIXED INTEGER FIST;
+       DECLARE FIXED FIELD B11(0:12,12),B10(0:13,13);
+       DECLARE FIXED FIELD F12(0:12,12),F13(0:13,13),F1618(0:16,18);
+       DECLARE FIXED FIELD F23(0:23,23);
+
+       FCLE←0;
+       RBCODE←0;
+       FSLA←0;
+       FSLB←0;
+       FAS←2;
+       CAS←2;
+       FAB←2;
+       CAB←2;
+
+       FOR IX←1 TO OPCD[0] DO;
+          BHASH←HCODE(OPCD[IX]);
+          IF BHASH=-1 DO;
+             PUTERR("ILLEGAL OPCODE");
+             RETURN 0;
+          ENDIF;
+          RETURN 0 IF BHASH=NOP;
+          IF BHASH=CLE DO;
+             FCLE←1; *SET CLE FLAG
+          ELSEIF BHASH=SLA DO;
+             FSLA←1;
+             FAB←0 IF FAB=2;
+             IF FAB=1 DO;
+                PUTERR("A AND B REG. INST. MIXED");
+                RETURN 0;
+             ENDIF;
+          ELSEIF BHASH=SLB DO;
+             FSLB←1;
+             FAB←1 IF FAB=2;
+             IF FAB=0 DO;
+                PUTERR("A AND B REG. INST MIXED");
+                RETURN 0;
+             ENDIF;
+          ELSEIF BHASH=SEZ
+                OR BHASH=CME
+                OR BHASH=CCE
+                OR BHASH=RSS DO;
+             FAS ← 1 IF FAS=2;
+             IF FAS=0 DO;
+                PUTERR("ALTER-SKIP AND SHIFT-ROTATE MIXED");
+                RETURN 0;
+             ENDIF;
+             RBCODE←RBCODE OR BHASH;
+          ELSE DO; *PROCESS ANY OTHER INST.
+             CAB←BHASH$B11; *A OR B REG.
+             CAS←BHASH$B10; *ALTER-SKIP OR SHIFT-ROTATE
+             FAB←CAB IF FAB=2;
+             IF FAB#CAB DO;
+                PUTERR("A AND B TYPE INST MIXED");
+                RETURN 0;
+             ENDIF;
+             FAS←CAS IF FAS=2;
+             IF FAS#CAS DO;
+                PUTERR("ALTER-SKIP AND SHIFT-ROTATE MIXED");
+                RETURN 0;
+             ENDIF;
+
+             IF CAS=1 DO; *PROCESS ALTER-SKIP
+                RBCODE←RBCODE OR BHASH;
+             ELSE DO; *PROCESS SHIFT ROTATE
+                IF IX=1 DO; *1ST COL. INST.
+                   BHASH←BHASH AND 177750B;
+                ELSE DO; *PROCESS 4TH COL. INST.
+                   BHASH←BHASH AND 176077B;
+                ENDIF;
+                RBCODE←RBCODE OR BHASH;
+             ENDIF;
+          ENDIF;
+       ENDFOR;
+
+       IF FCLE DO; *CLE OCCURED
+          IF FAS=1 DO; *USE ALTER-SKIP CLE
+             RBCODE←RBCODE OR 2100B;
+          ELSE DO; *USE SHIFT-ROTATE CLE
+             RBCODE←RBCODE OR 40B;
+          ENDIF;
+       ENDIF;
+       IF FSLA DO; *SLA OCCURED
+          IF FAB=1 DO;
+             PUTERR("A AND B REG. INST. MIXED");
+             RETURN 0;
+          ELSEIF FAS=1 DO; *USE ALTER-SKIP SLA
+             RBCODE←RBCODE OR 2010B;
+          ELSE DO; *USE SHIFT-ROTATE SLA
+             RBCODE←RBCODE OR 10B;
+          ENDIF;
+       ENDIF;
+
+       IF FSLB DO; *SLB OCCURED
+          IF FAB=0 DO;
+             PUTERR("A AND B REG INST. MIXED");
+          ELSEIF FAS=1 DO; *USE ALTER-SKIP SLB
+             RBCODE←RBCODE OR 6010B;
+          ELSE DO; *USE SHIFT-ROTATE SLB
+             RBCODE←RBCODE OR 4010B;
+          ENDIF;
+       ENDIF;
+
+       RETURN RBCODE;
+
+
+
+*I/O INSTRUCTION OPERANDS
+
+FUNCTION I0 (INTEGER IBCODE);
+       DECLARE FIXED INTEGER MAXOP;
+       DECLARE FIXED FIELD F15X23(0:15,23),F15(0:15,15),
+               F16(0:16,16);
+       DECLARE FIXED FIELD F18X23(0:18,23);
+       SETR(OPND[2],0);
+       IF IBCODE$F15X23=0 OR IBCODE$F15=1 DO;
+          CH←GCI(OPND[2]:FC);
+          IBCODE←IBCODE OR 1000B IF CH=43B;
+       ELSEIF IBCODE$F16=1 AND IBCODE$F23=1 DO;
+          CH←GCI(OPND[2]:FC);
+          IBCODE←IBCODE OR 1000B IF CH=43B;
+       ENDIF;
+FC:    IF IBCODE$F23#1 DO;
+       RETURN IBCODE IF LENGTH(OPND[1])=0;
+          MAXOP←VALUE(OPND[1]);
+          GOTO I1 IF MAXOP=-1;
+          PUTERR("SELECT CODE >77B") IF MAXOP>77B;
+          IBCODE←IBCODE OR MAXOP$F18X23;
+       ENDIF;
+       RETURN IBCODE;
+I1:    PUTERR("OPERAND IS ILL-FIT FOR THE TASK");
+       RETURN -1;
+
+
+
+*MEMORY REFERENCE INSTRUCTION
+
+FUNCTION MRI(INTEGER MBCODE);
+       DECLARE FIXED FIELD F8X13(0:8,13),F14X23(0:14,23);
+       DECLARE FIXED INTEGER BCOPND;
+       SETR(OPND[2],0);
+       CH←GCI(OPND[2]:MFC);
+       MBCODE←(MBCODE OR 100000B) IF CH=51B; *INDIRECTION(I)=51B
+MFC:   BCOPND←VALUE(OPND[1]);
+       RETURN -1 IF BCOPND =-1;
+       MBCODE←(MBCODE OR BCOPND$F14X23);
+       IF BCOPND$F8X13 > 0 DO;
+          IF LC$F8X13 # BCOPND$F8X13 DO;
+             PUTERR("PAGE FAULT");
+          ELSE DO;
+             MBCODE$F13←1B;
+          ENDIF;
+       ENDIF;
+       RETURN MBCODE;
+
+
+
+*MAIN ROUTINE FOR PRODUCING BINARY CODE FOR OPCODE/OPERAND STATEMENT
+
+FUNCTION OPCODE(INTEGER BCODE);
+       DECLARE FIXED FIELD F8X11(0:8,11),F9X11(0:9,11),
+                   F8(0:8,8),F20X23(0:20,23);
+       IF BCODE$F8X11=0 DO;
+          BCODE←RRI(BCODE); *REGISTER REFERENCE INSTRUCTION
+       ELSEIF BCODE$F9X11=0 DO;
+          IF BCODE$F13=0 DO; *EXTND. ARITH. REG. REF. INSTR.
+             BCODE$F20X23←VALUE(OPND[1])$F20X23; *NUMBER OF SHIFTS
+          ELSE DO;  *I/O INSTRUCTION
+             BCODE←I0(BCODE);
+          ENDIF;
+       ELSE DO;
+          BCODE←MRI(BCODE);
+       ENDIF;
+       RETURN BCODE;
+
+
+
+
+
+*      THIS IS A FUNCTION WHEREBY OPRN IS ASSUMED TO BE AN
+*      ALGEBRAIC EXPRESSION WHOSE TERMS ARE LABELS, CONSTANTS
+*      (POSSIBLY PREFIXED  WITH A (-) SIGN AND AFFIXED WITH
+*      AN OCTAL DESIGNATOR (B) OR A DECIMAL DESIGNATOR (D) ),
+*      AND LOCATION COUNTER INDICATOR (*).
+
+*      THE PROGRAM READS THE FIRST CHARACTER FROM OPRN (AS PASSED
+*      FROM THE MAIN PROGRAM), AND LOOKS AT WHAT IT IS.
+*              IF IT IS A CHARACTER THEN WE KNOW THAT IT IS
+*              A  LABEL.  WE READ THE REST OF THE CHARACTERS UNTIL
+*              IT EITHER FAILS OR THERE IS A (+) OR (-), IN WHICH
+*              WE JUST REMEMBER THAT WE'LL HAVE TO DO AN ALGEBRAIC
+*              LATER ON.  THE NEXT THING TO DO THEN IS TO GET THE
+*              VALUE OF THE LABEL BY CALLING A HASH FUNCTION WHICH
+*              WHICH GOES INTO THE SYMBOL TABLE AND RETURNS TO US
+*              THE LOCATION  COUNTER VALUE OF THE LABEL.
+*
+*              IF IT'S A NUMBER, THEN WE KNOW  THIS TERM IS A
+*              CONSTANT.  WE GO INTO THE LOOP WHERE THE REST OF THE
+*              IS READ, AND DEPENDING WHETHER IT'S AN OCTAL
+*              (CONSTAINS A 'B' AT THE END OF THE NUMBER), OR A
+*              DECIMAL (SUFFIXED WITH A 'D' OR JUST A PLAIN NUMBER
+*              CAN BE TAKEN AS A DECIMAL), WE CONVERT THE NUMBER TO
+*              BINARY.  IF THERE WAS AN ARITHMETIC OPERATOR FOLLOWING
+*              THIS NUMBER, WE HAVE TO REMEMBER WHAT TYPE IT WAS, AND
+*              THEN GO READ THE NEXT TERM.  WHEN THE VALUE OF THE
+*              SECOND TERM IS DETERMINED, THEN WE DO THE ALGEBRAIC
+*              OPERATION.
+*
+*              IF IT'S AN ASTERISK, WE KNOW WE HAVE TO STICK THE
+*              VALUE OF THE LOCATION COUNTER INTO THIS TERM.  WE
+*              THEN PROCEED TO READ THE REST OF THE EXPRESSION.
+*
+*              IF IT'S A (-) SIGN, WE HAVE TO REMEMBER THIS SO THAT
+*              BEFORE PERFORMING ANY ARITHMETIC OEPRATION WITH THE
+*              SECOND TERM (IF THERE IS ANY), OR RETURNING THE VALUE
+*              (IF THIS IS THE ONLY TERM), THIS NUMBER MUST BE
+*              CONVERTED TO IT'S TWO'S COMPLEMENT.
+*
+*              AND WE REPEAT THIS PROCESS UNTIL WE'VE EXHAUSTED ALL
+*              THE DATA IN 'OPRN'.
+*
+*TABLE ARRAY IS ARRANGED AS FOLLOWS:
+*
+*      0 = FILLERS
+*      1 = BLANK
+*      2 = NON-ALPHAMERIC CHARACTERS
+*      3 = ALPHA CHARACTERS ONLY
+*      4 = CARRIAGE RETURN
+*      5 = ;
+*      6 = (
+*      7 = )
+*      8 = +
+*      9 = ,
+*     10 = -
+*     11 = *
+*     12 = MULTIPLE BLANKS
+*     13 = B (USED FOR CHECKING BINARY NUMBERS)
+*     14 = D (USED FOR CHECKING DECIMAL NUMBERS)
+*     15 = NUMERIC
+*     16 = END-OF-FILE
+FUNCTION VALUE(STRING OPRN);
+DECLARE ARRAY TABLE(156)←1,2,2,2,2,2,2,2,6,7,11,8,9,10,3,2,
+                         15,15,15,15,15,15,15,15,15,15,
+                         2,5,2,2,2,2,2,3,13,3,14,
+                         3,3,3,3,3,3,3,3,3,3,3,
+                         3,3,3,3,3,3,3,3,3,3,3,
+                         2,2,2,2,2,0,0,0,0,0,0,
+                         0,0,0,0,0,0,0,0,0,0,0,
+                         0,0,0,0,0,0,0,0,0,0,0,
+                         0,0,0,0,0,0,0,0,0,0,0,
+                         0,0,0,0,0,0,1,0,16,0,0,
+                         0,0,0,0,0,0,0,0,0,0,0,4;
+DECLARE INTEGER PAU,IN,KHAR,TEMP,TEM,KHR,JJ,MM,NN,NS,TOC,
+                BALUE,VAL,DCONV;
+DECLARE FIXED STRING SYM(5),LINE(80),CON(80),STRNG(10);
+DECLARE FIXED INTEGER ARRAY TAB[3],SS[3];
+DECLARE FIXED STRING SBIN(6),BIN;
+
+       SETR(OPRN,0); NS←0;
+        PAU←0;   JJ←0;   MM←0;   NN←0;
+
+START:  KHAR←GCI(OPRN:FAIL);
+        TEMP←TABLE[KHAR];
+        SETS(SYM,0,0);
+
+MORE:   IF TEMP=3 OR TEMP=13 OR TEMP=14 DO;    *SYMBOL IS FOUND
+            WCI(KHAR,SYM);
+            KHAR←GCI(OPRN:SYMFAIL);
+            TEM←TABLE[KHAR];
+            GOTO MORE IF TEM#8 AND TEM#10;
+                    BALUE←OUTSYM(SYM);
+                    GOTO STACK;
+
+SYMFAIL:    BALUE←OUTSYM(SYM);
+               IF NS=1 DO;
+                  BALUE←NOT BALUE;
+                  BALUE←BALUE +1;
+                  NS←0;
+               ENDIF;
+            GOTO FOP;
+
+CONST:  ELSEIF TEMP=15 DO;                      *FIRST KHAR IS NUMERIC
+                SETS(CON,0,0);
+CONWR:          WCI(KHAR,CON);
+                KHAR←GCI(OPRN:DNEXT);
+                TEM←TABLE[KHAR];
+                GOTO CONWR IF TEM=15;            *IF NUMERIC
+               
+                IF TEM=13 DO;                    *BINARY NUMBER
+OCTL:               TOC←0;   BIN←0;
+REED:               SETS(SBIN,0,0);
+                    KHR←GCI(CON:BACK1);          *READ THE NUMBER
+                    WCI(KHR,SBIN);
+                    TOC←CSN(SBIN);
+                    BIN←(BIN LSH 3)+TOC;
+                    GOTO REED;
+
+BACK1:              BALUE←BIN;
+                    IF NS=1 DO;                 *1ST TERM IS MINUS
+                       BALUE←NOT BIN;
+                       BALUE←BALUE+1;
+                       NS←0;
+                    ELSE DO;
+                       BALUE←BIN;
+                    ENDIF;
+                    KHAR←GCI(OPRN:BFAIL);
+                    TEM←TABLE[KHAR];
+
+                    GOTO STACK IF MM=0;
+                       MM←0;
+                       GOTO FOP;
+
+                ELSE DO;
+DNEXT:              DCONV←CSN(CON);
+                    IF NS=1 DO;                 *FIRST NO. IS A MINUS
+                       BALUE←NOT DCONV;
+                       BALUE←BALUE+1;
+                       NS←0;
+                    ELSE DO;
+                       BALUE←DCONV;
+                    ENDIF;
+                IF TEM=14 DO;
+                    KHAR←GCI(OPRN:DFAIL);
+                    TEM←TABLE[KHAR];
+                ENDIF;
+
+BACK2:          GOTO STACK IF NN=0;
+                   NN←0;
+                   GOTO FOP;
+                ENDIF;
+
+STAR:   ELSEIF TEMP=11 DO;                      *ASTERISK IS FOUND
+           JJ←JJ+1;
+           TAB[JJ]←LC;
+           KHAR←GCI(OPRN:SFAIL);
+           TEM←TABLE[KHAR];
+           IF TEM=8 DO;                         *PLUS
+               SS[JJ]←0;
+           ELSEIF TEM=10 DO;                  *MINUS
+               SS[JJ]←1;
+           ENDIF;
+           GOTO START;
+
+SINE:   ELSE DO;
+           GOTO START IF TEMP=8;                
+                NS←1;
+                GOTO START;
+        ENDIF;
+
+STACK:  JJ←JJ+1;
+        IF TEM=8 DO;                          *PLUS
+             SS[JJ]←0;
+        ELSE DO;
+             SS[JJ]←1;
+        ENDIF;
+        TAB[JJ]←BALUE;                          *KEEP VALUE IF TAB MATRIX
+
+ENTER:  IF JJ=2 DO;                             *TWO DIFFERENT VALUES
+           IF SS[JJ-1]=0 DO;
+               TAB[3]←TAB[JJ-1]+TAB[JJ];
+           ELSE DO;                             *NEED TO BE SUBTRACTED
+               TAB[3]←TAB[JJ-1]-TAB[JJ];
+           ENDIF;
+
+           TAB[1]←TAB[3];
+           JJ←1;
+           SS[JJ]←SS[JJ+1];
+        ENDIF;
+
+        IF PAU=1 DO;                            *LAST NUMBER
+FAIL:      VAL←TAB[1];
+           GOTO ENUFF;
+        ELSE DO;
+           GOTO START;                         *GO READ THE NEXT TERM
+        ENDIF;
+
+FOP:    IF JJ=0 DO;
+           VAL←BALUE;
+           GOTO ENUFF;
+ROP:    ELSE DO;
+           JJ←JJ+1;
+           TAB[JJ]←BALUE;
+           PAU←1;
+           GOTO ENTER;
+        ENDIF;
+        GOTO ENUFF;
+
+SFAIL:  JJ←JJ-1;
+        GOTO FOP IF JJ#0;
+           VAL←TAB[1];
+           GOTO ENUFF;
+
+BFAIL: MM←1;
+        GOTO FOP;
+
+DFAIL:  NN←1;
+        GOTO FOP;
+ENUFF:  RETURN(VAL);
+       
+* BEGIN MAIN PROGRAM
+
+BEGIN: SOUT("HP-2100 CROSS ASSEMBLER"); CRLF(1);
+VERSION: SOUT("9/10/76"); CRLF(1);
+FNM:   SOUT("SOURCE FILE:   ");
+       SETS(SNAME,0,0);
+       INNAME(SNAME:FSFN);
+       FNO←INFILE(SNAME:FSFN);
+       CRLF(1);
+ENM:   SOUT("ERROR FILE:   ");
+       SETS(FNAME,0,0);
+       OUTNAME(FNAME:FEFN);
+       EFN←OUTFILE(FNAME,3B6:FEFN);
+       CRLF(1);
+       GOTO PASS1;
+FSFN:  SOUT("INCORRECT NAME. TRY AGAIN. ");
+       CRLF(1);
+       GOTO FNM;
+FEFN:  SOUT("INCORRECT NAME. TRY AGAIN. ");
+       CRLF(1);
+       GOTO ENM;
+
+PASS1: LC←0;
+       HEDFLAG←0;
+       OLDLC←0;
+       TORR←0;
+       SN←0;
+       TNZ←1;
+       FLINE(FNO);
+RDNL:  STMT←READ(FNO);
+       SN←SN +1;
+       CH ←GCI(STMT:RDNL);
+       GOTO RDNL IF CH = 12B;
+       NOOP←PARSE(STMT);
+       GOTO RDNL IF NOOP = -1;
+       IF TNZ =0 DO;
+               TNZ← 1 IF OPCD[1] = XIF;
+               GOTO RDNL;
+       ENDIF;
+       IF OPCD[1] = EQU DO;
+               TLC←VALUE(OPND[1]);
+       ELSE DO;
+               TLC←LC;
+       ENDIF;
+       IF LABL.BP # LABL.WP DO;
+               SETR(LABL,0);
+               INSYM(LABL,TLC);
+       ENDIF;
+       IF OPCD[1] = IFN DO;
+               TNZ←0 IF N=0;
+       ELSEIF OPCD[1]=IFZ DO;
+               TNZ←0 IF Z=0;
+       ELSEIF OPCD[1]=XIF DO;
+               GOTO RDNL;
+       ELSEIF OPCD[1]=ORG DO;
+               OLDLC←LC IF TORR=0;
+               TORR←1;
+               LC←VALUE(OPND[1]);
+       ELSEIF OPCD[1]=ORR DO;
+               LC←OLDLC IF TORR=1;
+               TORR←0;
+       ELSEIF OPCD[1]=ENN DO;
+               GOTO PRE2;
+       ELSEIF OPCD[1] = REP DO;
+               TSTMT ← READ(FNO);
+               LC ← LC + VALUE(OPND[1]);
+       ELSEIF OPCD[1] = BSS DO;
+               LC←LC + VALUE(OPND[1]);
+       ELSEIF OPCD[1] = ASC DO;
+               LC←LC + VALUE(OPND[1]);
+       ELSEIF OPCD[1] = DEC DO;
+               LC←LC + NOOP;
+       ELSEIF OPCD[1] = OCT DO;
+               LC←LC + NOOP;
+       ELSEIF OPCD[1] = HED DO;
+               SETR(STMT,0);
+               FOR IVY←GCI(STMT:RDNL) WHILE
+                     IVY#44B DO;
+               ENDFOR;
+               HEDFLAG←1;
+               SETS(HEADER,0,0);
+               FOR IVY←GCI(STMT:RDNL) WHILE 1 DO;
+                   IF IVY=135B DO;  * BLANK COUNT CHARACTER
+                       GCI(STMT:RDNL);
+                   ELSEIF IVY =' ' DO;
+                   ELSE DO;
+                       WCI(IVY,HEADER);
+                       FOR IVY←WCI(GCI(STMT:RDNL),HEADER) WHILE 1 DO;
+                       ENDFOR;
+                   ENDIF;
+               ENDFOR;
+       ELSEIF OPCD[1] = EQU
+               OR OPCD[1] = UNL
+               OR OPCD[1] = LST
+               OR OPCD[1] = SKP
+               OR OPCD[1] = SPC
+               OR OPCD[1] = SUP
+               OR OPCD[1] = UNS DO;
+                   GOTO RDNL;
+       ELSE DO;
+               LC ← LC + 1;
+       ENDIF;
+       GOTO RDNL;
+PRE2:  CLOSE(FNO);
+FNMA:  FNO←INFILE(SNAME:F2TM);
+       CRLF(1);
+       GOTO LUM;
+F2TM:  SOUT("FAILURE OF REOPENING THE SOURCE FILE");
+       CRLF(1);
+       SOUT("SOURCE FILE AGAIN:   ");
+       SETS(SNAME,0,0);
+       INNAME(SNAME:F2TM);
+       GOTO FNMA;
+LUM:   IF LL = 1 OR TT = 1 DO;
+LNM:           SOUT("LISTING FILE:   ");
+               SETS(FNAME,0,0);
+               OUTNAME(FNAME:FLFN);
+               LFN←OUTFILE(FNAME,3B6:FLFN);
+               CRLF(1);
+               GOTO BNM;
+FLFN:          SOUT("NAME INCORRECT. TRY AGAIN.");
+               CRLF(1);
+               GOTO LNM;
+       ENDIF;
+BNM:   IF B=1 DO;
+               SOUT("BINARY FILE:   ");
+               SETS(FNAME,0,0);
+               OUTNAME(FNAME:FBFN);
+               BFN←OUTFILE(FNAME,2B6:FBFN);
+               CRLF(2);
+               FIRSTBLOCK();
+               GOTO PASS2;
+FBFN:          SOUT("NAME INCORRECT. TRY AGAIN.");
+               CRLF(1);
+               GOTO BNM;
+       ENDIF;
+PASS2: HSET();
+       LC←0;
+       OLDLC←0;
+       TORR←0;
+       SN←0;
+       TNZ←1;
+       LISTO←1 IF LL;
+       STMT←READ(FNO);
+       TLC←0;
+       LINECT←0;
+       PAGENO←1;
+       IF LISTO DO;
+          IF HEDFLAG DO;
+               SOUT("**RUNOFF",LFN);
+               CRLF(5,LFN);
+               SETR(HEADER,0);
+               SOUT("PAGE ",LFN);
+               IOUT(PAGENO,LFN);
+               SOUT(" - ",LFN);
+               SOUT(HEADER,LFN);
+               CRLF(3,LFN);
+               PAGENO←PAGENO+1;
+               LINECT←3;
+          ENDIF;
+          SOUT(" SN     LC   BNCD                          SOURCE",LFN);
+          NEWLINE(2,LFN);
+       ENDIF;
+WRSM:  WRITE(STMT,TLC) IF LISTO;
+       TLC←0;
+RDSM:  STMT←READ(FNO);
+       SN←SN+1;
+       BNCD←0;
+       CH←GCI(STMT:RDSM);
+       IF CH=12B DO;
+               TLC←0;
+               COMW(STMT,TLC) IF LISTO;
+               GOTO RDSM;
+       ENDIF;
+       NOOP←PARSE(STMT);
+       GOTO WRSM IF NOOP = -1;
+       IF TNZ=0 DO;
+               TLC←0;
+               TNZ←1 IF OPCD[1] = XIF;
+               GOTO WRSM;
+       ENDIF;
+PSUDO: IF OPCD[1] = IFN DO;
+               TNZ←0 IF N=0;
+               TLC←0;
+               GOTO WRSM;
+       ELSEIF OPCD[1] = IFZ DO;
+               TNZ←0 IF Z=0;
+               TLC←0;
+               GOTO WRSM;
+       ELSEIF OPCD[1] = XIF DO;
+               TLC←0;
+               GOTO WRSM;
+       ELSEIF OPCD[1] =ORG DO;
+               OLDLC←LC IF TORR=0;
+               TORR←1;
+               LC←VALUE(OPND[1]);
+               BRITE(0,BFN,0) IF B;
+               TLC←LC;
+               GOTO WRSM;
+       ELSEIF OPCD[1] = ORR DO;
+               LC←OLDLC IF TORR;
+               BRITE(0,BFN,0) IF B;
+               TORR←0;
+               TLC←LC;
+               GOTO WRSM;
+       ELSEIF OPCD[1] = ENN DO;
+               BRITE(0,BFN,-1) IF B;
+               WRITE(STMT,0) IF LISTO;
+               GOTO POST2;
+       ENDIF;
+PSD2:  IF OPCD[1] = EQU DO;
+               TLC←VALUE(OPND[1]);
+               GOTO WRSM;
+       ELSEIF OPCD[1] = REP DO;
+               WRITE(STMT,LC) IF LISTO;
+               NREP←VALUE(OPND[1]);
+               TSTMT←READ(FNO);
+               NOOP←PARSE(TSTMT);
+               BCD←HCODE(OPCD[1]);
+               IF BCD#-1 DO;
+                 BNCD←OPCODE(BCD);
+                 IF B=1 DO;
+                   FOR RIP←1 TO NREP DO;
+                     WRITE(TSTMT,LC) IF LISTO;
+                     LC←LC+1;
+                     BRITE(BNCD,BFN,1);
+                   ENDFOR;
+                 ELSE DO;
+                   LC←LC+NREP;
+                 ENDIF;
+               ELSE DO;
+                 PUTERR("SHOULD HAVE PROPER OPCODE.");
+                 WRITE(TSTMT,LC) IF LISTO;
+                 LC←LC+NREP;
+               ENDIF;
+               GOTO RDSM;
+       ELSEIF OPCD[1] = BSS DO;
+               WRITE(STMT,LC) IF LISTO;
+               NREP←VALUE(OPND[1]);
+               LC←LC+NREP;
+               BRITE(0,BFN,NREP) IF B;
+               GOTO RDSM;
+       ELSEIF OPCD[1] = ASC DO;
+               SETR(STMT,0);
+               SETS(OPND[2],0,0); * GET THE OPERAND CORRECTLY
+               CH ← ' ';
+               WHILE CH # 14B DO; * LOOK FOR THE COMMA
+                  CH ← GCI(STMT);
+               ENDFOR;
+               WHILE 1 DO;* REWRITE THE OPERAND CORRECTLY THIS TIME
+                  CH ← GCI(STMT:FASC0);
+                  WCI(CH,OPND[2]);
+               ENDFOR;
+FASC0:         NREP←VALUE(OPND[1]);
+               SETR(OPND[2],0);
+                 FOR RIP←1 TO NREP DO;
+                   BNCD←0;
+                   FOR JIP← 1 TO 2 DO;
+                     CH←GCI(OPND[2]:FASC);
+                     BNCD←(BNCD LSH 8) + CH + 40B;
+                   ENDFOR;
+FASC:              WRITE(STMT,LC) IF LISTO;
+*                  /* DON'T PRINT OUT STMT FOR EXTENDED LINES */
+                   SETS(STMT,0,0) IF RIP=1;
+                   LC←LC+1;
+                   BRITE(BNCD,BFN,1) IF B;
+                 ENDFOR;
+               GOTO RDSM;
+       ELSEIF OPCD[1] = OCT OR OPCD[1]=DEC DO;
+                 FOR RIP←1 TO NOOP DO;
+                   WCI(BOC,OPND[RIP]) IF OPCD[1]=OCT;
+                   BNCD←VALUE(OPND[RIP]);
+                   WRITE(STMT,LC) IF LISTO;
+*                  /* DON'T PRINT THE STMT FOR EXTENDED LINES */
+                   SETS(STMT,0,0) IF RIP=1;
+                   LC←LC+1;
+                   BRITE(BNCD,BFN,1) IF B;
+                 ENDFOR;
+               GOTO RDSM;
+       ELSEIF OPCD[1] = ABS DO;
+               BNCD←VALUE(OPND[1]);
+               WRITE(STMT,LC) IF LISTO;
+               LC←LC+1;
+               BRITE(BNCD,BFN,1) IF B;
+               GOTO RDSM;
+       ELSEIF OPCD[1] = DEF DO;
+               BNCD←VALUE(OPND[1]);
+               IF NOOP=2 DO;
+                 SETR(OPND[2],0);
+                 CH←GCI(OPND[2]:FDEF);
+                 BNCD←(BNCD OR 100000B) IF CH=51B;
+               ENDIF;
+FDEF:          WRITE(STMT,LC) IF LISTO;
+               LC←LC+1;
+               BRITE(BNCD,BFN,1) IF B;
+               GOTO RDSM;
+       ENDIF;
+PSD3:  IF OPCD[1] =UNL DO;
+               LISTO←0;
+               GOTO RDSM;
+       ELSEIF OPCD[1] = LST DO;
+               LISTO←1 IF LL;
+               GOTO RDSM;
+       ELSEIF OPCD[1] = HED DO;
+               IF LISTO DO;
+                  NEWLINE(1,LFN);
+               ENDIF;
+               GOTO RDSM;
+       ELSEIF OPCD[1] = SPC DO;
+               NREP←VALUE(OPND[1]);
+               NEWLINE(NREP,LFN) IF LISTO;
+               GOTO RDSM;
+       ELSEIF OPCD[1] = SKP DO;
+               NEWLINE(100,LFN) IF LISTO;
+               GOTO RDSM;
+       ENDIF;
+REGU:  LAB ←HCODE(OPCD[1]);
+       IF LAB # -1 DO;
+               BNCD←OPCODE(LAB);
+               WRITE(STMT,LC) IF LISTO;
+               LC←LC+1;
+               BRITE(BNCD,BFN,1) IF B;
+       ELSE DO;
+               PUTERR("THIS CODE IS ILLEGAL");
+               WRITE(STMT,0) IF LISTO;
+               LC←LC+1;
+       ENDIF;
+      GOTO RDSM;
+POST2: IF TT=1 DO;
+       NEWLINE(3,LFN);
+       SOUT("SYMBOL TABLE:  ",LFN);
+       NEWLINE(2,LFN);
+         FOR I←0 TO 2010 DO;
+           IF SYMT1[I] # 0 DO;
+               LAB←SYMT1[I];
+               SETS(CHAR,0,0);
+               FOR RIP ←1 TO 4 DO;
+                 CH←LAB$E4;
+                 WCI(CH,CHAR) IF CH#0;
+                 LAB←LAB LSH 6;
+               ENDFOR;
+               CH←SYMT2[I]$E5;
+               WCI(CH,CHAR) IF CH # 0;
+               VW←SYMT2[I]$E6;
+               SOUT(CHAR,LFN);
+               SOUT("   ",LFN);
+               IOUT(VW,LFN,8);
+               NEWLINE(1,LFN);
+           ENDIF;
+         ENDFOR;
+       ENDIF;
+IF LISTO DO;
+       COUT(137B,LFN) IF LFN#1;
+ENDIF;
+IF EFN#1 DO;
+       COUT(137B,EFN);
+ENDIF;
+FOR IVY←1 TO 3 DO;
+       COUT(137B,BFN);
+ENDFOR;
+CLOSALL ();
+END;

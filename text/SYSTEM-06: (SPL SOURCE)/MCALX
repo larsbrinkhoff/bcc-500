@@ -1,0 +1,635 @@
+        COMMON SCALL';
+         INCLUDE COMM,STDEC,SCDEC,SCOPS,SGDEC,STST,SCST,PSTO;
+
+************
+*   SPL    *
+* COMPILER *
+*  DRIVER  *
+************
+
+
+
+
+         DECLARE EXTERNAL ZCEP;
+
+
+*
+* STORAGE
+*
+
+         DI STIRL;* INITIAL REL. LOC. OF STATEMENT
+         DI CPNPF;* DON'T PRINT MESSAGES FLAG
+         DP CTREE;* TREE FROM PARSER
+         DI NCERRS;* ERROR COUNT
+         DI SSTI;* SOURCE INITIAL TI
+         DI ERRSI;* SI AT ERROR
+         DI ERRTI;* TI AT ERROR
+
+* STORAGE FOR CROSS-REFERENCE
+         DI XRFILE;* FILE FOR CROSS-REFERENCE LISTING
+         DI XRLSI;* SI OF LAST STATEMENT WITH CROSS-REFERENCE OUTPUT
+         DI XRLLN;* LINE NUMBER OF THAT STATEMENT
+         DS XRBNS(SYMAXCN);* STRING FOR BLOCK NAME
+
+* ERROR MESSAGE ARRAY FOR ZCOMPF
+         DECLARE STRING ARRAY CSU00[2] ←
+         ("&307UNFINISHED IF:&307", "&307UNFINISHED FOR:&307");
+
+* ERROR LABEL FOR ZCOMPF
+         DECLARE LABEL ES00;
+
+
+
+        COMMON SINC';
+         INCLUDE COMM,STDEC,STST;
+
+* STORAGE FOR 'INCLUDE' PROCESSOR
+         DI FTGTN;* TN OF PROGRAM
+         DI IMEMX;* COUNT IN 'INCLUDE' MEMORY
+         DP IBUF,EIBUF;* POINTERS TO ENDS OF 'INCLUDE' BUFFER
+
+***
+*** ZRECOMP(N,F)
+***
+* RECOMPILE EVERYTHING IF N=-1,
+* FUNCTIONS NEEDING COMPILATION IF N=0
+* RETURN 1 IFF BROKEN STATEMENT CHANGED
+* OUTPUT CROSS-REFERENCES TO FILE F IF F#0
+
+
+
+        PROGRAM ZRECOMP;
+         INCLUDE SCALL';
+
+         DI RCPR,RCPSR;
+         DS RCPS←"&307QUIT&307";
+         DI CLSCI,CLSCV,CLSCN;
+         DP CLSCP;
+         DA CLSCL;
+
+         FUNCTION ZRECOMP(RCPN,RCPF);
+         RECOMPILE←0;
+         RCPSR←RING;
+         FOR RCPR←0 TO 2 DO;
+             GOTO CLSC4 IF REXISTS[RCPR]=0;
+             SRING(RCPR);
+             SUDEL();
+             SSELECT(0);
+             GOTO CLSC4 IF ICFSTAT=0;
+             GOTO CLSC0 IF RCPN;
+             CLSCI←ICFSTAT;
+CLSC2:       GOTO CLSC5 IF QUITF;
+             SSELECT(CLSCI);
+             GOTO CLSC6 IF ICRECOMP#0 OR ICLBL=0;
+             CLSCL←ICBT;
+             CLSCN←ICLBL;
+             SSELECT(0);
+             FOR CLSCN←CLSCN BY -1 TO 1 DO;
+                 IF CLSCV←CLSCL[CLSCN] DO;
+                     SSPTR(CLSCV:,CLSCP);
+                     GOTO CLSC3 IF CLSCP.GSRECOMP;
+                 ENDIF;
+             ENDFOR;
+CLSC6:       CLSCI←SGNEXT(CLSCI//CLSC0);
+             GOTO CLSC2;
+CLSC3:       SSELECT(CLSCI);
+             ICBA.IBRECOMP←ICRECOMP←1;
+             ICGSP.GSRECOMP←1;
+             GOTO CLSC6;
+CLSC0:       SSELECT(0);
+             CLSCI←ICFSTAT;
+             CLSCV←0;
+CLSC1:       SSELECT(0);
+             SSPTR(CLSCI:,CLSCP);
+             GOTO CLSC5 IF QUITF;
+             GOTO CLSC7 IF RCPN=0 AND CLSCP.GSRECOMP=0;
+             IF RING=BRKRG AND CLSCI=BRKTN AND BRKSI#0 DO;
+                 CLSCV←1;
+             ENDIF;
+             ZCOMPF(CLSCI,STATFLAG,RCPF//CLSC7);
+CLSC7:       CLSCI←SGNEXT(CLSCI//CLSC4);
+             GOTO CLSC1;
+CLSC4:   ENDFOR;
+         SRING(RCPSR);
+         RETURN CLSCV;
+CLSC5:   CSOUT(RCPS);
+         SRING(RCPSR);
+         RETURN CLSCV;
+
+***
+*** ZCOMPF(T,S,F)
+***
+* COMPILE THE FUNCTION WITH GNT TN T
+* RETURN IF ALL WAS WELL, FRETURN IF ERRORS
+* SUPPRESS PRINTING IF S=0
+* OUTPUT CROSS-REFERENCES TO FILE F IF F#0
+
+
+
+        PROGRAM ZCOMPF;
+        INCLUDE SCALL',SYSCALLS;
+
+         DI PR00,PW00,PM00,U00,T00,SI00,ESI00,NSI00,EST00;
+        DECLARE INTEGER COMPILE'MAPS,INCLUDE'MAPS,INCLUDE'TEMP,
+         SAVED'MAPS, SAVED'INC'MAPS, INCLUDE'TEMP'2,
+         COMPILE'FAULTS, INCLUDE'FAULTS, INCLUDE'TEMP'3,
+         COMPILE'TIME;
+        DECLARE INTEGER INCLUDE'TIME;
+        DECLARE LONG COMPILE'TIME'1,COMPILE'TIME'2,
+         INCLUDE'TIME'1,INCLUDE'TIME'2;
+        DECLARE LABEL CFE00←CMPFE;* KLUDGE
+        DP SP00;
+        DS CSSH←"/@ COMPILING/";
+        DS CSSU←"@/";
+        DS CSS1←"* ERRORS *(*)MS *[*](*[*])MAPS *(*)PF ";
+        DS CSS2←"# CS # L/";
+        DS CSS3←"# WGS # RSGS/";
+        DS CSS00←"UNDECLARED SYMBOLS IN @:/";
+        DECLARE ARRAY CUA00[2]←(OPENDIF,OPENDFOR);
+
+         FUNCTION ZCOMPF(TN00,NP00,XRF00), FRETURN;
+        COMPILE'TIME'1←READ'CLOCK('CTC');
+        INCLUDE'TIME←0;
+        COMPILE'MAPS←SMAP'COUNTER;
+        INCLUDE'MAPS←0;
+        SAVED'MAPS ← REDUNDANT'SMAPS;
+        SAVED'INC'MAPS ← 0;
+        COMPILE'FAULTS ← PAGE'FAULTS();
+        INCLUDE'FAULTS ← 0;
+        CPNPF←NP00;
+        SSELECT(CPFTN←TN00);
+        IF CPNPF DO;
+            FMTO(CSSH);   OUT(-ICGTN);
+        ENDIF;
+        ERRSET(CMPFE);
+        CERRFN←ZCEP;
+        NOERRP←0;
+        IF XREF←XRFILE←XRF00 DO;
+            XREF←-1;
+            XRINIT();
+        ENDIF;
+        ICBA.IBECODE←ICECODE←0;
+        ICBA.IBLLIT←ICLLIT←0;
+        TSINIT(0,1);
+        TREEMEM←TREELIM;
+        CESSI←ICFSTAT;
+        ESI00←SI00←WGCTR←RSGCTR←STIRL←CESTI←NCERRS←0;
+        ILEV←1;
+        STYPES←STFIRST;
+        EST00←(STDEC IF ICTYPE=IBTCB ELSE STEXPR+STMISC+STFD);
+        ES00←CMPF1;
+        WHILE SSID←CESSI DO;
+            IF QUITF DO; GOTO CMPFX; ENDIF;
+CMPF2:
+*              RFSET();
+             SILEV←ILEV IF CESTI=0;
+            CTREE←0;
+            TCINIT(20);
+            NODE←CTREE←PARSE(CESSI,SSTI←CESTI);
+            IF CTREE=0 DO;
+                IF STYPES=STFIRST DO;
+                    IF ICLBL>0 DO;
+
+                         INCLUDE'TIME'1←READ'CLOCK('CTC');
+                        INCLUDE'TEMP←SMAP'COUNTER;
+                        INCLUDE'TEMP'2 ← REDUNDANT'SMAPS;
+                        INCLUDE'TEMP'3 ← PAGE'FAULTS();
+                        FETCH();
+                        INCLUDE'TIME'2←READ'CLOCK('CTC');
+                        INCLUDE'TIME←INCLUDE'TIME+
+                         MS'COMPUTE'TIME(INCLUDE'TIME'1,
+                         INCLUDE'TIME'2);
+                        INCLUDE'MAPS←INCLUDE'MAPS +
+                         SMAP'COUNTER-INCLUDE'TEMP;
+                        SAVED'INC'MAPS ← SAVED'INC'MAPS +
+                         REDUNDANT'SMAPS - INCLUDE'TEMP'2;
+                        INCLUDE'FAULTS ← INCLUDE'FAULTS +
+                         PAGE'FAULTS() - INCLUDE'TEMP'3;
+                    ENDIF;
+                    STYPES←(STYPE IF STYPE=STDEC ELSE STORG);
+                ELSEIF STYPES=STORG DO;
+                    STYPES←(STYPE IF STYPE=STDEC ELSE EST00);
+                ELSEIF STYPES=STDEC AND ICTYPE=IBTFN DO;
+                    TEIS() IF RELLOC;
+                    STYPES←EST00;
+                ELSE DO;
+* STATEMENT ILLEGAL IN PRESENT CONTEXT
+                     CERR(93);
+                ENDIF;
+                CESTI←SSTI;
+                CESSI←SSID;
+                GOTO CMPF2;
+            ENDIF;
+            TCPNT(CTREE) IF TREEFLAG;
+            (CESSI←CESTI←0 & GOTO CMPF0) IF CTREE.TOPR=OPEND;
+            IF CTREE.TOPR#OPNIL DO;
+* STATEMENT HAS NO EFFECT ?
+                 CERR(168) IF CTREE.TEFF=0;
+                TSEX(CTREE,0);
+            ENDIF;
+CMPF1:      IF CESTI DO;
+                NSI00←CESSI;
+            ELSEIF CESSI DO;
+                NSI00←SPREV(CESSI);
+            ELSE DO;
+* CHECK FOR UNFINISHED IF'S AND FOR'S
+CMPF0:           ES00←CMPF6;
+                WHILE TREEMEM#TREELIM DO;
+                    SSTI←(TREEMEM.BSTKOP=OPENDFOR);
+                    CSOUT(CSU00[SSTI]);
+                    CPERR(TREEMEM.BSTKID,0,NCERRS);
+                    TSEX(TCN0(CUA00[SSTI]),0);
+                ENDFOR;
+CMPF6:          TEEND();
+                NSI00←ICLSTAT;
+            ENDIF;
+            IF NSI00#ESI00 DO;
+                IF ESI00 DO;
+                    CTREE←STPTR(ESI00);
+                    STIRL←STIRL+CTREE.PTLCODE;
+                ENDIF;
+                SI00←ESI00;
+                ESI00←NSI00;
+            ENDIF;
+            CSSC(SI00,NSI00,RELLOC-STIRL);
+        ENDFOR;
+* CHECK FOR UNDECLARED SYMBOLS.  NOTE THE SPECIAL KLUDGERY TO AVOID
+* LISTING MACHINE OP-CODES AS UNDECLARED SYMBOLS.
+         NOERRP←SSTI←0;
+        ES00←CMPF5;
+        FOR U00←1 TO ICLTT DO;
+            SSPTS(U00:CTREE,SP00//CMPF5);
+            T00←CTREE.TKTYPE;
+            IF CTREE.TKSYM#0 AND CTREE.TKUSE#0
+             AND (T00=TTUND AND SP00.SYVAL=0 OR
+             (CTREE.TKIMPL#0 AND T00=TTLAB) AND
+             (SP00.SYMODE#SMFUNC OR CTREE.TKPARAM=0)) DO;
+                IF T00=TTUND DO;
+                    IF SSFGS(U00, MOBTN, 0) = 0 DO;
+                        SSELECT(TN00);
+                        (FMTO(CSS00) & OUT(-ICGTN)) IF SSTI=0;
+                        SSTI←1;
+                        FMTO(CSSU);
+                        OUT(U00);
+                    ENDIF;
+                    SSELECT(TN00);
+                ELSE DO;
+                    (FMTO(CSS00) & OUT(-ICGTN)) IF SSTI=0;
+                    SSTI←1;
+                    FMTO(CSSU);
+                    OUT(U00);
+                ENDIF;
+CMPF5:      ENDIF;
+        ENDFOR;
+* PRINT STATISTICS
+         ICBA.IBRECOMP←ICRECOMP←0;
+        ICGSP.GSRECOMP←0;
+        GOTO CMPFX IF CPNPF=0;
+        COMPILE'TIME'2←READ'CLOCK('CTC');
+        COMPILE'TIME←MS'COMPUTE'TIME(COMPILE'TIME'1,
+         COMPILE'TIME'2);
+        COMPILE'MAPS←SMAP'COUNTER-COMPILE'MAPS;
+        SAVED'MAPS ← REDUNDANT'SMAPS - SAVED'MAPS;
+        COMPILE'FAULTS ← PAGE'FAULTS() - COMPILE'FAULTS;
+        FMTO(CSS1);
+        OUT(NCERRS);
+        OUT(COMPILE'TIME); OUT(INCLUDE'TIME);
+        OUT(COMPILE'MAPS); OUT(COMPILE'MAPS-SAVED'MAPS);
+        OUT(INCLUDE'MAPS); OUT(INCLUDE'MAPS-SAVED'INC'MAPS);
+        OUT(COMPILE'FAULTS); OUT(INCLUDE'FAULTS);
+        IF ICTYPE=IBTFN DO;
+            FMTO(CSS2);
+            OUT(ICECODE+ICLLIT);
+            OUT(MAXLR);
+        ELSE DO;
+            FMTO(CSS3);
+            OUT(WGCTR);
+            OUT(RSGCTR);
+        ENDIF;
+CMPFX:  FRETN IF NCERRS OR SSTI ELSE RETN;
+
+* ERROR RETURN
+CMPFE:
+*      RFSET();
+         GOTO ES00;
+
+* ERROR PRINTING FUNCTION
+
+
+
+        PROGRAM CEP;
+         INCLUDE SCALL';
+
+         DI CSI00,CTI00;
+         DS CSSE←"(MORE ERRORS)&307";
+
+         FUNCTION ZCEP();
+         SSELECT(CPFTN);
+         ESSCAN() IF CTREE=0;
+         IF CTREE#0 OR NODE#0 DO;
+             CONVID(NODE.TICID:CSI00,CTI00//CMPE1);
+         ELSE DO;
+CMPE1:       CONVID(NODEID:CSI00,CTI00//CMPE2);
+         ENDIF;
+CMPE3:   ERRSI←CSI00;* FOR SOMEDAY
+         ERRTI←CTI00;
+         CPERR(CSI00,CTI00,NCERRS IF NCERRS<40 ELSE -1) IF NCERRS<80
+         ELSE (CSOUT(CSSE) & NOERRP←1) IF NCERRS=80;
+         NCERRS←NCERRS+1;
+         RETURN;
+CMPE2:   CSI00←SSID;
+         CTI00←0;
+         GOTO CMPE3;
+
+
+* MESSAGE PRINTING ROUTINE FOR COMPF
+* AS FAR AS I CAN TELL, THIS FUNCTION IS NOT USED (REFERENCED IN ANY
+* WAY) BY SPL.  7/2/73 - JF.
+
+         FUNCTION CMOUT(STRING MS00);
+         CSOUT(MS00) IF CPNPF=0;
+         RETURN;
+
+***
+*** ZCOMPS()
+***
+* COMPILE THE DIRECT STATEMENT IN PPTB
+* PUT THE CODE AT THE END OF THE CURRENT FUNCTION
+* FRETURN IF ERRORS, RETURN OTHERWISE
+
+
+
+        PROGRAM ZCOMPS;
+        INCLUDE SCALL';
+
+         DI ST01,TN01,SI01,SS01,L01,GR01,FR01;
+        DI CSI01,CTI01;
+        DP P01;
+        DECLARE LABEL CSE00←CMPSE;* KLUDGE
+
+         FUNCTION ZCOMPS(), FRETURN;
+        TN01←ICGTN;
+        GR01←ICGSP.GSRECOMP;
+        FR01←ICRECOMP;
+        SS01←SI01←STINS(0,PPTB);
+        L01←ICECODE;
+        TSINIT(L01,0);
+        ST01←0;
+        STYPES←STEXPR;
+        ERRSET(CMPSE);
+        CERRFN←ZCEP;
+CMPS1:
+*      RFSET();
+         TCINIT(20);
+        P01←PARSE(SI01,ST01);
+* NOT A LEGAL DIRECT STATEMENT ?
+         CERR(90) IF P01=0;
+        TCPNT(P01) IF TREEFLAG;
+        TSEX(P01,1);
+        GOTO CMPS1 IF ST01←CESTI;
+        TSFIN(1);
+        CSSC(SPREV(SS01),SS01,ICECODE-L01);
+CMPS2:  ICBA.IBRECOMP←ICRECOMP←FR01;
+        ICGSP.GSRECOMP←GR01;
+        RETN (ICECODE,SS01) IF TN01;
+        STDEL(SS01,SS01//FRETN);
+        FRETN;
+
+* ERROR
+CMPSE:   SSELECT(TN01);
+        TN01←0;
+        CONVID(NODEID:CSI01,CTI01//CMPS2);
+        CPERR(CSI01,CTI01,0);
+        GOTO CMPS2;
+
+***
+*** CSSC(S1,S2,N)*
+***
+* SCAN THE STATEMENT WHOSE PREDECESSOR SI IS S1 AND
+* WHOSE LAST SI IS S2
+* TURN OFF PTCOS AND PTRECOMP
+* SET PTIND TO SILEV, PTSTYPE ACCORDING TO STYPE
+* RESET PTLCODE, SET PTLCODE TO N IN LAST LINE
+* RETURN POINTER TO LAST LINE
+
+
+
+        PROGRAM CSSC;
+         INCLUDE SCALL';
+
+         DI T07,SJ07;
+         DP P07;
+
+         FUNCTION CSSC(SI07,SE07,N07);
+         SJ07←(SNEXT(SI07) IF SI07 ELSE ICFSTAT);
+         T07←23-FLLO(STYPE);
+         WHILE SI07#SE07 DO;
+             SI07←SJ07;
+             P07←STPTR(SI07);
+             P07.PTCOS←0;
+             P07.PTRECOMP←0;
+             P07.PTEOS ← 0;
+             P07.PTIND←SILEV;
+             P07.PTSTYPE←T07;
+             P07.PTLCODE←0;
+             SJ07←SNEXT(SI07);
+         ENDFOR;
+         P07.PTLCODE←N07;
+         P07.PTEOS ← 1;
+         RETURN P07;
+
+***
+*** XRINIT()
+***
+* INITIALIZE CROSS-REFERENCE PROCESS FOR CURRENT BLOCK
+
+
+
+        PROGRAM XRINIT;
+         INCLUDE SCALL';
+
+
+         FUNCTION XRINIT();
+         XRLSI←ICFSTAT;
+         XRLLN←1;
+         SETS(XRBNS,0,0);
+         XRBNS←SWSYM(-ICGTN,XRBNS//FTLERR);
+         WCI(' ',XRBNS// RETURN) WHILE 1;
+
+
+***
+*** OUTREF(T)
+***
+* OUTPUT A REFERENCE TO THE SYMBOL (TOKEN) T AT (CURSI,CURTI)
+***
+*** OUTDEF(T)
+***
+* OUTPUT A DEFINITION OF THE SYMBOL (TOKEN) T AT (CURSI,CURTI)
+
+
+
+        PROGRAM OUTREF;
+         INCLUDE SCALL';
+
+         DI CH08,N08;
+         DP TP08,SP08;
+         DS S08(2*SYMAXCN+8);
+
+         FUNCTION OUTREF(TN08);
+         CH08←'U';
+         GOTO OUTX1;
+         ENTRY OUTDEF(TN08);
+         CH08←'D';
+OUTX1:   SSPTR(TN08:TP08,SP08);
+         RETURN IF TP08.TKSYM=0;
+         SETS(S08,0,0);
+         S08←SWSYM(TN08,S08//FTLERR);
+         WCI(' ',S08) FOR N08←SYMAXCN-LENGTH(S08)-1 BY -1 TO 0;
+         APPND(S08,XRBNS//FTLERR);
+         WCI(CH08,S08);
+         WHILE XRLSI#CURSI AND XRLSI#0 DO;
+             SP08←STPTR(XRLSI);
+             XRLSI←SP08.PTFP;
+             XRLLN←XRLLN+1;
+         ENDFOR;
+         S08←FCNS(XRLLN,S08,5,10//FTLERR);
+         APPND(S08,NEWLINE//FTLERR);
+         FSOUT(S08,XRFILE);
+         RETURN;
+
+        PROGRAM FETCH;
+         INCLUDE SINC';
+*
+* EXTERNAL ENTRY TO 'INCLUDE' PROCESSOR
+*
+         DA IMEM[200];
+
+         FUNCTION FETCH();
+         IMEMX←EIBUF←200+(IBUF←@IMEM[0]);
+         CFETCH(FTGTN←ICGTN);
+         RETURN;
+
+
+        PROGRAM CFETCH;
+         INCLUDE SINC';
+***
+*** CFETCH(F)
+***
+* BRING DOWN ALL NECESSARY GLOBAL SYMBOLS WHEN FIRST NON-
+* DECLARATI N ENCOUNTERED; TRANSCRIBE ALL SYMBOLS IN MACROS
+
+         DP TP02,SP02,ATP02,ASP02;
+         DI I02,FTN02,BTN02,TN02,ATN02,NS02,U02;
+
+         FUNCTION CFETCH(FTN02);
+         RETURN IF $I02=FTN02 FOR I02←IMEMX TO EIBUF-1;
+         IMEMX←IMEMX-1 IF IMEMX#IBUF;
+         $IMEMX←FTN02;
+         SP02←1;
+         SSELECT(FTN02);
+         FOR I02←ICLBL,I02-1 WHILE I02>0 DO;
+             IF BTN02←ICBT[I02] DO;
+                 SSELECT(FTGTN);
+CFET1:           NS02←0;
+                 FOR TN02←1 TO ICLTT DO;
+                     SSPTS(TN02:TP02,SP02//CFET2);
+                     IF TP02.TKSYM#0 AND TP02.TKTYPE=TTUND DO;
+                         IF SP02.SYMODE=SMVALUE AND
+                         (ATN02←SSFGS(TN02,BTN02,0))#0 DO;
+                             SSPTR(ATN02:ATP02,ASP02);
+                             U02←TP02.TKUSE;
+                             TP02.TKFLAGS←ATP02.TKFLAGS;
+                             TP02.TKUSE←U02;
+                             SP02.SYFLAGS←ASP02.SYFLAGS;
+                             IF TP02.TKTYPE=TTMAC DO;
+                                 NS02←1 IF CFMAC(ASP02.SYVAL,
+                                 TN02,FTGTN,BTN02);
+                             ELSEIF TP02.TKTYPE#TTUND OR
+                             SP02.SYMODE#SMVALUE DO;
+                                 TP02.TKGLOB←1;
+                                 SP02.SYVAL←ASP02.SYVAL;
+                             ENDIF;
+                         ENDIF;
+                         SSELECT(FTGTN);
+                     ENDIF;
+CFET2:           ENDFOR;
+                 GOTO CFET1 IF NS02;
+                 CFETCH(BTN02);
+                 SSELECT(FTN02);
+             ENDIF;
+         ENDFOR;
+         RETURN;
+
+***
+*** CFMAC(S,T,FT,BT)
+***
+* ROUTINE TO BRING DOWN A GLOBAL MACRO
+* COPY IS ASSEMBLED IN PPT FORM IN IBUF
+* RETURN #0 IF MUST RESCAN BLOCK, 0 IF NOT
+
+
+
+        PROGRAM CFMAC;
+         INCLUDE SINC',KTDEC,PPDEC;
+
+         DI PN03,TK03,NS03,NSF03;
+         DECLARE INTEGER CONLN,SIZE,CONTYP,TKNS;
+         DP P03;
+         DS PS03;
+         DECLARE REFERENCE MP03;
+*****
+* 5/5/73  JACK FREEMAN
+* ARRAY FOR KLUDGE TO PASS ARRAY DESCRIPTOR (INSTEAD OF POINTER) TO
+* SDMAC.  SEE BELOW.
+         DECLARE ARRAY IBUF'ARRAY;
+*****
+
+         FUNCTION CFMAC(SI03,TN03,FTN03,BTN03);
+         NS03←INSYMF;
+         NSF03←0;
+         P03←STPTR(SI03);
+         PN03←P03.PTSIZE*2+P03.PTONT-2;
+         PCCOPY(IBUF,P03,PN03/2+1);
+         SETUP(PS03,PN03+1,IBUF,12);
+         PS03$WP←PS03$EP;
+         SETR(PS03,PTTO);
+CFM1:    IF (TK03←GCI(PS03//CFM2))<TNLIM DO;
+             $(PS03$RP)←TK03←SSFGS(TK03,FTN03,1);
+             IF NS03#INSYMF DO;
+                 NS03←INSYMF;
+                 NSF03←1 IF TK03<TN03;
+             ENDIF;
+             SSELECT(BTN03);
+         ELSEIF TK03=TKN50 DO;* COMMENT IMBEDDED IN MACRO
+         CONLN←GCI(PS03//CFM2);
+             SIZE←8;
+             GOTO CFM3;
+         ELSEIF TK03>=KTMIN AND TK03<=KTMAX DO;*CONSTANT IMBEDDED IN MACRO
+         CONTYP←TK03$KTTYPE;
+             IF (CONLN←TK03$KTSIZE)=0 DO;
+                 CONLN←GCI(PS03//CFM2);
+             ENDIF;
+             IF CONTYP=KTSTR OR CONTYP=KTCHAR DO;
+                 SIZE←(8 IF TK03$KTCSIZE=1 ELSE 6);
+             ELSE DO;
+                 SIZE←4;
+             ENDIF;
+CFM3:        TKNS←(CONLN*SIZE+11)/12;
+             IF CONTYP=KTSTR OR CONTYP=KTCHAR OR TK03=TKN50 DO;
+                 (TKNS←TKNS+1) IF (GETR(PS03) A' 1)=0;
+             ENDIF;
+             INCD(PS03$RP,TKNS);
+         ENDIF;
+         GOTO CFM1;
+CFM2:    SSELECT(FTN03);
+*****
+* 5/5/73  JACK FREEMAN
+* KLUDGE TO PASS ARRAY DESCRIPTOR (INSTEAD OF POINTER) TO SDMAC.
+* PROPER THING TO PASS SDMAC WOULD BE THE ARRAY IMEM, TO WHICH
+* IBUF IS A POINTER, BUT IMEM IS LOCAL TO PROGRAM <FETCH>.
+         IBUF'ARRAY ← ARRDESC(IBUF, 200, 1, 0);
+         SDMAC(TN03, IBUF'ARRAY);* CHANGED FROM SDMAC(TN03,IBUF);
+*****
+         MP03←@IBUF[PN03/2+1];
+         IMEMX←MP03 IF MP03>IMEMX;
+         RETURN NSF03;

@@ -1,0 +1,2465 @@
+@      NOLIST EXT
+* LOCATION 400B
+
+       ORG 400B;
+
+* INSTRUCTION TABLE.  MUST BE ON 128 WORD BOUNDARY
+*  Z,Q - CONTAIN AR
+*  M - CONTAINS R (RELATIVE EFFECTIVE ADDRESS)
+*  MAR - CONTAINS ABSOLUTE EFFECTIVE ADDRESS
+
+400:  HLTF:  CALL PNT,  BREAKSC
+.MCONT = 1   7
+.MS = 27   65,64,63,61
+.MC = 1   5
+.B = 141    11,12,17,
+* OVERFLOW FROM SHIFT
+
+401:  SHFT1:   AR←Q LCH Z, GOTO ILOOP
+.BR = 10   82
+.BL = 2   80
+.SSP = 5   56,54
+.MS = 12   64,62
+.LSPX = 1   59
+.MC = 20   1
+.B = 2    16,
+
+402:  BRU:     Q←R, Z←-1, GOTO FIXP
+.BL = 7   79,80,81,
+.BR = 10   82
+.TAX = 1   49
+.RRN = 2   67
+.THY = 1   46
+.LQY = 1   75
+.LZX = 1   76
+.MC = 1   5
+.VCYP = 1   86
+.B = 712    9,10,11,14,16,
+CHECKBIT IS 30   
+
+403:  LDI1:  AR ← M MRG 7774B4,  GOTO ILOOP
+.BR = 10   82
+.BL = 4   79
+.SSP = 5   56,54
+.TCX = 1   43
+.TAX = 1   49
+.LSPX = 1   59
+.MC = 20   1
+.B = 2    16,
+.C = -40000   18,19,20,21,22,23,24,25,26,27,
+
+404:  ETR:     FETCH, DGOTO ILOOP
+.MS = 44   63,60
+.MC = 1   5
+.DGO = 1   87
+.VCYP = 1   86
+.B = 2    16,
+CHECKBIT IS 30   
+         
+405:  AR←M AND Q
+.BR = 10   82
+.SSP = 5   56,54
+.TAX = 1   49
+.LSPX = 1   59
+
+406:  MRG:     FETCH, DGOTO ILOOP
+.MS = 44   63,60
+.MC = 20   1,
+.DGO = 1   87
+.VCYP = 1   86
+.B = 2    16,
+CHECKBIT IS 30   
+         
+407:  AR←M OR Q
+.BR = 10   82
+.BL = 6   80,79
+.SSP = 5   56,54
+.TAX = 1   49
+.LSPX = 1   59
+
+410:  EOR:     FETCH, DGOTO ILOOP
+.MS = 44   63,60
+.MC = 1   5
+.DGO = 1   87
+.VCYP = 1   86
+.B = 2    16,
+CHECKBIT IS 30   
+         
+411:  AR←M EOR Q
+.BR = 10   82
+.BL = 16   80,79,78
+.SSP = 5   56,54
+.TAX = 1   49
+.LSPX = 1   59
+CHECKBIT IS 87   
+         
+412:  GOTO ILOOP
+.MC = 20   1,
+.VCYP = 1   86
+.B = 2    16,
+
+413:  MSIN1: M ← SKZ,  GOTO STOR
+.MS = 13   65,64,62
+.TSPY = 1   45
+.LMY = 1   73
+.MC = 1   5,
+.B = 654    9,10,12,14,15,
+
+414:  EXU:     FETCH, Q ← OPMASK, GOTO IL1
+.MS = 44   63,60
+.TCX = 1   43
+.LQX = 1   74
+.MC = 20   1,
+.VCYP = 1   86
+.B = 666    9,10,12,13,15,16,
+.C = 7700000   21,22,23,24,25,26,
+CHECKBIT IS 50   
+
+415:  MSIN2: SKZ ← M,  GOTO ILOOP
+.BR = 10   82
+.BL = 4   79
+.MS = 13   65,64,62
+.TAX = 1   49
+.LSPX = 1   59
+.MC = 1   5,
+.B = 2    16,
+
+416:  STA:    M←AR, GOTO STOR
+.SSP = 5   56,54
+.TSPY = 1   45
+.LMY = 1   73
+.MC = 20   1,
+.B = 654    9,10,12,14,15,
+CHECKBIT IS 30   
+
+417:  BSX1:  XR ← M,  GOTO BSL1
+.BR = 10   82
+.BL = 4   79
+.SSP = 7   56,55,54
+.TAX = 1   49
+.LSPX = 1   59
+.MC = 1   5,
+.B = 461    9,12,13,17,
+CHECKBIT IS 30   
+
+420:  STB:     M←BR, GOTO STOR
+.SSP = 6   55,54
+.TSPY = 1   45
+.LMY = 1   73
+.MC = 20   1,
+.B = 654    9,10,12,14,15,
+CHECKBIT IS 30   
+
+421:  MUL0:  AR ← Q,  RETURN
+.MCONT = 2   6
+.BR = 10   82
+.BL = 2   80
+.SSP = 5   56,54
+.TAX = 1   49
+.LSPX = 1   59
+.MC = 1   5,
+CHECKBIT IS 30   
+
+422:  STX:     M←XR, GOTO STOR
+.SSP = 7   56,55,54
+.TSPY = 1   45
+.LMY = 1   73
+.MC = 20   1,
+.B = 654    9,10,12,14,15,
+
+423:  UPOT2:   POT, GOTO ILOOP
+.MS = 15   65,63,62
+.MC = 1   5,
+.VCYP = 1   86
+.B = 2    16,
+CHECKBIT IS 30   
+
+424:  BRXF:    M←XR, Z←-1, DGOTO ILOOP
+.BL = 7   79,80,81,
+.BR = 10   82,
+.TAX = 1   49
+.SSP = 7   56,55,54
+.TSPY = 1   45
+.LMY = 1   73
+.LZX = 1   76
+.MC = 20   1,
+.DGO = 1   87
+.B = 2    16,
+CHECKBIT IS 30   
+         
+425:  GOTO FIXP ON XR←M+1 < 0,  Q ← R
+.RRN = 2   67
+.BR = 10   82
+.BL = 4   79
+.SSP = 7   56,55,54
+.LOC = 1   50
+.THY = 1   46
+.TAX = 1   49
+.LQY = 1   75
+.LSPX = 1   59
+.MC = 4   3
+.B = 712    9,10,11,14,16,
+
+426:  BRM:     M←P, SETA, CALL STOR
+.MCONT = 1   7
+.SSP = 3   56,55
+.MS = 30   62,61
+.TSPY = 1   45
+.LMY = 1   73
+.MC = 1   5
+.B = 654    9,10,12,14,15,
+         
+427:  Q←0, GOTO FIXP
+.LQX = 1   74
+.MC = 20   1
+.VCYP = 1   86
+.B = 712    9,10,11,14,16,
+CHECKBIT IS 30   
+
+430:  UPOT:    ALERT, GOTO *+1
+.MS = 14   63,62
+.MC = 1   5
+.B = 431    9,13,14,17,
+         
+431:  Z←BR, GOTO UPOT2
+.SSP = 6   55,54
+.TSPY = 1   45
+.LZY = 1   77
+.MC = 20   1
+.B = 423    9,13,16,17,
+
+432:  UPIN:   ALERT, GOTO *+1
+.MS = 14   63,62
+.MC = 1   5
+.B = 433    9,13,14,16,17,
+CHECKBIT IS 30   
+         
+433:  M←E2, PIN, .VCY, GOTO CAB
+.MS = 16   64,63,62
+.LMY = 1   73
+.MC = 20   1
+.TE2Y = 1   89
+.B = 626    9,10,13,15,16,
+
+434:  RCH:     M←R, Q←RCHMASK, DGOTO RCH1
+.RRN = 2   67
+.TCX = 1   43
+.THY = 1   46
+.LMY = 1   73
+.LQX = 1   74
+.MC = 1   5
+.DGO = 1   87
+.VCYP = 1   86
+.B = 741    9,10,11,12,17,
+.C = 7400   30,31,32,33,
+         
+435:  M←M AND Q LCY 16, T←Z←XR
+.BR = 10   82
+.SSP = 7   56,55,54
+.MS = 7   65,64,63
+.TSPY = 1   45
+.TYW = 1   48
+.LMX = 1   72
+.LZY = 1   77
+.LRN = 5   71,69
+
+436:  SKE:     FETCH, DGOTO TEST
+.MS = 44   63,60
+.MC = 20   1,
+.DGO = 1   87
+.VCYP = 1   86
+.B = 737    9,10,11,13,14,15,16,17,
+         
+437:  M←M EOR Q
+.BR = 10   82
+.BL = 16   80,79,78
+.TAX = 1   49
+.LMX = 1   72
+.VCYP = 1   86
+
+440:  BRR:     Q←ADMASK, FETCH, DGOTO FIXP
+.MS = 44   63,60
+.TCX = 1   43
+.LQX = 1   74
+.MC = 1   5
+.DGO = 1   87
+.VCYP = 1   86
+.B = 712    9,10,11,14,16,
+.C = -40000   18,19,20,21,22,23,24,25,26,27,
+CHECKBIT IS 50   
+         
+441:  Q←M AND NOT Q, Z←0
+.BR = 10   82
+.BL = 14   79,78
+.TAX = 1   49
+.LQX = 1   74
+.LZY = 1   77
+.VCYP = 1   86
+
+442:  SKB:     Q←BR, FETCH
+.SSP = 6   55,54
+.MS = 44   63,60
+.TSPY = 1   45
+.LQY = 1   75
+CHECKBIT IS 87   
+
+443:  SKB1:    M←M AND Q, GOTO TEST
+.BR = 10   82
+.TAX = 1   49
+.LMX = 1   72
+.MC = 20   1
+.VCYP = 1   86
+.B = 737    9,10,11,13,14,15,16,17,
+
+444:  SKN:     Q←4B7, FETCH
+.MS = 44   63,60
+.TCX = 1   43
+.LQX = 1   74
+.VCYP = 1   86
+.C = -40000000   18,
+CHECKBIT IS 87   
+
+445:  SKN1:    M←M AND Q ! Q, GOTO TEST
+.BR = 2   84
+.TAX = 1   49
+.LMX = 1   72
+.MC = 1   5,
+.VCYP = 1   86
+.B = 737    9,10,11,13,14,15,16,17,
+
+446:  SUB:     FETCH, DGOTO ILOOP
+.MS = 44   63,60
+.MC = 20   1,
+.DGO = 1   87
+.VCYP = 1   86
+.B = 2    16,
+CHECKBIT IS 30   
+         
+447:  AR←Q-M
+.BR = 2   84
+.BL = 13   81,80,78
+.SSP = 5   56,54
+.LOC = 1   50
+.TAX = 1   49
+.LSPX = 1   59
+
+450:  ADD:     FETCH, DGOTO ILOOP
+.MS = 44   63,60
+.MC = 1   5
+.DGO = 1   87
+.VCYP = 1   86
+.B = 2    16,
+CHECKBIT IS 30   
+         
+451:  AR←Q+M
+.BR = 2   84
+.BL = 4   79
+.SSP = 5   56,54
+.TAX = 1   49
+.LSPX = 1   59
+CHECKBIT IS 87   
+
+452:  SKR:     HFETCH, DGOTO SKN1
+.MS = 45   65,63,60
+.MC = 20   1,
+.DGO = 1   87
+.VCYP = 1   86
+.B = 445    9,12,15,17,
+CHECKBIT IS 30   
+         
+453:  M←M-1, Q←BOUND, SETA, CALL STOR1
+.MCONT = 1   7
+.BR = 7   85,84,83
+.BL = 4   79
+.SSP = 1   56
+.MS = 30   62,61
+.TSPY = 1   45
+.TAX = 1   49
+.LMX = 1   72
+.LQY = 1   75
+.MC = 1   5,
+.B = 655    9,10,12,14,15,17,
+
+454:  MIN:     Q←1, HFETCH
+.MS = 45   65,63,60
+.BL = 10   78
+.BR = 10   82
+.TAX = 1   49
+.LOC = 1   50
+.LQX = 1   74
+.VCYP = 1   86
+
+455:  MIN1:    M←M+Q, GOTO STOR
+.BR = 2   84
+.BL = 4   79
+.TAX = 1   49
+.LMX = 1   72
+.MC = 20   1
+.B = 654    9,10,12,14,15,
+CHECKBIT IS 30   
+
+456:  XMA:     HFETCH, DGOTO CBA
+.MS = 45   65,63,60
+.MC = 1   5
+.DGO = 1   87
+.VCYP = 1   86
+.B = 627    9,10,13,15,16,17,
+CHECKBIT IS 30   
+         
+457:  Q←M, M←AR, DGOTO STOR
+.BR = 10   82
+.BL = 4   79
+.SSP = 5   56,54
+.TSPY = 1   45
+.TAX = 1   49
+.LMY = 1   73
+.LQX = 1   74
+.MC = 20   1
+.DGO = 1   87
+.B = 654    9,10,12,14,15,
+
+460:  ADM:     HFETCH, GOTO MIN1
+.MS = 45   65,63,60
+.MC = 1   5
+.VCYP = 1   86
+.B = 455    9,12,14,15,17,
+CHECKBIT IS 30   
+
+461:  BSL1:  CSTK ← Z + 1,  GOTO ICNT1
+.BR = 4   83
+.BL = 10   78
+.SSP = 4   54
+.LOC = 1   50
+.TAX = 1   49
+.LSPX = 1   59
+.MC = 20   1
+.B = 663    9,10,12,13,16,17,
+
+462:  SHIFT:   Z←R, DGOTO SHFT1
+.RRN = 2   67
+.THY = 1   46
+.LZY = 1   77
+.MC = 1   5
+.DGO = 1   87
+.VCYP = 1   86
+.B = 401    9,17,
+CHECKBIT IS 30   
+
+463:  LLN3:    Q←Q LCL Z
+.BR = 10   82
+.BL = 2   80
+.MS = 11   65,62
+.LQX = 1   74
+.VCYP = 1   86
+CHECKBIT IS 87   
+
+464:  SKM:     Q←BR, FETCH
+.SSP = 6   55,54
+.MS = 44   63,60
+.TSPY = 1   45
+.LQY = 1   75
+CHECKBIT IS 87   
+         
+465:  M←M AND Q - Z AND Q, GOTO TEST
+.BR = 17   85,84,83,82
+.LOC = 1   50
+.TAX = 1   49
+.LMX = 1   72
+.MC = 20   1
+.B = 737    9,10,11,13,14,15,16,17,
+CHECKBIT IS 30   
+
+466:  LDX:     Q←0, FETCH, DGOTO ILOOP
+.MS = 44   63,60
+.LQX = 1   74
+.MC = 1   5
+.DGO = 1   87
+.VCYP = 1   86
+.B = 2    16,
+
+467:  LDX1:    XR←M AND NOT Q ! Z AND Q
+.BL = 14   79,78
+.SSP = 7   56,55,54
+.TAX = 1   49
+.LSPX = 1   59
+
+470:  SKA:     FETCH, GOTO SKB1
+.MS = 44   63,60
+.MC = 20   1,
+.VCYP = 1   86
+.B = 443    9,12,16,17,
+CHECKBIT IS 30   
+* SKG WHERE SIGNS DISAGREE
+
+471:  SKG2:  Q←4B7, GOTO SKN1
+.TCX = 1   43
+.LQX = 1   74
+.MC = 1   5,
+.VCYP = 1   86
+.B = 445    9,12,15,17,
+.C = -40000000   18,
+* SKG IS SIGN OF M-AR IF SIGNS AGREE, SIGN OF M IF NOT
+
+472:  SKG:   FETCH, DGOTO SKG1
+.MS = 44   63,60
+.MC = 20   1,
+.DGO = 1   87
+.VCYP = 1   86
+.B = 734    9,10,11,13,14,15,
+       
+473:  GOTO SKG2 ON M EOR Q<0
+.BR = 10   82
+.BL = 16   80,79,78
+.TAX = 1   49
+.MC = 4   3
+.B = 471    9,12,13,14,17,
+
+474:  LDB:     FETCH, DGOTO ILOOP
+.MS = 44   63,60
+.MC = 1   5
+.DGO = 1   87
+.VCYP = 1   86
+.B = 2    16,
+CHECKBIT IS 30   
+
+475:  LDB1:    BR←M
+.BR = 10   82
+.BL = 4   79
+.SSP = 6   55,54
+.TAX = 1   49
+.LSPX = 1   59
+CHECKBIT IS 87   
+
+476:  LDA:     FETCH, DGOTO ILOOP
+.MS = 44   63,60
+.MC = 20   1,
+.DGO = 1   87
+.VCYP = 1   86
+.B = 2    16,
+CHECKBIT IS 30   
+
+477:  LDA1:    AR←M
+.BR = 10   82
+.BL = 4   79
+.SSP = 5   56,54
+.TAX = 1   49
+.LSPX = 1   59
+CHECKBIT IS 87   
+
+500:  EAX:     M←R, Q←LONGAD, DGOTO LDX1
+.RRN = 2   67
+.TCX = 1   43
+.THY = 1   46
+.LMY = 1   73
+.LQX = 1   74
+.MC = 1   5
+.DGO = 1   87
+.VCYP = 1   86
+.B = 467    9,12,13,15,16,17,
+.C = -1000000   18,19,20,21,22,23,
+CHECKBIT IS 50   
+         
+501:  Z←XR, DGOTO ILOOP
+.SSP = 7   56,55,54
+.TSPY = 1   45
+.LZY = 1   77
+.MC = 20   1
+.DGO = 1   87
+.B = 2    16,
+CHECKBIT IS 30   
+
+502:  UPS:     Q ← M LCY 16,  Z ← 7,  DGOTO UPS1
+.BR = 10   82
+.BL = 4   79
+.MS = 7   65,64,63
+.TCY = 1   44
+.LQX = 1   74
+.LZY = 1   77
+.MC = 1   5
+.DGO = 1   87
+.VCYP = 1   86
+.B = 742    9,10,11,12,16,
+.C = 7   39,40,41,
+         
+503:  DGOTO Z AND Q MRG UPSTAB,  Q ← R
+.MCONT = 3   7,6
+.RRN = 2   67
+.BL = 10   78
+.TCX = 1   43
+.THY = 1   46
+.TAX = 1   49
+.LQY = 1   75
+.MC = 20   1
+.DGO = 1   87
+.VCYP = 1   86
+.C = 610   33,34,38,
+CHECKBIT IS 56   
+
+504:  CSK:   M←R, Q←300B, DGOTO CSK1
+.RRN = 2   67
+.TCX = 1   43
+.THY = 1   46
+.LMY = 1   73
+.LQX = 1   74
+.MC = 1   5
+.DGO = 1   87
+.VCYP = 1   86
+.B = 745    9,10,11,12,15,17,
+.C = 300   34,35,
+CHECKBIT IS 50   
+       
+505:  Q ← M AND Q LCL 24 - 6
+.BR = 10   82
+.MS = 2   64
+.LQX = 1   74
+.VCYP = 1   86
+CHECKBIT IS 87   
+
+506:  LDY:   T1←LDF1, GOTO FLDO, M←BR
+.SSP = 6   55,54
+.TCX = 1   43
+.TSPY = 1   45
+.TXW = 1   47
+.LMY = 1   73
+.LRN = 4   69
+.MC = 20   1,
+.B = 4    15,
+.C = 507   33,35,39,40,41,
+CHECKBIT IS 50   
+
+507:  LDF1:  AR←Z AND Q, GOTO ILOOP
+.BL = 10   78
+.SSP = 5   56,54
+.TAX = 1   49
+.LSPX = 1   59
+.MC = 1   5,
+.B = 2    16,
+
+510:  STY:   T1←ADF2, GOTO FLDO, M←BR
+.SSP = 6   55,54
+.TCX = 1   43
+.TSPY = 1   45
+.TXW = 1   47
+.LMY = 1   73
+.LRN = 4   69
+.MC = 20   1,
+.B = 4    15,
+.C = 26   37,39,40,
+CHECKBIT IS 50   
+
+511:  ZRF2:    M←Z AND NOT Q, Q←T1, GOTO ADF2
+.RRN = 4   66
+.BR = 14   83,82
+.BL = 10   78
+.THY = 1   46
+.TAX = 1   49
+.LMX = 1   72
+.LQY = 1   75
+.MC = 1   5,
+.VCYP = 1   86
+.B = 26    13,15,16,
+
+512:  ADF:   T1←ADF1, GOTO FLDO, M←BR
+.SSP = 6   55,54
+.TCX = 1   43
+.TSPY = 1   45
+.TXW = 1   47
+.LMY = 1   73
+.LRN = 4   69
+.MC = 20   1,
+.B = 4    15,
+.C = 25   37,39,41,
+CHECKBIT IS 50   
+
+513:  MGF2:  M←Z OR Q, Q←T1, GOTO ADF2
+.RRN = 4   66
+.BR = 6   84,83
+.BL = 10   78
+.THY = 1   46
+.TAX = 1   49
+.LMX = 1   72
+.LQY = 1   75
+.MC = 1   5,
+.VCYP = 1   86
+.B = 26    13,15,16,
+
+514:  MGF:   T1←MGF1,GOTO FLDO, M←BR
+.SSP = 6   55,54
+.TCX = 1   43
+.TSPY = 1   45
+.TXW = 1   47
+.LMY = 1   73
+.LRN = 4   69
+.MC = 20   1,
+.B = 4    15,
+.C = 515   33,35,38,39,41,
+CHECKBIT IS 50   
+
+515:  MGF1:  T1←Q, Q←AR, GOTO MGF2
+.BR = 10   82
+.BL = 2   80
+.SSP = 5   56,54
+.TSPY = 1   45
+.TXW = 1   47
+.TAX = 1   49
+.LQY = 1   75
+.LRN = 4   69
+.MC = 1   5,
+.B = 513    9,11,14,16,17,
+
+516:  GOTB:  Z←R,  CALL GZ
+.MCONT = 1   7
+.RRN = 2   67
+.THY = 1   46
+.LZY = 1   77
+.MC = 20   1,
+.VCYP = 1   86
+.B = 126    11,13,15,16,
+CHECKBIT IS 30   
+*  THE REST OF STACK P AND CALL MICROCODE SUBROUTINE
+
+517:  SCAL3: SKZ ← NOT Q MRG ADMASK
+.BR = 10   82
+.BL = 15   81,79,78
+.MS = 13   65,64,62
+.TCX = 1   43
+.TAX = 1   49
+.LSPX = 1   59
+.C = -40000   18,19,20,21,22,23,24,25,26,27,
+CHECKBIT IS 87   
+
+520:  CALX:  R5 ← SR5,  Q←34B3,  DGOTO CALL1
+.SSP = 15   56,54,53
+.TCX = 1   43
+.TSPY = 1   45
+.TYW = 1   48
+.LQX = 1   74
+.LRN = 5   71,69
+.MC = 1   5
+.DGO = 1   87
+.B = 752    9,10,11,12,14,16,
+.C = 34000   28,29,30,
+CHECKBIT IS 50   
+       
+521:  GOTO CALL2 ON Q←M AND Q LCY 12 = 0,R0←SR0
+.BR = 10   82
+.SSP = 10   53
+.MS = 6   64,63
+.TSPY = 1   45
+.TYW = 1   48
+.LQX = 1   74
+.LR0 = 1   58
+.MC = 2   4
+.B = 754    9,10,11,12,14,15,
+
+522:  ZRF:    M←BR, T1←ZRF1, GOTO FLDO
+.SSP = 6   55,54
+.TCX = 1   43
+.TSPY = 1   45
+.TXW = 1   47
+.LMY = 1   73
+.LRN = 4   69
+.MC = 20   1,
+.B = 4    15,
+.C = 523   33,35,37,40,41,
+CHECKBIT IS 50   
+
+523:  ZRF1:   T1←Q, Q←AR, GOTO ZRF2
+.BR = 10   82
+.BL = 2   80
+.SSP = 5   56,54
+.TSPY = 1   45
+.TXW = 1   47
+.TAX = 1   49
+.LQY = 1   75
+.LRN = 4   69
+.MC = 1   5,
+.B = 511    9,11,14,17,
+CHECKBIT IS 30   
+
+524:  SKNEX: FETCH,  DGOTO ILOOP
+.MS = 44   63,60
+.MC = 20   1,
+.DGO = 1   87
+.VCYP = 1   86
+.B = 2    16,
+CHECKBIT IS 30   
+       
+525:  M EOR Q,  GOTO SKIP IF LB#0
+.BR = 10   82
+.BL = 16   80,79,78
+.TAX = 1   49
+.MC = 23   5,4,1
+.VCYP = 1   86
+.B = 740    9,10,11,12,
+
+526:  SNEL:  FETCH,  DGOTO ILOOP
+.MS = 44   63,60
+.MC = 1   5
+.DGO = 1   87
+.VCYP = 1   86
+.B = 2    16,
+CHECKBIT IS 30   
+       
+527:  M,  GOTO SKIP IF NNPTR
+.BR = 10   82
+.BL = 4   79
+.TAX = 1   49
+.MC = 15   5,3,2
+.B = 740    9,10,11,12,
+CHECKBIT IS 30   
+
+530:  MDC:   HFETCH,  DGOTO STOR
+.MS = 45   65,63,60
+.MC = 20   1,
+.DGO = 1   87
+.VCYP = 1   86
+.B = 654    9,10,12,14,15,
+       
+531:  M ← M - 1
+.BR = 7   85,84,83
+.BL = 4   79
+.TAX = 1   49
+.LMX = 1   72
+CHECKBIT IS 87   
+
+532:  SKLEF: FETCH,  DGOTO SKL1
+.MS = 44   63,60
+.MC = 1   5
+.DGO = 1   87
+.VCYP = 1   86
+.B = 731    9,10,11,13,14,17,
+       
+533:  M EOR Q,  GOTO SKIP IF LB=0
+.BR = 10   82
+.BL = 16   80,79,78
+.TAX = 1   49
+.MC = 22   4,1
+.VCYP = 1   86
+.B = 740    9,10,11,12,
+CHECKBIT IS 30   
+
+534:  SCALF: Z ← STKP,  Q ← 34B3,  DGOTO SCAL1
+.RRN = 6   67,66
+.TCX = 1   43
+.THY = 1   46
+.LQX = 1   74
+.LZY = 1   77
+.MC = 20   1,
+.DGO = 1   87
+.VCYP = 1   86
+.B = 771    9,10,11,12,13,14,17,
+.C = 34000   28,29,30,
+       
+535:  T ← P,  GOTO SCAL2 ON M AND Q # 0
+.BR = 10   82
+.SSP = 3   56,55
+.TSPY = 1   45
+.TYW = 1   48
+.TAX = 1   49
+.LRN = 5   71,69
+.MC = 3   5,4
+.B = 772    9,10,11,12,13,14,16,
+
+536:  SKELF: FETCH,  DGOTO ILOOP
+.MS = 44   63,60
+.MC = 1   5
+.DGO = 1   87
+.VCYP = 1   86
+.B = 2    16,
+CHECKBIT IS 30   
+       
+537:  M,  GOTO SKIP IF NULLPTR
+.BR = 10   82
+.BL = 4   79
+.TAX = 1   49
+.MC = 14   3,2
+.B = 740    9,10,11,12,
+
+540:  SKLF:  FETCH,  DGOTO SKG + 1
+.MS = 44   63,60
+.MC = 20   1,
+.DGO = 1   87
+.VCYP = 1   86
+.B = 473    9,12,13,14,16,17,
+       
+541:  Q ← M,  M ← AR,  DGOTO SKG1
+.BR = 10   82
+.BL = 4   79
+.SSP = 5   56,54
+.TSPY = 1   45
+.TAX = 1   49
+.LMY = 1   73
+.LQX = 1   74
+.MC = 1   5,
+.DGO = 1   87
+.B = 734    9,10,11,13,14,15,
+CHECKBIT IS 30   
+
+542:  SKGEF: FETCH,  DGOTO SKGE1
+.MS = 44   63,60
+.MC = 20   1,
+.DGO = 1   87
+.VCYP = 1   86
+.B = 733    9,10,11,13,14,16,17,
+CHECKBIT IS 30   
+       
+543:  M EOR Q,  GOTO SKIP IF LB=0
+.BR = 10   82
+.BL = 16   80,79,78
+.TAX = 1   49
+.MC = 22   4,1
+.VCYP = 1   86
+.B = 740    9,10,11,12,
+CHECKBIT IS 30   
+
+544:  SKPF:  FETCH,  DGOTO ILOOP
+.MS = 44   63,60
+.MC = 1   5
+.DGO = 1   87
+.VCYP = 1   86
+.B = 2    16,
+CHECKBIT IS 30   
+       
+545:  GOTO SKIP ON M >= 0
+.BR = 10   82
+.BL = 4   79
+.TAX = 1   49
+.MC = 5   5,3
+.B = 740    9,10,11,12,
+
+546:  SKACF: FETCH,  DGOTO ILOOP
+.MS = 44   63,60
+.MC = 20   1,
+.DGO = 1   87
+.VCYP = 1   86
+.B = 2    16,
+CHECKBIT IS 30   
+       
+547:  M AND Q,  GOTO SKIP IF LB#0
+.BR = 10   82
+.TAX = 1   49
+.MC = 23   5,4,1
+.VCYP = 1   86
+.B = 740    9,10,11,12,
+CHECKBIT IS 30   
+
+550:  SKBCF: FETCH,  Q ← BR,  DGOTO ILOOP
+.SSP = 6   55,54
+.MS = 44   63,60
+.TSPY = 1   45
+.LQY = 1   75
+.MC = 1   5
+.DGO = 1   87
+.B = 2    16,
+       
+551:  M AND Q,  GOTO SKIP IF LB#0
+.BR = 10   82
+.TAX = 1   49
+.MC = 23   5,4,1
+.VCYP = 1   86
+.B = 740    9,10,11,12,
+CHECKBIT IS 30   
+
+552:  BSRF:  FETCH,  Q ← ADMASK,  DGOTO FIXP
+.MS = 44   63,60
+.TCX = 1   43
+.LQX = 1   74
+.MC = 20   1,
+.DGO = 1   87
+.VCYP = 1   86
+.B = 712    9,10,11,14,16,
+.C = -40000   18,19,20,21,22,23,24,25,26,27,
+CHECKBIT IS 50   
+       
+553:  Q ← M AND NOT Q,  Z ← 1
+.BR = 10   82
+.BL = 14   79,78
+.TCY = 1   44
+.TAX = 1   49
+.LQX = 1   74
+.LZY = 1   77
+.VCYP = 1   86
+.C = 1   41,
+
+554:  BSLF:  MAR ← Z ← CSTK,  DGOTO BSL1
+.SSP = 4   54
+.TSPY = 1   45
+.TYW = 1   48
+.LZY = 1   77
+.LR0 = 1   58
+.MC = 1   5
+.DGO = 1   87
+.B = 461    9,12,13,17,
+       
+555:  Q ← P ← M,  M ← T2 + 1,  STORE
+.RRN = 3   68,67
+.BR = 10   82
+.BL = 4   79
+.SSP = 3   56,55
+.MS = 42   64,60
+.IHR = 1   42
+.THY = 1   46
+.TAX = 1   49
+.LMY = 1   73
+.LQX = 1   74
+.LSPX = 1   59
+CHECKBIT IS 87   
+
+556:  BSXF:  MAR ← Z ← CSTK,  DGOTO BSX1
+.SSP = 4   54
+.TSPY = 1   45
+.TYW = 1   48
+.LZY = 1   77
+.LR0 = 1   58
+.MC = 20   1,
+.DGO = 1   87
+.B = 417    9,14,15,16,17,
+CHECKBIT IS 30   
+       
+557:  Q ← P ← M,  M ← T2 + 1,  STORE
+.RRN = 3   68,67
+.BR = 10   82
+.BL = 4   79
+.SSP = 3   56,55
+.MS = 42   64,60
+.IHR = 1   42
+.THY = 1   46
+.TAX = 1   49
+.LMY = 1   73
+.LQX = 1   74
+.LSPX = 1   59
+CHECKBIT IS 87   
+
+560:  BVRF:  Z ← CSTK,  Q ← ADMASK,  DGOTO BVR1
+.SSP = 4   54
+.TCX = 1   43
+.TSPY = 1   45
+.LQX = 1   74
+.LZY = 1   77
+.MC = 1   5
+.DGO = 1   87
+.B = 725    9,10,11,13,15,17,
+.C = -40000   18,19,20,21,22,23,24,25,26,27,
+       
+561:  CSTK ← MAR ← Z - 1,  Z ← R,  FETCH
+.RRN = 2   67
+.BR = 4   83
+.BL = 7   81,80,79
+.SSP = 4   54
+.MS = 44   63,60
+.THY = 1   46
+.TXW = 1   47
+.TAX = 1   49
+.LZY = 1   77
+.LR0 = 1   58
+.LSPX = 1   59
+CHECKBIT IS 87   
+
+562:  SKUMF: Q ← BR,  FETCH,  DGOTO ILOOP
+.SSP = 6   55,54
+.MS = 44   63,60
+.TSPY = 1   45
+.LQY = 1   75
+.MC = 20   1,
+.DGO = 1   87
+.B = 2    16,
+       
+563:  GOTO SKIP ON M AND Q - Z AND Q # 0
+.BR = 17   85,84,83,82
+.LOC = 1   50
+.TAX = 1   49
+.MC = 3   5,4
+.B = 740    9,10,11,12,
+CHECKBIT IS 30   
+
+564:  SKIF:  HFETCH,  DGOTO SKI1
+.MS = 45   65,63,60
+.MC = 1   5
+.DGO = 1   87
+.VCYP = 1   86
+.B = 727    9,10,11,13,15,16,17,
+       
+565:  M ← M + 1,  Q ← BOUND,  SETA,  CALL STOR1
+.MCONT = 1   7
+.BR = 10   82
+.BL = 4   79
+.SSP = 1   56
+.MS = 30   62,61
+.LOC = 1   50
+.TSPY = 1   45
+.TAX = 1   49
+.LMX = 1   72
+.LQY = 1   75
+.MC = 20   1
+.B = 655    9,10,12,14,15,17,
+CHECKBIT IS 30   
+
+566:  BRNXF: Z ← -1,  DGOTO ILOOP
+.BL = 7   79,80,81,
+.BR = 10   82
+.TAX = 1   49
+.LZX = 1   76
+.MC = 1   5
+.DGO = 1   87
+.VCYP = 1   86
+.B = 2    16,
+CHECKBIT IS 30   
+       
+567:  GOTO FIXP IF AT1ON,  Q ← R
+.RRN = 2   67
+.THY = 1   46
+.LQY = 1   75
+.MC = 36   4,3,2,1
+.VCYP = 1   86
+.B = 712    9,10,11,14,16,
+
+570:  MULF:  FETCH,  DGOTO ILOOP
+.MS = 44   63,60
+.MC = 20   1,
+.DGO = 1   87
+.VCYP = 1   86
+.B = 2    16,
+CHECKBIT IS 30   
+       
+571:  M ← M LCH 23 - NMBIT,  Q ← 0,  CALL MUL1
+.MCONT = 1   7
+.BR = 10   82
+.BL = 4   79
+.MS = 5   65,63
+.LMX = 1   72
+.LQY = 1   75
+.MC = 1   5,
+.VCYP = 1   86
+.B = 720    9,10,11,13,
+
+572:  BRQF:  DGOTO BRQ1,  Q ← R,  Z ← -1
+.RRN = 2   67
+.BL = 7   79,80,81,
+.BR = 10   82
+.TAX = 1   49
+.THY = 1   46
+.LQY = 1   75
+.LZX = 1   76
+.MC = 20   1,
+.DGO = 1   87
+.VCYP = 1   86
+.B = 735    9,10,11,13,14,15,17,
+       
+573:  DGOTO FIXP IF NOCRASH
+.MC = 31   5,2,1
+.DGO = 1   87
+.VCYP = 1   86
+.B = 712    9,10,11,14,16,
+CHECKBIT IS 30   
+
+574:  LLNF:  Q,  GOTO LLN2 IF LB=0,  Z ← R + 1
+.RRN = 2   67
+.BR = 10   82
+.BL = 2   80
+.IHR = 1   42
+.THY = 1   46
+.TAX = 1   49
+.LZY = 1   77
+.MC = 22   4,1
+.VCYP = 1   86
+.B = 40    12,
+       
+575:  T ← 0 - Z,  Z ← AR,  GOTO LLN1
+.BR = 13   85,84,82
+.BL = 10   78
+.SSP = 5   56,54
+.LOC = 1   50
+.TSPY = 1   45
+.TXW = 1   47
+.TAX = 1   49
+.LZY = 1   77
+.LRN = 5   71,69
+.MC = 1   5,
+.B = 33    13,14,16,17,
+CHECKBIT IS 30   
+
+576:  LDIF:  AR ← M,  Q ← 2B4,  DGOTO ILOOP
+.BR = 10   82
+.BL = 4   79
+.SSP = 5   56,54
+.TCY = 1   44
+.TAX = 1   49
+.LQY = 1   75
+.LSPX = 1   59
+.MC = 20   1,
+.DGO = 1   87
+.B = 2    16,
+.C = 20000   28,
+CHECKBIT IS 42   
+       
+577:  GOTO LDI1 IF BL#0,  M AND Q
+.BR = 10   82
+.TAX = 1   49
+.MC = 23   5,4,1
+.VCYP = 1   86
+.B = 403    9,16,17,
+
+
+* LOCATION 600B;
+
+
+600:  CLL3B: AR←M, Q←R5
+.RRN = 5   68,66
+.BR = 10   82
+.BL = 4   79
+.SSP = 5   56,54
+.THY = 1   46
+.TAX = 1   49
+.LQY = 1   75
+.LSPX = 1   59
+CHECKBIT IS 87   
+       
+601:  SR5←Q,Q←R4
+.RRN = 4   66
+.BR = 10   82
+.BL = 2   80
+.SSP = 15   56,54,53
+.THY = 1   46
+.TAX = 1   49
+.LQY = 1   75
+.LSPX = 1   59
+CHECKBIT IS 87   
+       
+602:  SR4←Q,Q←R3
+.RRN = 3   68,67
+.BR = 10   82
+.BL = 2   80
+.SSP = 14   54,53
+.THY = 1   46
+.TAX = 1   49
+.LQY = 1   75
+.LSPX = 1   59
+CHECKBIT IS 87   
+       
+603:  SR3←Q,Q←R2
+.RRN = 2   67
+.BR = 10   82
+.BL = 2   80
+.SSP = 13   56,55,53
+.THY = 1   46
+.TAX = 1   49
+.LQY = 1   75
+.LSPX = 1   59
+CHECKBIT IS 87   
+       
+604:  SR2←Q,Q←R1
+.RRN = 1   68
+.BR = 10   82
+.BL = 2   80
+.SSP = 12   55,53
+.THY = 1   46
+.TAX = 1   49
+.LQY = 1   75
+.LSPX = 1   59
+       
+605:  SR1←Q,Q←R0
+.BR = 10   82
+.BL = 2   80
+.SSP = 11   56,53
+.THY = 1   46
+.TAX = 1   49
+.LQY = 1   75
+.LSPX = 1   59
+CHECKBIT IS 87   
+       
+606:  SR0←Q , DGOTO FIXP
+.BR = 10   82
+.BL = 2   80
+.SSP = 10   53
+.TAX = 1   49
+.LSPX = 1   59
+.MC = 1   5
+.DGO = 1   87
+.B = 712    9,10,11,14,16,
+CHECKBIT IS 30   
+       
+607:  Q←P
+.SSP = 3   56,55
+.TSPY = 1   45
+.LQY = 1   75
+CHECKBIT IS 87   
+
+
+* UPS TABLE. MUST BE ON 8-WORD BOUNDARY
+
+610:  UPSTAB:  Q, STROBE
+.BR = 10   82
+.BL = 2   80
+.MS = 17   65,64,63,62
+.TAX = 1   49
+
+611:  UPR:     Q, CLRPRO
+.BR = 10   82
+.BL = 2   80
+.MS = 20   61
+.TAX = 1   49
+CHECKBIT IS 87   
+
+612:  PRO:     Q,  GOTO PRO1 
+.BR = 10   82
+.BL = 2   80
+.TAX = 1   49
+.MC = 20   1
+.B = 743    9,10,11,12,16,17,
+CHECKBIT IS 30   
+       
+613:  CLEARMAP
+.MS = 62   64,61,60
+       
+614:  RESETTSU
+.MS = 26   64,63,61
+.VCYP = 1   86
+CHECKBIT IS 87   
+       
+615:  CALL PNT
+.MCONT = 1   7
+.MC = 1   5,
+.VCYP = 1   86
+.B = 141    11,12,17,
+CHECKBIT IS 30   
+       
+616:  CALL PNT
+.MCONT = 1   7
+.MC = 20   1,
+.VCYP = 1   86
+.B = 141    11,12,17,
+CHECKBIT IS 30   
+       
+617:  CALL PNT
+.MCONT = 1   7
+.MC = 1   5,
+.VCYP = 1   86
+.B = 141    11,12,17,
+CHECKBIT IS 30   
+
+
+* RCH TABLE. MUST BE ON 16-WORD BOUNDARY.
+*  ENTERED WITH DGOTO ILOOP PENDING, ABX IN MQZ, XR IN T
+
+620:  RCHTAB:  XR ← 0-Z
+.BR = 13   85,84,82
+.BL = 10   78
+.SSP = 7   56,55,54
+.LOC = 1   50
+.TAX = 1   49
+.LSPX = 1   59
+CHECKBIT IS 87   
+
+621:  CLEAR: XR←0,  GOTO *+1
+.SSP = 7   56,55,54
+.LSPX = 1   59
+.MC = 20   1
+.B = 622    9,10,13,16,
+
+622:  CLAB:    AR←M←0, GOTO CAB
+.SSP = 5   56,54
+.LMX = 1   72
+.LSPX = 1   59
+.MC = 1   5
+.B = 626    9,10,13,15,16,
+CHECKBIT IS 30   
+
+623:  CLA:     AR←0
+.SSP = 5   56,54
+.LSPX = 1   59
+
+624:  CLB:     BR←0
+.SSP = 6   55,54
+.LSPX = 1   59
+
+625:  CLX:     XR←0
+.SSP = 7   56,55,54
+.LSPX = 1   59
+CHECKBIT IS 87   
+
+626:  CAB:     BR←M, GOTO ILOOP
+.BR = 10   82
+.BL = 4   79
+.SSP = 6   55,54
+.TAX = 1   49
+.LSPX = 1   59
+.MC = 20   1,
+.B = 2    16,
+CHECKBIT IS 30   
+* THIS LINE IS EXECUTED FROM SEVERAL PLACES
+
+627:  CBA:     AR←Q
+.BR = 10   82
+.BL = 2   80
+.SSP = 5   56,54
+.TAX = 1   49
+.LSPX = 1   59
+CHECKBIT IS 87   
+
+630:  XAB:     AR←Q, GOTO CAB
+.BR = 10   82
+.BL = 2   80
+.SSP = 5   56,54
+.TAX = 1   49
+.LSPX = 1   59
+.MC = 1   5
+.B = 626    9,10,13,15,16,
+CHECKBIT IS 30   
+
+631:  CBX:     XR←Q
+.BR = 10   82
+.BL = 2   80
+.SSP = 7   56,55,54
+.TAX = 1   49
+.LSPX = 1   59
+
+632:  CXB:     BR←Z
+.BR = 4   83
+.BL = 10   78
+.SSP = 6   55,54
+.TAX = 1   49
+.LSPX = 1   59
+CHECKBIT IS 87   
+
+633:  XXB:     XR←Q, GOTO CAB, M←T
+.RRN = 5   68,66
+.BR = 10   82
+.BL = 2   80
+.SSP = 7   56,55,54
+.THY = 1   46
+.TAX = 1   49
+.LMY = 1   73
+.LSPX = 1   59
+.MC = 20   1
+.B = 626    9,10,13,15,16,
+
+634:  CXA:     AR←Z, GOTO ILOOP
+.BR = 4   83
+.BL = 10   78
+.SSP = 5   56,54
+.TAX = 1   49
+.LSPX = 1   59
+.MC = 1   5
+.B = 2    16,
+CHECKBIT IS 30   
+
+635:  CAX:     XR←M
+.BR = 10   82
+.BL = 4   79
+.SSP = 7   56,55,54
+.TAX = 1   49
+.LSPX = 1   59
+
+636:  XXA:     XR←M, M←T, GOTO CXA
+.RRN = 5   68,66
+.BR = 10   82
+.BL = 4   79
+.SSP = 7   56,55,54
+.THY = 1   46
+.TAX = 1   49
+.LMY = 1   73
+.LSPX = 1   59
+.MC = 20   1,
+.B = 634    9,10,13,14,15,
+
+637:  CNA:   AR←0-M
+.BR = 10   82
+.BL = 13   81,80,78
+.SSP = 5   56,54
+.LOC = 1   50
+.TAX = 1   49
+.LSPX = 1   59
+
+
+*  FAIL RETURN TABLE FOR CALL,  MUST OCCUR ON AN 8 WORD BOUNDARY
+
+640:  FTABLE: .VCY←0
+.VCYP = 1   86
+       
+641:  .VCY←0
+.VCYP = 1   86
+       
+642:  XR←CALL4
+.SSP = 7   56,55,54
+.TCX = 1   43
+.LSPX = 1   59
+.C = 765   33,34,35,36,37,39,41,
+CHECKBIT IS 87   
+       
+643:  BR←CALL4
+.SSP = 6   55,54
+.TCX = 1   43
+.LSPX = 1   59
+.C = 765   33,34,35,36,37,39,41,
+       
+644:  R5←CALL4
+.TCX = 1   43
+.TXW = 1   47
+.LRN = 5   71,69
+.VCYP = 1   86
+.C = 765   33,34,35,36,37,39,41,
+CHECKBIT IS 87   
+       
+645:  AR←CALL4
+.SSP = 5   56,54
+.TCX = 1   43
+.LSPX = 1   59
+.C = 765   33,34,35,36,37,39,41,
+       
+646:  FA0 ← CALL4
+.SSP = 16   55,54,53
+.TCX = 1   43
+.LSPX = 1   59
+.C = 765   33,34,35,36,37,39,41,
+CHECKBIT IS 87   
+       
+647:  .VCY←0
+.VCYP = 1   86
+
+
+*  SCRATCHPAD TO SCRATCHPAD (CSK) TABLE, MUST BE ON 4-WORD BOUNDARY
+
+650:  CSKTAB:        T ← SKZ,  GOTO CSK2
+.MS = 13   65,64,62
+.TSPY = 1   45
+.TYW = 1   48
+.LRN = 5   71,69
+.MC = 1   5
+.B = 750    9,10,11,12,14,
+       
+651:  T ← 0,  GOTO CSK2
+.TXW = 1   47
+.LRN = 5   71,69
+.MC = 20   1
+.VCYP = 1   86
+.B = 750    9,10,11,12,14,
+CHECKBIT IS 30   
+       
+652:  Z ← SKZ,  Q ← 1
+.MS = 13   65,64,62
+.BL = 10   78
+.BR = 10   82
+.TAX = 1   49
+.LOC = 1   50
+.TSPY = 1   45
+.LQX = 1   74
+.LZY = 1   77
+CHECKBIT IS 87   
+       
+653:  Z ← SKZ,  Q ← -1
+.MS = 13   65,64,62
+.BL = 7   79,80,81,
+.BR = 10   82
+.TAX = 1   49
+.TSPY = 1   45
+.LQX = 1   74
+.LZY = 1   77
+
+
+* CHECK R FOR < BOUND, THEN STORE M WITH MAR AND GOTO ILOOP
+* UNLESS A IS SET, IN WHICH CASE RETURN
+*  EXIT:  Z - R,  Q - 4B7
+
+654:  STOR:    Q←BOUND
+.SSP = 1   56
+.TSPY = 1   45
+.LQY = 1   75
+
+655:  STOR1:   GOTO *+2 ON Z←R<0
+.RRN = 2   67
+.THY = 1   46
+.LZY = 1   77
+.MC = 10   2
+.B = 657    9,10,12,14,15,16,17,
+
+656:  STOR2:   CALL PNT ON Q-Z<=0
+.MCONT = 1   7
+.BR = 13   85,84,82
+.BL = 2   80
+.LOC = 1   50
+.TAX = 1   49
+.MC = 13   5,4,2
+.B = 141    11,12,17,
+
+657:  STOR3:   STORE, RETURN IF ASET, Q←4B7
+.MCONT = 2   6
+.MS = 42   64,60
+.TCX = 1   43
+.LQX = 1   74
+.MC = 33   5,4,2,1
+.VCYP = 1   86
+.C = -40000000   18,
+* FALL THROUGH
+       
+660:  T2 ← Q ← P,  DGOTO IL0
+.SSP = 3   56,55
+.TSPY = 1   45
+.TYW = 1   48
+.LQY = 1   75
+.LRN = 3   71,70
+.MC = 1   5
+.DGO = 1   87
+.B = 665    9,10,12,13,15,17,
+       
+661:  FETCH R0←ABSP ← ABSP + 1,  P ← Q + 1
+.RRN = 1   68
+.BR = 10   82
+.BL = 2   80
+.SSP = 3   56,55
+.MS = 44   63,60
+.LOC = 1   50
+.IHR = 1   42
+.THY = 1   46
+.TYW = 1   48
+.TAX = 1   49
+.LRN = 1   71
+.LR0 = 1   58
+.LSPX = 1   59
+
+
+* CONTINUE EXECUTION, STARTING WITH INSTRUCTION ADDRESSED BY P
+
+662:  ICONT:   Q←P
+.SSP = 3   56,55
+.TSPY = 1   45
+.LQY = 1   75
+CHECKBIT IS 87   
+
+663:  ICNT1:   Z←REL,  T2 ← Q - 1
+.BR = 7   85,84,83
+.BL = 2   80
+.SSP = 2   55
+.TSPY = 1   45
+.TXW = 1   47
+.TAX = 1   49
+.LZY = 1   77
+.LRN = 3   71,70
+         
+664:  CALL PNT ON MAR←ABSP←Q+Z < 0, FETCH
+.MCONT = 1   7
+.BR = 4   83
+.BL = 2   80
+.MS = 44   63,60
+.TXW = 1   47
+.TAX = 1   49
+.LRN = 1   71
+.LR0 = 1   58
+.MC = 4   3
+.B = 141    11,12,17,
+*  BEGIN MAIN LOOP
+*  Q - P
+*  T2 - P - 1
+*  MAR - ABSP
+*  FETCH OF INSTRUCTION STARTED
+
+665:  IL0:     MAR←MAR+1, Q←OPMASK
+.IHR = 1   42
+.TCX = 1   43
+.THY = 1   46
+.TYW = 1   48
+.LQX = 1   74
+.LR0 = 1   58
+.VCYP = 1   86
+.C = 7700000   21,22,23,24,25,26,
+
+666:  IL1:     Q←M AND Q LCY 8
+.BR = 10   82
+.MS = 5   65,63
+.LQX = 1   74
+.VCYP = 1   86
+         
+667:  Q←T1←Q LCY 2
+.BR = 10   82
+.BL = 2   80
+.MS = 2   64
+.TXW = 1   47
+.LQX = 1   74
+.LRN = 4   69
+.VCYP = 1   86
+         
+670:  CALL INDEX ON T←M LCY 1<0, Q←ADMASK
+.MCONT = 1   7
+.BR = 10   82
+.BL = 4   79
+.MS = 1   65
+.TCY = 1   44
+.TXW = 1   47
+.LQY = 1   75
+.LRN = 5   71,69
+.MC = 4   3
+.B = 710    9,10,11,14,
+.C = -40000   18,19,20,21,22,23,24,25,26,27,
+CHECKBIT IS 50   
+*  CHECK RELATIVE ADDRESSING
+
+671:  IL2:     GOTO IL2A IF YODD, T, R←M AND NOT Q
+.RRN = 5   68,66
+.BR = 10   82
+.BL = 14   79,78
+.THY = 1   46
+.TXW = 1   47
+.TAX = 1   49
+.LRN = 2   70
+.MC = 25   5,3,1
+.B = 706    9,10,11,15,16,
+         
+672:  Z ← REL
+.SSP = 2   55
+.TSPY = 1   45
+.LZY = 1   77
+         
+673:  MAR←M AND NOT Q+Z, Q←T,  CLRA
+.RRN = 5   68,66
+.BR = 4   83
+.BL = 14   79,78
+.MS = 31   65,62,61
+.THY = 1   46
+.TXW = 1   47
+.TAX = 1   49
+.LQY = 1   75
+.LR0 = 1   58
+
+674:  IL2R:    GOTO MSINS ON Q LCY 1<0, M←T1
+.RRN = 4   66
+.BR = 10   82
+.BL = 2   80
+.MS = 1   65
+.THY = 1   46
+.LMY = 1   73
+.MC = 4   3
+.B = 715    9,10,11,14,15,17,
+         
+675:  DGOTO M MRG HLTF,  M ← R
+.MCONT = 3   7,6
+.RRN = 2   67
+.BR = 10   82
+.BL = 4   79
+.TCX = 1   43
+.THY = 1   46
+.TAX = 1   49
+.LMY = 1   73
+.MC = 20   1
+.DGO = 1   87
+.VCYP = 1   86
+.C = 400   33,
+         
+676:  GOTO *+1 ON Q LCY 8<0, Z←Q←AR
+.BR = 10   82
+.BL = 2   80
+.SSP = 5   56,54
+.MS = 5   65,63
+.TSPY = 1   45
+.LQY = 1   75
+.LZY = 1   77
+.MC = 4   3
+.B = 677    9,10,12,13,14,15,16,17,
+CHECKBIT IS 30   
+*  INDIRECTION
+         
+677:  FETCH,  Q ← 4B7
+.MS = 44   63,60
+.TCX = 1   43
+.LQX = 1   74
+.VCYP = 1   86
+.C = -40000000   18,
+CHECKBIT IS 87   
+         
+700:  M AND Q,  GOTO IL3 IF BL=0
+.BR = 10   82
+.TAX = 1   49
+.MC = 22   4,1
+.VCYP = 1   86
+.B = 703    9,10,11,16,17,
+CHECKBIT IS 30   
+         
+701:  M←M AND NOT Q,DGOTO IL2
+.BR = 10   82
+.BL = 14   79,78
+.TAX = 1   49
+.LMX = 1   72
+.MC = 1   5,
+.DGO = 1   87
+.VCYP = 1   86
+.B = 671    9,10,12,13,14,17,
+CHECKBIT IS 30   
+       
+702:  CALL INDEX ON T ← M LCY 1 < 0,  Q ← ADMASK
+.MCONT = 1   7
+.BR = 10   82
+.BL = 4   79
+.MS = 1   65
+.TCY = 1   44
+.TXW = 1   47
+.LQY = 1   75
+.LRN = 5   71,69
+.MC = 4   3
+.B = 710    9,10,11,14,
+.C = -40000   18,19,20,21,22,23,24,25,26,27,
+CHECKBIT IS 50   
+*  ABSOLUTE INDIRECTION
+
+703:  IL3:     CALL INDEX ON T←M LCY 1<0, Q←LONGAD
+.MCONT = 1   7
+.BR = 10   82
+.BL = 4   79
+.MS = 1   65
+.TCY = 1   44
+.TXW = 1   47
+.LQY = 1   75
+.LRN = 5   71,69
+.MC = 4   3
+.B = 710    9,10,11,14,
+.C = -1000000   18,19,20,21,22,23,
+CHECKBIT IS 50   
+         
+704:  M ← R←MAR←M AND NOT Q MRG 4B7, Z←T1
+.RRN = 4   66
+.BR = 10   82
+.BL = 14   79,78
+.TCX = 1   43
+.THY = 1   46
+.TXW = 1   47
+.TAX = 1   49
+.LMX = 1   72
+.LZY = 1   77
+.LRN = 2   70
+.LR0 = 1   58
+.VCYP = 1   86
+.C = -40000000   18,
+CHECKBIT IS 87   
+         
+705:  GOTO Z MRG HLTF, Z←Q←AR
+.MCONT = 3   7,6
+.BR = 4   83
+.BL = 10   78
+.SSP = 5   56,54
+.TCX = 1   43
+.TSPY = 1   45
+.TAX = 1   49
+.LQY = 1   75
+.LZY = 1   77
+.MC = 20   1
+.C = 400   33,
+
+
+
+706:  IL2A:  R ← R MRG 4B7,  DGOTO IL2R
+.RRN = 2   67
+.TCY = 1   44
+.THY = 1   46
+.TYW = 1   48
+.LRN = 2   70
+.MC = 1   5
+.DGO = 1   87
+.VCYP = 1   86
+.B = 674    9,10,12,13,14,15,
+.C = -40000000   18,
+       
+707:  MAR ← M AND NOT Q,  Q ← T,  CLRA
+.RRN = 5   68,66
+.BR = 10   82
+.BL = 14   79,78
+.MS = 31   65,62,61
+.THY = 1   46
+.TXW = 1   47
+.TAX = 1   49
+.LQY = 1   75
+.LR0 = 1   58
+.VCYP = 1   86
+CHECKBIT IS 87   
+
+
+* SUBROUTINE FOR INDEXING
+
+710:  INDEX:   Z←XR, DRETURN
+.MCONT = 2   6
+.SSP = 7   56,55,54
+.TSPY = 1   45
+.LZY = 1   77
+.MC = 20   1,
+.DGO = 1   87
+CHECKBIT IS 30   
+         
+711:  M←M AND NOT Q+Z,Q←LONGAD
+.BR = 4   83
+.BL = 14   79,78
+.TCY = 1   44
+.TAX = 1   49
+.LMX = 1   72
+.LQY = 1   75
+.C = -1000000   18,19,20,21,22,23,
+
+
+* SET P TO Q+Z, RECOMPUTE ABSP AND GO TO ILOOP
+*  NEXT INSTRUCTION COMES FROM P+1
+
+712:  FIXP:    Q←P←Q+Z
+.BR = 4   83
+.BL = 2   80
+.SSP = 3   56,55
+.TAX = 1   49
+.LQX = 1   74
+.LSPX = 1   59
+         
+713:  Z←REL, DGOTO ILOOP
+.SSP = 2   55
+.TSPY = 1   45
+.LZY = 1   77
+.MC = 1   5,
+.DGO = 1   87
+.B = 2    16,
+CHECKBIT IS 30   
+         
+714:  CALL PNT ON ABSP←Q+Z < 0
+.MCONT = 1   7
+.BR = 4   83
+.BL = 2   80
+.TXW = 1   47
+.TAX = 1   49
+.LRN = 1   71
+.MC = 4   3
+.B = 141    11,12,17,
+CHECKBIT IS 30   
+
+
+*  MEMORY TO SCRATCHPAD INSTRUCTION
+*
+
+715:  MSINS: Z←Q LCY 8, M←1B5,  DGOTO MSIN1
+.BR = 10   82
+.BL = 2   80
+.MS = 5   65,63
+.TCY = 1   44
+.LMY = 1   73
+.LZX = 1   76
+.MC = 20   1
+.DGO = 1   87
+.VCYP = 1   86
+.B = 413    9,14,16,17,
+.C = 100000   26,
+*  TEST FOR LOAD OR STORE
+       
+716:  M AND Q, GOTO *+1 IF BL=0
+.BR = 10   82
+.TAX = 1   49
+.MC = 22   4,1
+.VCYP = 1   86
+.B = 717    9,10,11,14,15,16,17,
+CHECKBIT IS 30   
+       
+717:  FETCH,  GOTO MSIN2
+.MS = 44   63,60
+.MC = 1   5,
+.VCYP = 1   86
+.B = 415    9,14,15,17,
+CHECKBIT IS 30   
+
+
+*  12 BIT MULTIPLICATION ROUTINE
+*  M - SHORT ARGUEMENT LCH 23 - NMBIT
+*  Q - 0
+*  Z - LONG ARGUEMENT
+*  RETURN:  PRODUCT IN ,AR,  M RESTORED
+*  CLOBBERS: ADR
+
+
+720:  MUL1:  M ← M LCL 23-NMBIT, R0 ← -NMBIT
+.BR = 10   82
+.BL = 4   79
+.MS = 3   65,64
+.TCY = 1   44
+.TYW = 1   48
+.LMX = 1   72
+.LR0 = 1   58
+.VCYP = 1   86
+.C = -14   18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,39,
+CHECKBIT IS 87   
+       
+721:  M ← R0+1, R0 ← M LCY 1, DGOTO MUL0 IF R0>=0
+.BR = 10   82
+.BL = 4   79
+.MS = 1   65
+.IHR = 1   42
+.THY = 1   46
+.TXW = 1   47
+.LMY = 1   73
+.LR0 = 1   58
+.MC = 12   4,2
+.DGO = 1   87
+.VCYP = 1   86
+.B = 421    9,13,17,
+       
+722:  M ← R0, R0 ← M, DGOTO *-1 IF R0>=0
+.BR = 10   82
+.BL = 4   79
+.THY = 1   46
+.TXW = 1   47
+.TAX = 1   49
+.LMY = 1   73
+.LR0 = 1   58
+.MC = 12   4,2
+.DGO = 1   87
+.VCYP = 1   86
+.B = 721    9,10,11,13,17,
+CHECKBIT IS 30   
+       
+723:  Q ← Q LCY 1
+.BR = 10   82
+.BL = 2   80
+.MS = 1   65
+.LQX = 1   74
+.VCYP = 1   86
+       
+724:  Q ← Q!Z, GOTO *-3
+.BR = 4   83
+.BL = 2   80
+.TAX = 1   49
+.LQX = 1   74
+.MC = 20   1,
+.VCYP = 1   86
+.B = 721    9,10,11,13,17,
+
+
+*  THE REST OF BVR
+
+725:  BVR1:  M ← M + Z,  DGOTO ICNT1
+.BR = 4   83
+.BL = 4   79
+.TAX = 1   49
+.LMX = 1   72
+.MC = 1   5,
+.DGO = 1   87
+.B = 663    9,10,12,13,16,17,
+CHECKBIT IS 30   
+       
+726:  Q ← P ← M AND NOT Q
+.BR = 10   82
+.BL = 14   79,78
+.SSP = 3   56,55
+.TAX = 1   49
+.LQX = 1   74
+.LSPX = 1   59
+CHECKBIT IS 87   
+
+
+*  THE REST OF SKI
+
+727:  SKI1:  DGOTO ILOOP
+.MC = 20   1
+.DGO = 1   87
+.VCYP = 1   86
+.B = 2    16,
+CHECKBIT IS 30   
+       
+730:  GOTO SKIP ON M >= 0
+.BR = 10   82
+.BL = 4   79
+.TAX = 1   49
+.MC = 5   5,3
+.B = 740    9,10,11,12,
+
+
+*  THE REST OF SKIP A <= M
+
+731:  SKL1:  Q ← M,  M ← AR,  DGOTO SKG1
+.BR = 10   82
+.BL = 4   79
+.SSP = 5   56,54
+.TSPY = 1   45
+.TAX = 1   49
+.LMY = 1   73
+.LQX = 1   74
+.MC = 1   5,
+.DGO = 1   87
+.B = 734    9,10,11,13,14,15,
+CHECKBIT IS 30   
+       
+732:  GOTO SKG2 ON M EOR Q < 0
+.BR = 10   82
+.BL = 16   80,79,78
+.TAX = 1   49
+.MC = 4   3
+.B = 471    9,12,13,14,17,
+
+
+
+733:  SKGE1: GOTO SKG2 ON M EOR Q < 0
+.BR = 10   82
+.BL = 16   80,79,78
+.TAX = 1   49
+.MC = 4   3
+.B = 471    9,12,13,14,17,
+
+734:  SKG1:  M←M-Q, Q←4B7, GOTO SKN1
+.BR = 15   85,83,82
+.BL = 4   79
+.LOC = 1   50
+.TCY = 1   44
+.TAX = 1   49
+.LMX = 1   72
+.LQY = 1   75
+.MC = 20   1,
+.B = 445    9,12,15,17,
+.C = -40000000   18,
+
+
+*  THE REST OF BRANCH ON REQUEST STROBE
+
+735:  BRQ1:  GOTO ILOOP IF NOREQ
+.MC = 27   5,4,3,1
+.B = 2    16,
+       
+736:  CALL R2PNT
+.MCONT = 1   7
+.MC = 1   5
+.VCYP = 1   86
+.B = 45    12,15,17,
+CHECKBIT IS 30   
+
+
+* THESE LINES ARE USED  BY SKIP INSTRUCTIONS
+
+737:  TEST:    M, GOTO ILOOP IF LB#0
+.BR = 10   82
+.BL = 4   79
+.TAX = 1   49
+.MC = 23   5,4,1
+.VCYP = 1   86
+.B = 2    16,
+CHECKBIT IS 30   
+
+740:  SKIP:    Q←P, Z←1, GOTO FIXP
+.SSP = 3   56,55
+.BL = 10   78
+.BR = 10   82
+.TAX = 1   49
+.LOC = 1   50
+.TSPY = 1   45
+.LQY = 1   75
+.LZX = 1   76
+.MC = 20   1,
+.B = 712    9,10,11,14,16,
+
+
+* REMAINDER OF RCH
+
+741:  RCH1:    DGOTO M MRG RCHTAB, Q←BR
+.MCONT = 3   7,6
+.BR = 10   82
+.BL = 4   79
+.SSP = 6   55,54
+.TCX = 1   43
+.TSPY = 1   45
+.TAX = 1   49
+.LQY = 1   75
+.MC = 1   5,
+.DGO = 1   87
+.C = 620   33,34,37,
+
+742:  UPS1:    M←AR, DGOTO ILOOP
+.SSP = 5   56,54
+.TSPY = 1   45
+.LMY = 1   73
+.MC = 20   1,
+.DGO = 1   87
+.B = 2    16,
+
+
+*  REMAINDER OF PROTECT
+
+743:  PRO1:  Q,  CLRPRO,  DGOTO ILOOP
+.BR = 10   82
+.BL = 2   80
+.MS = 20   61
+.TAX = 1   49
+.MC = 1   5,
+.DGO = 1   87
+.B = 2    16,
+       
+744:  Q,  SETPRO,  GOTO *-1 IF PRONEX
+.BR = 10   82
+.BL = 2   80
+.MS = 25   65,63,61
+.TAX = 1   49
+.MC = 30   2,1
+.B = 743    9,10,11,12,16,17,
+CHECKBIT IS 30   
+
+
+*  SCRATCHPAD RCH INSTRUCTIONS
+*
+
+745:  CSK1:  DGOTO Q LCH 24 - 6 MRG CSKTAB
+.MCONT = 3   7,6
+.BR = 10   82
+.BL = 2   80
+.MS = 7   65,64,63
+.TCX = 1   43
+.MC = 20   1
+.DGO = 1   87
+.VCYP = 1   86
+.C = 650   33,34,36,38,
+       
+746:  Z ← M LCY 16,  Q ← 77B,  DGOTO *+1
+.BR = 10   82
+.BL = 4   79
+.MS = 7   65,64,63
+.TCY = 1   44
+.LQY = 1   75
+.LZX = 1   76
+.MC = 1   5
+.DGO = 1   87
+.VCYP = 1   86
+.B = 747    9,10,11,12,15,16,17,
+.C = 77   36,37,38,39,40,41,
+CHECKBIT IS 50   
+       
+747:  T ← Z + Q,  Q ← 77B
+.BR = 4   83
+.BL = 2   80
+.TCY = 1   44
+.TXW = 1   47
+.TAX = 1   49
+.LQY = 1   75
+.LRN = 5   71,69
+.C = 77   36,37,38,39,40,41,
+CHECKBIT IS 87   
+
+750:  CSK2:  Z ← M AND Q,  Q ← T,  DGOTO ILOOP
+.RRN = 5   68,66
+.BR = 10   82
+.THY = 1   46
+.TAX = 1   49
+.LQY = 1   75
+.LZX = 1   76
+.MC = 20   1,
+.DGO = 1   87
+.VCYP = 1   86
+.B = 2    16,
+       
+751:  SKZ←Q
+.BR = 10   82
+.BL = 2   80
+.MS = 13   65,64,62
+.TAX = 1   49
+.LSPX = 1   59
+
+
+*  CALL MICRO-CODE SUBROUTINES
+
+752:  CALL1: DGOTO Q LCY 1 MRG FTABLE, Q←P
+.MCONT = 3   7,6
+.BR = 10   82
+.BL = 2   80
+.SSP = 3   56,55
+.MS = 1   65
+.TCX = 1   43
+.TSPY = 1   45
+.LQY = 1   75
+.MC = 1   5
+.DGO = 1   87
+.C = 640   33,34,36,
+       
+753:  P←Q+1, DGOTO CALL2
+.BR = 10   82
+.BL = 2   80
+.SSP = 3   56,55
+.LOC = 1   50
+.TAX = 1   49
+.LSPX = 1   59
+.MC = 20   1
+.DGO = 1   87
+.B = 754    9,10,11,12,14,15,
+
+
+*  ACTUAL CALL ON ROUTINE
+
+754:  CALL2: R1←SR1, Q←3777B
+.SSP = 11   56,53
+.TCX = 1   43
+.TSPY = 1   45
+.TYW = 1   48
+.LQX = 1   74
+.LRN = 1   71
+.C = 3777   31,32,33,34,35,36,37,38,39,40,41,
+CHECKBIT IS 87   
+       
+755:  R2←SR2, Z←M AND Q
+.BR = 10   82
+.SSP = 12   55,53
+.TSPY = 1   45
+.TYW = 1   48
+.TAX = 1   49
+.LZX = 1   76
+.LRN = 2   70
+CHECKBIT IS 87   
+       
+756:  R3←SR3, DGOTO CALL3
+.SSP = 13   56,55,53
+.TSPY = 1   45
+.TYW = 1   48
+.LRN = 3   71,70
+.MC = 1   5
+.DGO = 1   87
+.B = 763    9,10,11,12,13,16,17,
+CHECKBIT IS 30   
+       
+757:  R4←SR4, CALL *+1
+.MCONT = 1   7
+.SSP = 14   54,53
+.TSPY = 1   45
+.TYW = 1   48
+.LRN = 4   69
+.MC = 20   1
+.B = 760    9,10,11,12,13,
+CHECKBIT IS 30   
+       
+760:  M←AR
+.SSP = 5   56,54
+.TSPY = 1   45
+.LMY = 1   73
+CHECKBIT IS 87   
+       
+761:  Q←BR, DGOTO Z
+.MCONT = 3   7,6
+.BR = 4   83
+.BL = 10   78
+.SSP = 6   55,54
+.TSPY = 1   45
+.TAX = 1   49
+.LQY = 1   75
+.MC = 1   5,
+.DGO = 1   87
+       
+762:  Z←XR
+.SSP = 7   56,55,54
+.TSPY = 1   45
+.LZY = 1   77
+
+
+*  RETURN FROM ROUTINE
+
+763:  CALL3: XR←Z, Z←0
+.BR = 4   83
+.BL = 10   78
+.SSP = 7   56,55,54
+.TAX = 1   49
+.LZY = 1   77
+.LSPX = 1   59
+CHECKBIT IS 87   
+
+764:  CLL3A: BR←Q,  GOTO CLL3B
+.BR = 10   82
+.BL = 2   80
+.SSP = 6   55,54
+.TAX = 1   49
+.LSPX = 1   59
+.MC = 20   1,
+.B = 600    9,10,
+
+
+*  FAILURE RETURN FROM ROUTINE
+
+765:  CALL4: XR←Z, Z←STKP
+.RRN = 6   67,66
+.BR = 4   83
+.BL = 10   78
+.SSP = 7   56,55,54
+.THY = 1   46
+.TAX = 1   49
+.LZY = 1   77
+.LSPX = 1   59
+       
+766:  GOTO *+2 ON Z ← SKZ < 0
+.MS = 13   65,64,62
+.TSPY = 1   45
+.LZY = 1   77
+.MC = 10   2
+.B = 770    9,10,11,12,13,14,
+CHECKBIT IS 30   
+       
+767:  BR ← Q,  Z ← -1,  GOTO CLL3B
+.BR = 10   82
+.BL = 2   80
+.SSP = 6   55,54
+.TCY = 1   44
+.TAX = 1   49
+.LZY = 1   77
+.LSPX = 1   59
+.MC = 1   5,
+.B = 600    9,10,
+.C = -1   18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,
+       
+770:  P ← NOT Z - 1,  Z ← STKP,  GOTO PATCH1
+.RRN = 6   67,66
+.BR = 13   85,84,82
+.BL = 7   81,80,79
+.SSP = 3   56,55
+.THY = 1   46
+.TAX = 1   49
+.LZY = 1   77
+.LSPX = 1   59
+.MC = 20   1,
+.B = 773    9,10,11,12,13,14,16,17,
+
+
+*  PATCH SPACE
+
+771:  SCAL1: Q ← T,  STKP ← Z - 1,  GOTO SCAL3
+.RRN = 5   68,66
+.BR = 4   83
+.BL = 7   81,80,79
+.THY = 1   46
+.TXW = 1   47
+.TAX = 1   49
+.LQY = 1   75
+.LRN = 6   70,69
+.MC = 1   5,
+.B = 517    9,11,14,15,16,17,
+
+772:  SCAL2: Q ← T + 1,  STKP ← Z - 1,  GOTO SCAL3
+.RRN = 5   68,66
+.BR = 4   83
+.BL = 7   81,80,79
+.IHR = 1   42
+.THY = 1   46
+.TXW = 1   47
+.TAX = 1   49
+.LQY = 1   75
+.LRN = 6   70,69
+.MC = 20   1,
+.B = 517    9,11,14,15,16,17,
+CHECKBIT IS 30   
+
+773:  PATCH1: Z←SKZ←0,  GOTO CLL3A
+.MS = 13   65,64,62
+.LZX = 1   76
+.LSPX = 1   59
+.MC = 1   5,
+.B = 764    9,10,11,12,13,15,
+CHECKBIT IS 30   
+*  PATCH TO ALLOW A RCY INSTRUCTION, NOTE ONLY BOTTOM 8 BITS MAY 
+*  CONTAIN DATA
+*  LCNS 774 - 776 WILL CONTAIN PATCHES FOR 1.03 VERSION.
+*  FOR NOW THEY CONTAIN NOTHING.
+
+774:               * RCY:   R←Z-Q, Q←AR, GOTO SHIFT
+CHECKBIT IS 56
+
+775:               *MOD:  M←Q, DGOTO *
+CHECKBIT IS 30
+
+776:               *      RETURN ON Q←Q-Z<0, R3←5
+CHECKBIT IS 87
+
+777:   CALL PUNT
+.MCONT = 1   7
+.MC = 1   5,
+.B = 141   11,12,17,
+.VCYP = 1   86
+CHECKBIT IS 30
+
+       CHECK 1000B;
+
+

@@ -1,0 +1,142 @@
+
+PFS         USER           TSS
+NO.          NAME          NO.
+
+
+  1   SYSTEM-01              1
+  2   SYSTEM-02              2
+  3   SYSTEM-03              3
+  4   SYSTEM-04              4
+  5   SYSTEM-05            
+  6   SYSTEM-06            
+  7   SYSTEM-07            
+  8   SYSTEM-08            
+  9   SYSTEM-09            
+ 10   SPL-01               
+ 11   SPL-02               
+ 12   SPL-03               
+ 13   SPL-04               
+ 14   WWL                    5
+ 15   DAVIDSON               8
+ 16   FREEMAN                9
+ 17   GOODRICH              10
+ 18   LEE                   11
+ 19   JOHNSTON              28
+ 20   MOODY                 29
+ 21   YONAMINE              14
+ 22   BASIC-B              
+ 23   BASIC-C              
+ 24   LOAD                 
+ 25   SMITH                 24
+
+ 27   CPU                  
+ 28   KAM                   18
+ 29   HOOVER                20
+ 30   SOFTWARE             
+ 31   STOUTE                33
+ 32   SOFTWARE-A           
+ 33   IAC                   36
+ 34   BASIC                 16
+ 35   BASIC-A              
+ 36   SPIRN                
+
+
+ 39   XBLA                 
+ 40   XBLB                 
+ 41   GUEST                  7
+ 42   ALOHA                 25
+ 43   ROK                  
+ 44   BK                    27
+ 45   CARDESTAM            
+ 46   APU                  
+ 47   AMC                  
+ 48   SUE                  
+ 49   KAGAN                 31
+ 50   IFA                   32
+ 51   BISSONNETTE           26
+ 52   CHIO                 
+ 53   CROSBY                17
+ 54   MSCH                 
+ 55   FM                   
+ 56   HARRISON             
+ 57   OKINAKA               30
+ 58   CER                   56
+ 59   ELF                  
+
+ 61   IWAMOTO               21
+ 62   OKANO                 23
+
+
+ 65   CP                   
+ 66   FORTRAN              
+ 67   GEOFF                 12
+
+
+ 70   CSA-1                 13
+ 71   CSA-2                 19
+
+
+
+
+
+
+
+
+
+ 81   OPERATOR               6
+ 82   EC-3                 
+ 83   EC-1                  15
+ 84   EE-491                34
+ 85   WAYMOND               35
+ 86   ICS-160-1             37
+ 87   ICS-160-2             55
+ 88   ICS-160-3             58
+ 89   ICS-160-4             59
+ 90   ICS-160-5             60
+ 91   ICS-160-6             61
+ 92   ICS-160-7             62
+ 93   ICS-160-8             63
+ 94   ICS-160-9             64
+ 95   ICS-160-10            38
+ 96   YOSHINO               39
+
+
+
+
+
+102   HCAM                  57
+
+
+
+
+
+
+
+
+111   EC-2                  22
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
